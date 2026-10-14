@@ -27,3 +27,9 @@ Browser verification completed using the Codex browser on local production build
 - Transparency: explicitly no results or certificates published.
 - Desktop 1280px and mobile 390px inspected; mobile project detail scroll width equals viewport (390px), no horizontal overflow observed.
 - Screenshots: [citizen desktop](screenshots/citizen-desktop.jpg), [citizen mobile](screenshots/citizen-mobile.jpg), [investor console](screenshots/investor-desktop.jpg).
+
+## First GitHub CI run
+
+[Run 38603865187](https://github.com/BDSG-VN/noxh-open-platform/actions/runs/38603865187) passed Node build/checks, actual TCP PostgreSQL migration/seed/RLS, Python and Rust tests. Compose configuration passed but startup failed because MinIO Client registry pull was denied. The storage images were changed to builds from pinned official source; a subsequent CI run must verify full startup.
+
+Local HTTP checks: citizen web `/` 200; API `/health/live` 200; API `/health/ready` 503 without Postgres/Redis, as expected.

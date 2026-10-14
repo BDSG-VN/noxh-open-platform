@@ -1,0 +1,14 @@
+FROM golang:1.25.1-bookworm AS source
+ARG UPSTREAM_COMMIT=7394ce0dd2a80935aded936b09fa12cbb3cb8096
+WORKDIR /src
+RUN git init && git remote add origin https://github.com/minio/mc.git && git fetch --depth 1 origin ${UPSTREAM_COMMIT} && git checkout --detach FETCH_HEAD
+RUN CGO_ENABLED=0 go build -trimpath -buildvcs=false -o /out/mc .
+
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/* && mkdir -p /tmp/mc && chown 65532:65532 /tmp/mc
+ENV HOME=/tmp/mc
+COPY --from=source /out/mc /usr/local/bin/mc
+COPY --from=source /src/LICENSE /usr/share/doc/minio-client/LICENSE
+LABEL org.opencontainers.image.source="https://github.com/minio/mc" org.opencontainers.image.revision="7394ce0dd2a80935aded936b09fa12cbb3cb8096" org.opencontainers.image.licenses="AGPL-3.0-only"
+USER 65532:65532
+ENTRYPOINT ["mc"]
