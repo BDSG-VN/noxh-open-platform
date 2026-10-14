@@ -22,3 +22,10 @@ test('migration is required before API starts', () =>
     compose.services.api.depends_on.migrate.condition,
     'service_completed_successfully',
   ));
+test('fixture seed and private bucket setup must complete before API starts', () => {
+  assert.equal(compose.services.api.depends_on.seed.condition, 'service_completed_successfully');
+  assert.equal(
+    compose.services.api.depends_on['storage-init'].condition,
+    'service_completed_successfully',
+  );
+});

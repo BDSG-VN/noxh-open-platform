@@ -6,7 +6,7 @@ Local checks completed in the implementation session:
 
 - `pnpm lint`: ESLint and formatting passed.
 - `pnpm typecheck`: all 9 workspace packages passed.
-- `pnpm test`: 28 Vitest cases across 9 packages, plus 11 Node test results (4 Compose invariants, 6 embedded PostgreSQL denial/constraint cases and their parent suite) passed.
+- `pnpm test`: 28 Vitest cases across 9 packages, plus 12 Node test results (5 Compose invariants, 6 embedded PostgreSQL denial/constraint cases and their parent suite) passed.
 - `pnpm build`: all 9 packages passed; Next.js uses webpack for repeatable builds in restricted local environments.
 - `pnpm check:openapi`: OpenAPI 3.1 and generated operation types passed.
 - `pnpm check:secrets`: tracked/unignored source pattern gate passed; ignored generated .env is excluded. This is not an exhaustive secret/security audit.
