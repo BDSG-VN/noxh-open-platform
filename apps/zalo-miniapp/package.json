@@ -1,0 +1,22 @@
+{
+  "name": "@noxh/zalo-miniapp",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 3003",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zmp-sdk": "2.53.2",
+    "@noxh/contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "8.3.4",
+    "@vitejs/plugin-react": "6.1.2"
+  },
+  "type": "module"
+}
