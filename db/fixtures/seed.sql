@@ -1,0 +1,7 @@
+-- SYNTHETIC ONLY: no real citizen, real project or contact details.
+INSERT INTO organizations(id,name) VALUES('10000000-0000-4000-8000-000000000001','Tổ chức minh họa') ON CONFLICT DO NOTHING;
+INSERT INTO projects(id,organization_id,name,locality,publication_status,is_synthetic) VALUES
+('20000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001','Khu nhà ở mẫu An Bình','Địa bàn giả lập A','published',true),
+('20000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000001','Khu nhà ở mẫu Hòa Phú','Địa bàn giả lập B','published',true) ON CONFLICT DO NOTHING;
+INSERT INTO users(id,organization_id,status) VALUES('30000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001','active') ON CONFLICT DO NOTHING;
+INSERT INTO prep_dossiers(id,organization_id,project_id,owner_user_id) VALUES('40000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001','30000000-0000-4000-8000-000000000001') ON CONFLICT DO NOTHING;

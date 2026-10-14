@@ -1,0 +1,11 @@
+pnpm-lock.yaml
+.next
+dist
+node_modules
+.turbo
+packages/contracts/src/generated.ts
+docs/blueprint
+third-party
+Cargo.lock
+
+**/next-env.d.ts

@@ -1,0 +1,29 @@
+# Validation evidence — Sprint 0
+
+This records actual checks, not a production-readiness certification.
+
+Local checks completed in the implementation session:
+
+- `pnpm lint`: ESLint and formatting passed.
+- `pnpm typecheck`: all 9 workspace packages passed.
+- `pnpm test`: 28 Vitest cases across 9 packages, plus 11 Node test results (4 Compose invariants, 6 embedded PostgreSQL denial/constraint cases and their parent suite) passed.
+- `pnpm build`: all 9 packages passed; Next.js uses webpack for repeatable builds in restricted local environments.
+- `pnpm check:openapi`: OpenAPI 3.1 and generated operation types passed.
+- `pnpm check:secrets`: tracked/unignored source pattern gate passed; ignored generated .env is excluded. This is not an exhaustive secret/security audit.
+- `pnpm audit --prod --audit-level high`: no known runtime dependency vulnerabilities reported at check time.
+- Docker Compose official standalone CLI `config --quiet`: passed with generated development env. CLI download checksum was verified.
+- Python worker: 3 pytest cases passed on local Python 3.11.15; CI targets Python 3.12.
+- PostgreSQL embedded via PGlite: exact SQL migration/fixtures execute; tests run as `noxh_runtime`, reject other owner/project and unset scope, reject cross-project write and cross-organization composite FK. Separate TCP Postgres migration/seed/RLS tests run in CI.
+
+Local HTTP/browser evidence and GitHub CI results will be appended after verification. Docker daemon and Rust toolchain are not installed on this Mac; Compose full startup and Rust checks are delegated to the repository CI rather than reported as locally passed.
+
+Remaining gates: Sprint 1 identity/runtime scope integration, official template and legal review, private document processing/encryption, signed audit/lottery evidence, restore/load/security review and pilot approval.
+
+Browser verification completed using the Codex browser on local production builds:
+
+- Citizen catalog: two explicitly synthetic projects; search `An Bình` returns one; unmatched query returns zero and a clear empty state.
+- Project detail: synthetic notice and disabled application intake control.
+- Investor console: clearly marked shell, no session/real staff actions; sign-in remains disabled.
+- Transparency: explicitly no results or certificates published.
+- Desktop 1280px and mobile 390px inspected; mobile project detail scroll width equals viewport (390px), no horizontal overflow observed.
+- Screenshots: [citizen desktop](screenshots/citizen-desktop.jpg), [citizen mobile](screenshots/citizen-mobile.jpg), [investor console](screenshots/investor-desktop.jpg).

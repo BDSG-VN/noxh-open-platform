@@ -1,0 +1,7 @@
+# Prompt to paste into Codex
+
+You are implementing the open-source NOXH Open Platform. Read `README.md`, `AGENTS.md`, and `BACKLOG.md` before any code. The target is self-hosted, one investor with multiple social-housing projects, customer web and Zalo Mini App sharing a canonical backend. The system handles sensitive personal information and legally significant applications. AI is advisory only and must never approve eligibility or control lottery outcomes.
+
+Execute Sprint 0 ONLY. First summarize architectural assumptions and create ADRs, threat model, and a task checklist. Scaffold pnpm/Turborepo, NestJS API, Next.js citizen web and investor console, React Zalo Mini App SDK adapter shell, shared contracts/authz packages, Python AI worker placeholder, Rust lottery crate placeholder, Docker Compose dev dependencies (PostgreSQL, Redis, Keycloak with durable database, private S3-compatible storage), migration framework, CI, `.env.example`, synthetic fixtures and basic tests. Do not invent government forms, legal eligibility thresholds or production-ready lottery logic. Keep external AI disabled by default. Ensure cross-project scoping in data model and auth interfaces. Run all available checks, fix failures, and report actual results and unresolved risks. Keep commits/changes small and auditable.
+
+Deliver: repository tree, runnable quickstart, passing commands, decisions and next-step issues. Do not claim production readiness.

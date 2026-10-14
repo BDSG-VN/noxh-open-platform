@@ -1,0 +1,42 @@
+{
+  "name": "noxh-open-platform",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "packageManager": "pnpm@11.25.0",
+  "engines": {
+    "node": "^22.12.0 || ^24.0.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "eslint . && prettier --check .",
+    "format": "prettier --write .",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test && node --test tests/*.test.mjs",
+    "db:migrate": "node scripts/migrate.mjs",
+    "db:seed": "node scripts/seed.mjs",
+    "test:db": "node --test tests/database.integration.mjs",
+    "check:openapi": "node scripts/check-openapi.mjs",
+    "check:secrets": "node scripts/check-secrets.mjs",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm check:openapi && pnpm check:secrets"
+  },
+  "devDependencies": {
+    "@apidevtools/swagger-parser": "12.1.0",
+    "@electric-sql/pglite": "0.5.10",
+    "@eslint/js": "9.39.1",
+    "@types/node": "22.19.15",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "eslint": "9.39.1",
+    "openapi-typescript": "7.10.1",
+    "pg": "8.23.1",
+    "prettier": "3.8.4",
+    "tsx": "4.21.0",
+    "turbo": "2.11.8",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.71.2",
+    "vitest": "5.0.4",
+    "yaml": "2.8.3"
+  }
+}

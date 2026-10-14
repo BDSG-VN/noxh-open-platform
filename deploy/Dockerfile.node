@@ -1,0 +1,8 @@
+FROM node:22.22.3-bookworm-slim
+WORKDIR /app
+RUN npm install -g pnpm@11.25.0 && chown node:node /app
+COPY --chown=node:node . .
+USER node
+RUN pnpm install --frozen-lockfile
+RUN pnpm build
+CMD ["pnpm","--filter","@noxh/api","start"]

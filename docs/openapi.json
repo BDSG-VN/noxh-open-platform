@@ -1,0 +1,305 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "NOXH Open Platform — Sprint 0",
+    "version": "0.1.0",
+    "description": "BDSG Foundation MIT foundation. Synthetic data only. Planned business APIs are in docs/blueprint/README.md, not claimed implemented.",
+    "license": {
+      "name": "MIT",
+      "identifier": "MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:4000"
+    }
+  ],
+  "paths": {
+    "/health/live": {
+      "get": {
+        "operationId": "getLiveness",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["status", "release", "productionReady"],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "const": "alive"
+                    },
+                    "release": {
+                      "type": "string",
+                      "const": "sprint-0"
+                    },
+                    "productionReady": {
+                      "type": "boolean",
+                      "const": false
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "operationId": "getReadiness",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "const": "ready"
+                    },
+                    "checks": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Postgres, Redis or migration unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects": {
+      "get": {
+        "operationId": "listProjects",
+        "description": "Development synthetic catalog only; disabled in production. No real listing or intake.",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["items", "mode", "release"],
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Project"
+                      }
+                    },
+                    "mode": {
+                      "type": "string",
+                      "const": "synthetic"
+                    },
+                    "release": {
+                      "type": "string",
+                      "const": "sprint-0"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Catalog disabled",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{id}": {
+      "get": {
+        "operationId": "getProject",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown project",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Catalog disabled",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/capabilities": {
+      "get": {
+        "operationId": "getCapabilities",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "release",
+                    "externalAi",
+                    "officialSubmission",
+                    "officialForms",
+                    "lottery",
+                    "zaloTokenExchange"
+                  ],
+                  "properties": {
+                    "release": {
+                      "type": "string",
+                      "const": "sprint-0"
+                    },
+                    "externalAi": {
+                      "type": "boolean",
+                      "const": false
+                    },
+                    "officialSubmission": {
+                      "type": "boolean",
+                      "const": false
+                    },
+                    "officialForms": {
+                      "type": "boolean",
+                      "const": false
+                    },
+                    "lottery": {
+                      "type": "boolean",
+                      "const": false
+                    },
+                    "zaloTokenExchange": {
+                      "type": "boolean",
+                      "const": false
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/zalo/exchange": {
+      "post": {
+        "operationId": "exchangeZaloToken",
+        "description": "Blocked placeholder; no token accepted or session issued. Sprint 2 integrates trusted server verification.",
+        "responses": {
+          "501": {
+            "description": "Not implemented",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Project": {
+        "type": "object",
+        "required": ["id", "organizationId", "name", "locality", "phase", "synthetic"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "organizationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "locality": {
+            "type": "string"
+          },
+          "phase": {
+            "type": "string",
+            "enum": ["preparation", "intake"]
+          },
+          "synthetic": {
+            "type": "boolean",
+            "const": true
+          }
+        }
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "required": ["type", "title", "status", "detail"],
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "instance": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

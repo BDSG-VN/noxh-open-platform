@@ -1,0 +1,219 @@
+name: noxh-open-platform-dev
+x-node: &node
+  build:
+    context: .
+    dockerfile: deploy/Dockerfile.node
+  environment: &node-env
+    NODE_ENV: development
+    HOST: 0.0.0.0
+    DATABASE_URL: postgresql://${POSTGRES_USER:-noxh_owner}:${POSTGRES_PASSWORD:?Run node scripts/init-dev-env.mjs}@postgres:5432/${POSTGRES_DB:-noxh}
+    REDIS_URL: redis://redis:6379
+    INTERNAL_API_URL: http://api:4000
+    ALLOW_SYNTHETIC_FIXTURES: 'true'
+    EXTERNAL_AI_ENABLED: 'false'
+    LOTTERY_PRODUCTION_ENABLED: 'false'
+services:
+  postgres:
+    image: postgres:17.6-bookworm
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-noxh_owner}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Generate local .env}
+      POSTGRES_DB: ${POSTGRES_DB:-noxh}
+    ports: ['127.0.0.1:5432:5432']
+    volumes: ['postgres-data:/var/lib/postgresql/data']
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      interval: 5s
+      timeout: 3s
+      retries: 30
+  redis:
+    image: redis:8.2.2-bookworm
+    command: ['redis-server', '--appendonly', 'yes']
+    ports: ['127.0.0.1:6379:6379']
+    volumes: ['redis-data:/data']
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 30
+  keycloak-db:
+    image: postgres:17.6-bookworm
+    environment:
+      POSTGRES_USER: ${KEYCLOAK_DB_USER:-keycloak}
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Generate local .env}
+      POSTGRES_DB: ${KEYCLOAK_DB_NAME:-keycloak}
+    volumes: ['keycloak-db-data:/var/lib/postgresql/data']
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      interval: 5s
+      timeout: 3s
+      retries: 30
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4.1
+    command: ['start-dev']
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/${KEYCLOAK_DB_NAME:-keycloak}
+      KC_DB_USERNAME: ${KEYCLOAK_DB_USER:-keycloak}
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Generate local .env}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-local-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Generate local .env}
+      KC_HEALTH_ENABLED: 'true'
+    ports: ['127.0.0.1:8080:8080']
+    volumes: ['keycloak-data:/opt/keycloak/data']
+    depends_on:
+      keycloak-db: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          "exec 3<>/dev/tcp/127.0.0.1/9000; printf 'GET /health/ready HTTP/1.0\r\n\r\n' >&3; cat <&3 | grep -q '200 OK'",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+  minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    command: ['server', '/data', '--console-address', ':9001']
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-noxh-local}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Generate local .env}
+    ports: ['127.0.0.1:9000:9000', '127.0.0.1:9001:9001']
+    volumes: ['minio-data:/data']
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 5s
+      timeout: 3s
+      retries: 30
+  storage-init:
+    image: minio/mc:RELEASE.2025-08-13T08-35-41Z
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-noxh-local}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Generate local .env}
+    entrypoint: ['/bin/sh', '-ec']
+    command:
+      - 'mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" >/dev/null; mc mb --ignore-existing local/noxh-private; mc anonymous set none local/noxh-private'
+    depends_on:
+      minio: { condition: service_healthy }
+  migrate:
+    <<: *node
+    command: ['pnpm', 'db:migrate']
+    depends_on:
+      postgres: { condition: service_healthy }
+  seed:
+    <<: *node
+    command: ['pnpm', 'db:seed']
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+  api:
+    <<: *node
+    command: ['pnpm', '--filter', '@noxh/api', 'start']
+    ports: ['127.0.0.1:4000:4000']
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:4000/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+  worker:
+    <<: *node
+    command: ['node', 'apps/api/dist/worker.js']
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:4101/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    depends_on:
+      api: { condition: service_healthy }
+  citizen-web:
+    <<: *node
+    environment:
+      <<: *node-env
+      NODE_ENV: production
+    command: ['pnpm', '--filter', '@noxh/citizen-web', 'start']
+    ports: ['127.0.0.1:3000:3000']
+    depends_on:
+      api: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+  investor-console:
+    <<: *node
+    environment:
+      <<: *node-env
+      NODE_ENV: production
+    command: ['pnpm', '--filter', '@noxh/investor-console', 'start']
+    ports: ['127.0.0.1:3001:3001']
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:3001').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+  transparency-web:
+    <<: *node
+    environment:
+      <<: *node-env
+      NODE_ENV: production
+    command: ['pnpm', '--filter', '@noxh/transparency-web', 'start']
+    ports: ['127.0.0.1:3002:3002']
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:3002').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+  ai-worker:
+    profiles: ['ai']
+    build: { context: services/ai-worker }
+    environment: { EXTERNAL_AI_ENABLED: 'false' }
+    ports: ['127.0.0.1:4100:4100']
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'python',
+          '-c',
+          "import urllib.request; urllib.request.urlopen('http://localhost:4100/health/live')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+volumes:
+  postgres-data:
+  redis-data:
+  keycloak-db-data:
+  keycloak-data:
+  minio-data:
