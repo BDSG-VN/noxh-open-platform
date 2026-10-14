@@ -2,7 +2,9 @@
 
 Giải pháp mã nguồn mở của **BDSG Foundation** cho nhà ở xã hội: một chủ đầu tư, nhiều dự án, cổng công dân và kênh Zalo dùng chung backend. Giấy phép **MIT**.
 
-**v0.1.0 / Sprint 0: nền phát triển, chỉ có dữ liệu giả lập. Chưa tiếp nhận hồ sơ thật, chưa xét duyệt hay bốc thăm.** Blueprint v2 được lưu nguyên bản tại [docs/blueprint](docs/blueprint/README.md); lựa chọn MIT thay thế đề xuất AGPL trong tài liệu gốc.
+**v0.1.0 / Sprint 0: nền phát triển, chỉ có dữ liệu giả lập. Chưa tiếp nhận hồ sơ thật, chưa xét duyệt hay bốc thăm.**
+
+[![Sprint 0 validation](https://github.com/BDSG-VN/noxh-open-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/BDSG-VN/noxh-open-platform/actions/workflows/ci.yml) Blueprint v2 được lưu nguyên bản tại [docs/blueprint](docs/blueprint/README.md); lựa chọn MIT thay thế đề xuất AGPL trong tài liệu gốc.
 
 ## Chạy bằng Docker
 
@@ -15,6 +17,8 @@ node scripts/init-dev-env.mjs
 docker compose config --quiet
 docker compose up --build --wait --wait-timeout 600
 ```
+
+Lần build đầu cần tải và biên dịch MinIO từ commit nguồn chính thức đã khóa; các image giữ giấy phép gốc, xem THIRD_PARTY_NOTICES.md.
 
 Cổng công dân: http://localhost:3000; chủ đầu tư: http://localhost:3001; minh bạch: http://localhost:3002; API: http://localhost:4000/health/live và /health/ready; Keycloak local: http://localhost:8080; MinIO console local: http://localhost:9001. Tài khoản kỹ thuật local được sinh vào `.env` (không commit). Bucket `noxh-private` bị tắt anonymous access. Đây là cấu hình **development**, không dùng `start-dev` hoặc credential root cho production.
 

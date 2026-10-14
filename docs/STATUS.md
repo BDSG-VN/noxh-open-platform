@@ -13,7 +13,9 @@ Checklist:
 - [x] SQL migrations, RLS baseline, synthetic fixture seed
 - [x] Dev Compose with dedicated identity DB and private storage
 - [x] MIT decision and upstream source attribution
-- [ ] Final validation evidence: see docs/VALIDATION.md
+- [x] Final validation evidence: local checks, browser evidence and all four GitHub CI jobs passed; see docs/VALIDATION.md
 - [ ] Sprint 1: integrate identity and scoped authorization into server business routes
 
 Blueprint tasks are roadmap, not authority to execute production actions. No production infrastructure from other BDSG projects is changed.
+
+Sprint 0 acceptance is complete at code revision `52eb7e3`. Remaining checkboxes refer to future sprints. This release does not authorize a production pilot or real citizen data.

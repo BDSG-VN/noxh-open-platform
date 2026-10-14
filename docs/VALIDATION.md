@@ -15,7 +15,7 @@ Local checks completed in the implementation session:
 - Python worker: 3 pytest cases passed on local Python 3.11.15; CI targets Python 3.12.
 - PostgreSQL embedded via PGlite: exact SQL migration/fixtures execute; tests run as `noxh_runtime`, reject other owner/project and unset scope, reject cross-project write and cross-organization composite FK. Separate TCP Postgres migration/seed/RLS tests run in CI.
 
-Local HTTP/browser evidence and GitHub CI results will be appended after verification. Docker daemon and Rust toolchain are not installed on this Mac; Compose full startup and Rust checks are delegated to the repository CI rather than reported as locally passed.
+Local HTTP/browser evidence and GitHub CI results are recorded below. Docker daemon and Rust toolchain are not installed on this Mac; Compose full startup and Rust checks are delegated to the repository CI rather than reported as locally passed.
 
 Remaining gates: Sprint 1 identity/runtime scope integration, official template and legal review, private document processing/encryption, signed audit/lottery evidence, restore/load/security review and pilot approval.
 
@@ -33,3 +33,11 @@ Browser verification completed using the Codex browser on local production build
 [Run 38603865187](https://github.com/BDSG-VN/noxh-open-platform/actions/runs/38603865187) passed Node build/checks, actual TCP PostgreSQL migration/seed/RLS, Python and Rust tests. Compose configuration passed but startup failed because MinIO Client registry pull was denied. The storage images were changed to builds from pinned official source; a subsequent CI run must verify full startup.
 
 Local HTTP checks: citizen web `/` 200; API `/health/live` 200; API `/health/ready` 503 without Postgres/Redis, as expected.
+
+## Verified final code revision
+
+[Run 38607859018](https://github.com/BDSG-VN/noxh-open-platform/actions/runs/38607859018) at code commit `52eb7e3f0a5a9fa71d2d948ea00e108a38772d3a` passed all four jobs: Node, Python, Rust and Compose. The complete development stack built from source and started successfully. API `/health/ready` returned success, the citizen page contained the expected catalog heading, investor/transparency pages returned success, and unauthenticated access to the private S3 bucket returned 403.
+
+Actual TCP PostgreSQL migrations ran twice without duplicate application, synthetic seed succeeded and non-superuser RLS tests passed. Rust verified the library fails closed and the unimplemented verifier returns nonzero. No live lottery or official citizen workflow is implied.
+
+Documentation-only evidence updates after this code revision use `[skip ci]` to avoid rebuilding unchanged storage binaries; their formatting/source checks are run locally. No application, migration or deployment behavior changes in those updates.
