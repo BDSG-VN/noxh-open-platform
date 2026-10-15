@@ -28,7 +28,7 @@
       "attributes": {
         "pkce.code.challenge.method": "S256"
       },
-      "defaultClientScopes": ["roles", "profile"],
+      "defaultClientScopes": ["basic", "roles", "profile"],
       "protocolMappers": [
         {
           "name": "api-audience",

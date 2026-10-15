@@ -9,7 +9,7 @@ BDSG Foundation phát hành mã MIT, tự triển khai. Bản này có backend n
 3. Mở http://localhost:3001, chọn đăng nhập Keycloak. Luồng Authorization Code + PKCE yêu cầu mật khẩu và TOTP. API xác minh chữ ký RS256, issuer, audience `noxh-api`, client `noxh-investor`, hạn token và `amr` chứa `otp`, sau đó kiểm tra role. BFF chỉ lưu token trong cookie HttpOnly.
 4. Quản trị dự án (nháp/công bố/lưu trữ), lịch tiếp nhận và xem số liệu DB. Sửa/lưu trữ dùng `If-Match`; phiên bản cũ trả 409. Lưu trữ giữ hồ sơ liên quan. Lịch tiếp nhận chưa kích hoạt nộp đơn chính thức.
 
-Realm được import khi tạo mới. Keycloak bỏ qua realm đã tồn tại: người dùng nâng cấp phải import cấu hình vào realm mới hoặc áp dụng flow `noxh-browser`, AMR mapper, audience và client PKCE tương ứng bằng Admin Console; không xóa volume để nâng cấp. Đọc cấu hình tại `deploy/keycloak/noxh-realm.json`. Role `project_manager` được dự phòng, chưa được API chấp nhận; chưa có phân công quyền theo từng dự án. `org_admin` quản trị toàn tổ chức cấu hình phía máy chủ, không nhận organization từ trình duyệt.
+Realm được import khi tạo mới. Keycloak bỏ qua realm đã tồn tại: người dùng nâng cấp phải import cấu hình vào realm mới hoặc áp dụng flow `noxh-browser`, AMR mapper, audience, default client scope `basic` (cung cấp `sub`) và client PKCE tương ứng bằng Admin Console; không xóa volume để nâng cấp. Đọc cấu hình tại `deploy/keycloak/noxh-realm.json`. Role `project_manager` được dự phòng, chưa được API chấp nhận; chưa có phân công quyền theo từng dự án. `org_admin` quản trị toàn tổ chức cấu hình phía máy chủ, không nhận organization từ trình duyệt.
 
 ## Chủ đầu tư tự cấu hình Zalo
 

@@ -61,8 +61,12 @@ except urllib.error.HTTPError as e:
 params=urllib.parse.parse_qs(urllib.parse.urlsplit(redirect.callback).query);assert params.get('state')==['ci'] and 'code' in params
 response=post(issuer+'/protocol/openid-connect/token',{'grant_type':'authorization_code','client_id':'noxh-investor','redirect_uri':'http://localhost:3001/auth/callback','code':params['code'][0],'code_verifier':verifier})
 token=json.load(response)['access_token']
+claims=json.loads(base64.urlsafe_b64decode(token.split('.')[1]+'==='))
+assert isinstance(claims.get('sub'),str) and claims['sub'], 'Missing basic subject mapper'
+assert claims.get('iss')==issuer and claims.get('azp')=='noxh-investor'
+assert isinstance(claims.get('iat'),int) and isinstance(claims.get('exp'),int)
+assert 'org_admin' in claims.get('realm_access',{}).get('roles',[])
 if '--identity-only' in sys.argv:
-    claims=json.loads(base64.urlsafe_b64decode(token.split('.')[1]+'==='))
     assert 'otp' in claims.get('amr',[]) and 'noxh-api' in ([claims.get('aud')] if isinstance(claims.get('aud'),str) else claims.get('aud',[]))
     print('PASS: real Keycloak PKCE/password/TOTP and AMR/audience configuration.')
     sys.exit()
