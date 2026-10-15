@@ -13,6 +13,7 @@ export default async function Home() {
           </a>
           <nav className="navigation" aria-label="Điều hướng chính">
             <a href="#du-an">Dự án mẫu</a>
+            <a href="/dashboard">Tài khoản của tôi</a>
             <a href="#hanh-trinh">Hành trình hồ sơ</a>
             <a href="https://github.com/BDSG-VN/noxh-open-platform">GitHub ↗</a>
           </nav>
@@ -60,7 +61,7 @@ export default async function Home() {
               <span className="eyebrow">Danh mục dùng thử</span>
               <h2>Khám phá dự án mẫu</h2>
             </div>
-            <span className="pill">2 dự án giả lập · 1 tổ chức</span>
+            <span className="pill">{items.length} dự án công bố</span>
           </div>
           {error ? (
             <div className="error" role="alert">

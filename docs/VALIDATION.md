@@ -1,3 +1,9 @@
+# Validation evidence — current v0.2
+
+Local v0.2 checks: lint, typecheck, tests and builds passed during development. New tests exercise exact migrations 001/002 in PGlite, encrypted provider settings/role/version checks, organization boundaries, intake dates, OTP cooldown/expiry/proof/attempt lock/provider failure/single consumption, private dashboard/idempotent drafts, logout revocation, immutable events, signed RS256 JWT rejection and BFF origin/body limits. No live Zalo credentials were used; fake transport is test-only. Full stack and real Keycloak PKCE + password + TOTP checks run in GitHub CI; results are appended after completion.
+
+Historical v0.1 evidence below refers only to that earlier revision; its shell/disabled-login descriptions do not describe v0.2.
+
 # Validation evidence — Sprint 0
 
 This records actual checks, not a production-readiness certification.

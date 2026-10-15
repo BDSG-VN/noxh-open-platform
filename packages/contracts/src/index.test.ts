@@ -7,6 +7,6 @@ describe('public project contract', () => {
       expect(Object.keys(p)).not.toContain('ownerPhone');
     }
   });
-  it('rejects a real-data fixture', () =>
-    expect(ProjectSchema.safeParse({ ...demoProjects[0], synthetic: false }).success).toBe(false));
+  it('preserves explicit real-project label', () =>
+    expect(ProjectSchema.safeParse({ ...demoProjects[0], synthetic: false }).success).toBe(true));
 });

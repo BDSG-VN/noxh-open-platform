@@ -29,7 +29,7 @@ export default function ProjectExplorer({ projects }: { projects: Project[] }) {
               <div className="project-art" aria-hidden="true">
                 ▥
               </div>
-              <span className="pill w-fit mt-3">DỮ LIỆU GIẢ LẬP</span>
+              {p.synthetic && <span className="pill w-fit mt-3">DỮ LIỆU GIẢ LẬP</span>}
               <CardTitle>{p.name}</CardTitle>
             </CardHeader>
             <CardContent>

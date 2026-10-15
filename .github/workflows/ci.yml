@@ -1,4 +1,4 @@
-name: Sprint 0 validation
+name: Platform validation
 on:
   push:
   pull_request:
@@ -53,6 +53,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '22.22.3' }
       - run: node scripts/init-dev-env.mjs
+      - run: python3 scripts/test-keycloak.py --prepare
       - run: docker compose config --quiet
       - run: docker compose up --build --wait --wait-timeout 600
       - run: |
@@ -61,5 +62,6 @@ jobs:
           curl --fail http://localhost:3001
           curl --fail http://localhost:3002
           test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:9000/noxh-private/)" = "403"
+      - run: python3 scripts/test-keycloak.py
       - run: docker compose down
         if: always()

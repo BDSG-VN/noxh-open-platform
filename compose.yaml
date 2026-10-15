@@ -12,6 +12,16 @@ x-node: &node
     ALLOW_SYNTHETIC_FIXTURES: 'true'
     EXTERNAL_AI_ENABLED: 'false'
     LOTTERY_PRODUCTION_ENABLED: 'false'
+    AUTH_ORGANIZATION_ID: ${AUTH_ORGANIZATION_ID:-10000000-0000-4000-8000-000000000001}
+    AUTH_ENCRYPTION_KEY: ${AUTH_ENCRYPTION_KEY:?Generate auth keys in .env}
+    AUTH_HASH_KEY: ${AUTH_HASH_KEY:?Generate auth keys in .env}
+    WORKFORCE_ISSUER: http://localhost:8080/realms/noxh
+    WORKFORCE_JWKS_URL: http://keycloak:8080/realms/noxh/protocol/openid-connect/certs
+    WORKFORCE_PUBLIC_ISSUER: http://localhost:8080/realms/noxh
+    WORKFORCE_TOKEN_ISSUER: http://keycloak:8080/realms/noxh
+    WORKFORCE_CLIENT_ID: noxh-investor
+    INVESTOR_PUBLIC_ORIGIN: http://localhost:3001
+    CITIZEN_PUBLIC_ORIGIN: http://localhost:3000
 services:
   postgres:
     image: postgres:17.6-bookworm
@@ -50,7 +60,7 @@ services:
       retries: 30
   keycloak:
     image: quay.io/keycloak/keycloak:26.4.1
-    command: ['start-dev']
+    command: ['start-dev', '--import-realm']
     environment:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://keycloak-db:5432/${KEYCLOAK_DB_NAME:-keycloak}
@@ -59,8 +69,13 @@ services:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-local-admin}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Generate local .env}
       KC_HEALTH_ENABLED: 'true'
+      KC_HOSTNAME: http://localhost:8080
     ports: ['127.0.0.1:8080:8080']
-    volumes: ['keycloak-data:/opt/keycloak/data']
+    volumes:
+      [
+        'keycloak-data:/opt/keycloak/data',
+        './deploy/keycloak/noxh-realm.json:/opt/keycloak/data/import/noxh-realm.json:ro',
+      ]
     depends_on:
       keycloak-db: { condition: service_healthy }
     healthcheck:

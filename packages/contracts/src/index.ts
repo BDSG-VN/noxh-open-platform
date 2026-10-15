@@ -5,7 +5,7 @@ export const ProjectSchema = z.object({
   name: z.string(),
   locality: z.string(),
   phase: z.enum(['preparation', 'intake']),
-  synthetic: z.literal(true),
+  synthetic: z.boolean(),
 });
 export type Project = z.infer<typeof ProjectSchema>;
 export interface ProblemDetails {

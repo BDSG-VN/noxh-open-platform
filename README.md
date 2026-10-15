@@ -2,7 +2,7 @@
 
 Giải pháp mã nguồn mở của **BDSG Foundation** cho nhà ở xã hội: một chủ đầu tư, nhiều dự án, cổng công dân và kênh Zalo dùng chung backend. Giấy phép **MIT**.
 
-**v0.1.0 / Sprint 0: nền phát triển, chỉ có dữ liệu giả lập. Chưa tiếp nhận hồ sơ thật, chưa xét duyệt hay bốc thăm.**
+**v0.2: có backend quản trị chủ đầu tư, bảng điều khiển khách hàng và luồng OTP Zalo tự cấu hình. Bản phát triển, chưa nộp đơn pháp lý, xét duyệt hay bốc thăm.**
 
 [![Sprint 0 validation](https://github.com/BDSG-VN/noxh-open-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/BDSG-VN/noxh-open-platform/actions/workflows/ci.yml) Blueprint v2 được lưu nguyên bản tại [docs/blueprint](docs/blueprint/README.md); lựa chọn MIT thay thế đề xuất AGPL trong tài liệu gốc.
 
@@ -29,7 +29,11 @@ docker compose --profile ai up --build --wait --wait-timeout 600
 docker compose down
 ```
 
-Không dùng `down -v` nếu cần giữ dữ liệu. Migration chạy trước API; seed chỉ chứa dữ liệu giả lập. `/health/ready` kiểm tra Postgres, Redis và migration; không chứng minh đăng nhập/storage/legal readiness. API danh mục mẫu hiện đọc fixture có nhãn, chưa đọc bảng projects.
+Không dùng `down -v` nếu cần giữ dữ liệu. Migration chạy trước API; seed chỉ chứa dữ liệu giả lập. `/health/ready` kiểm tra Postgres, Redis và migration; không chứng minh đăng nhập/storage/legal readiness. API danh mục đọc dự án đã công bố từ Postgres, có nhãn riêng cho dữ liệu giả lập.
+
+## Đăng nhập và quản trị
+
+Xem [hướng dẫn thiết lập Keycloak, admin và Zalo OTP](docs/ADMIN-AND-ZALO.md). Không có tài khoản nhân sự mặc định; chủ đầu tư tạo nhân sự trong realm `noxh`, gán `org_admin` và đăng ký TOTP. Trang quản trị có quản lý dự án, lịch tiếp nhận, thống kê và cấu hình OA/template/token đã mã hóa. Khách đăng nhập tại `/login`, xem `/dashboard` và tạo hồ sơ chuẩn bị riêng.
 
 ## Phát triển không dùng Docker cho ứng dụng Node
 
@@ -66,7 +70,7 @@ pnpm check:openapi
 pnpm check:secrets
 ```
 
-`db:migrate` dùng giao dịch, advisory lock và checksum; chạy lặp không áp lại migration. `test:db` chạy RLS bằng role không phải superuser và kiểm tra khóa ngoại xuyên tổ chức. Role `noxh_runtime` không có quyền đăng nhập; tích hợp runtime credentials và actor-scoped transaction thuộc Sprint 1. Không đưa biến phạm vi do client gửi trực tiếp vào RLS.
+`db:migrate` dùng giao dịch, advisory lock và checksum; chạy lặp không áp lại migration. `test:db` chạy RLS bằng role không phải superuser và kiểm tra khóa ngoại xuyên tổ chức. Role `noxh_runtime` không có quyền đăng nhập; API development hiện dùng DB owner và kiểm tra scope trong truy vấn, chưa là cấu hình quyền DB production. Không đưa biến phạm vi do client gửi trực tiếp vào RLS.
 
 Python worker: `python -m venv .venv`, `.venv/bin/pip install -r services/ai-worker/requirements.txt`, rồi `cd services/ai-worker && ../../.venv/bin/python -m pytest`. Rust shells: `cargo test --workspace`; verifier cố ý thoát mã 2 vì chưa triển khai.
 
@@ -85,7 +89,7 @@ docs/        blueprint, ADRs, threat model, status, validation
 
 ## Các nguyên tắc
 
-Hồ sơ chuẩn bị khác đơn đã nộp. AI chỉ hỗ trợ; không tự xét điều kiện, nộp hồ sơ hay điều khiển bốc thăm. Mẫu chính thức cần nguồn pháp lý, phiên bản và người duyệt. Chưa thu thập PII trong bản phát triển. Mọi thao tác nghiệp vụ tương lai phải có xác thực/phân quyền máy chủ, dấu vết, phiên bản và cơ chế chống ghi lặp.
+Hồ sơ chuẩn bị khác đơn đã nộp. AI chỉ hỗ trợ; không tự xét điều kiện, nộp hồ sơ hay điều khiển bốc thăm. Mẫu chính thức cần nguồn pháp lý, phiên bản và người duyệt. Không nhập giấy tờ thật vào bản phát triển. Luồng điện thoại cần cấu hình Zalo của chủ đầu tư. Mọi thao tác nghiệp vụ tương lai phải có xác thực/phân quyền máy chủ, dấu vết, phiên bản và cơ chế chống ghi lặp.
 
 Xem [trạng thái thực tế](docs/STATUS.md), [kết quả kiểm tra](docs/VALIDATION.md), [lộ trình Sprint 1–12](docs/blueprint/BACKLOG.md), [threat model](docs/THREAT_MODEL.md), [quyết định kiến trúc](docs/adr/README.md), [OpenAPI 3.1](docs/openapi.json).
 

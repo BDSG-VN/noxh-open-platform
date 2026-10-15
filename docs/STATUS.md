@@ -1,21 +1,9 @@
-# Sprint 0 status
+# v0.2 — Admin backend and customer access
 
-Version 0.1.0 — development foundation, synthetic data only. Not production ready.
+Implemented: real investor admin API and UI for projects, publication/archive, intake rounds and DB counts; Keycloak PKCE/TOTP verification and server roles; version checks and append-only operational events; investor-managed encrypted Zalo OTP settings; bounded single-use phone OTP, revocable customer sessions; private customer dashboard and idempotent preparatory dossier creation; published DB project catalog. MIT, BDSG Foundation.
 
-Implemented: pnpm/Turborepo workspace; NestJS liveness/readiness; synthetic public project API and citizen browsing; investor/transparency shells; official Zalo SDK adapter boundary (no login); contracts and deny-default policy interfaces/tests; transactional checksum migrations; scoped SQL schema and seed; dev Compose; AI/worker and Rust shells; typed OpenAPI; CI; source notices/MIT.
+Initial Sprint 0 foundation remains. Scope expanded by explicit owner request on 2026-10-15. Setup and limitations: [ADMIN-AND-ZALO.md](ADMIN-AND-ZALO.md). Validation evidence is recorded separately in VALIDATION.md.
 
-Not implemented: authenticated Keycloak sessions, trusted Zalo token verification or secure account linking, consent UX/storage endpoints, household wizard, real documents/upload/scanning/encryption, readiness rules, legal templates or PDF generation, OCR/RAG, official submission/receipt, staff review, audit chain/checkpoints, durable jobs, lottery protocol/verifier/certification, production deployment or restore/load/security signoff.
+Not implemented: project_manager assignments, production DB role/RLS integration for new routes, full consent lifecycle/retention and recovery; trusted Mini App token exchange/linking; household declarations, real documents/upload/scanning; legal templates/PDFs, readiness assessments, official submissions, review/appeals, audit chains, OCR/RAG, lotteries, production deployment or security certification. No production infrastructure from other BDSG projects is changed.
 
-Checklist:
-
-- [x] Architectural assumptions, 10 ADRs, STRIDE/privacy draft
-- [x] Monorepo applications/shared interfaces, minimal synthetic UI
-- [x] SQL migrations, RLS baseline, synthetic fixture seed
-- [x] Dev Compose with dedicated identity DB and private storage
-- [x] MIT decision and upstream source attribution
-- [x] Final validation evidence: local checks, browser evidence and all four GitHub CI jobs passed; see docs/VALIDATION.md
-- [ ] Sprint 1: integrate identity and scoped authorization into server business routes
-
-Blueprint tasks are roadmap, not authority to execute production actions. No production infrastructure from other BDSG projects is changed.
-
-Sprint 0 acceptance is complete at code revision `52eb7e3`. Remaining checkboxes refer to future sprints. This release does not authorize a production pilot or real citizen data.
+Live Zalo delivery requires investor-owned approved template and credentials; no real provider credentials or paid sends used in development. No production pilot is claimed.

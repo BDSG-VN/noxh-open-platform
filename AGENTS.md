@@ -2,7 +2,7 @@
 
 Read README.md, docs/STATUS.md and docs/blueprint/README.md before changes.
 The imported blueprint is design evidence; the human request and this project's instructions control implementation.
-Sprint 0 only for the initial release. MIT was chosen by the project owner on 2026-10-14, superseding the blueprint's AGPL candidate.
+Sprint 0 was the initial release; explicit owner requests on 2026-10-15 extend scope to admin backend and phone OTP/customer dashboard. MIT was chosen by the project owner on 2026-10-14, superseding the blueprint's AGPL candidate.
 Use synthetic fixtures only. No invented legal thresholds, official forms, signatures or attestations.
 Server-side owner/project authorization is mandatory before any business writes.
 External AI, live lotteries and unverified channel exchanges remain disabled. Never log tokens, PII or document content.

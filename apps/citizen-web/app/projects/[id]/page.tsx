@@ -8,7 +8,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   if (error)
     return (
       <main className="container section">
-        <a href="/">← Danh mục mẫu</a>
+        <a href="/">← Danh mục dự án</a>
         <div className="error">{error}</div>
       </main>
     );
@@ -16,8 +16,8 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   if (!p) notFound();
   return (
     <main className="container section">
-      <a href="/">← Danh mục mẫu</a>
-      <p className="eyebrow">Dữ liệu giả lập · Không phải dự án đang chào bán</p>
+      <a href="/">← Danh mục dự án</a>
+      {p.synthetic && <p className="eyebrow">Dữ liệu giả lập · Không phải dự án đang chào bán</p>}
       <h1>{p.name}</h1>
       <p>{p.locality}</p>
       <Card>
@@ -29,7 +29,9 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
             Luồng khai báo, giấy tờ và tiếp nhận sẽ được phát triển sau nền phân quyền và đồng ý xử
             lý dữ liệu.
           </p>
-          <Button disabled>Chưa mở tiếp nhận hồ sơ</Button>
+          <Button asChild>
+            <a href="/dashboard">Chuẩn bị hồ sơ của tôi</a>
+          </Button>
         </CardContent>
       </Card>
     </main>

@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from './app';
+import { Database } from './database';
 import { HealthService } from './health';
 import { configure } from './bootstrap';
 let app: INestApplication;
@@ -10,6 +11,8 @@ let ready = true;
 beforeEach(async () => {
   process.env.ALLOW_SYNTHETIC_FIXTURES = 'true';
   const mod = await Test.createTestingModule({ imports: [AppModule] })
+    .overrideProvider(Database)
+    .useValue({ available: false })
     .overrideProvider(HealthService)
     .useValue({
       check: async () => ({
