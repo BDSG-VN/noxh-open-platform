@@ -164,3 +164,19 @@ it('verifies the audit chain, detects tampering and rejects event updates/delete
     db.query("UPDATE identity_private.operations SET action='altered'"),
   ).rejects.toThrow();
 });
+
+it('canonicalizes case-insensitive UUIDs before binding encrypted snapshots and replies', async () => {
+  const alpha = 'abcdef12-0000-4000-8000-000000000001';
+  await db.query(
+    'INSERT INTO prep_dossiers(id,organization_id,project_id,owner_user_id) VALUES($1,$2,$3,$4)',
+    [alpha, org, '20000000-0000-4000-8000-000000000002', owner],
+  );
+  await service.save(c, alpha.toUpperCase(), declaration, 1);
+  expect((await service.detail(c, alpha)).declaration).toEqual(declaration);
+  const request = await service.requestHelp(c, alpha, {
+    message: 'CÂU HỎI GIẢ LẬP',
+    accepted: true,
+  });
+  await service.reply(staff, request.id.toUpperCase(), { message: 'PHẢN HỒI GIẢ LẬP' }, 1);
+  expect((await service.detail(c, alpha)).requests[0]?.reply).toBe('PHẢN HỒI GIẢ LẬP');
+});

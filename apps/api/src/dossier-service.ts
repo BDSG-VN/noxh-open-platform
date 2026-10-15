@@ -28,7 +28,7 @@ export class DossierService {
     return r;
   }
   private scope(c: Citizen, id: string) {
-    return 'declaration:' + c.organizationId + ':' + c.userId + ':' + id;
+    return 'declaration:' + uuid(c.organizationId) + ':' + uuid(c.userId) + ':' + uuid(id);
   }
   private async declaration(q: Sql, c: Citizen, id: string) {
     const row = (
@@ -254,6 +254,7 @@ export class DossierService {
     ).map((r) => this.requestView(r));
   }
   async reply(s: Staff, id: string, body: unknown, expected: number) {
+    id = uuid(id);
     const message = text(record(body).message, 2000);
     return this.db.tx(async (q) => {
       const r = (

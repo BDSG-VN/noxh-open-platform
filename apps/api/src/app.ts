@@ -45,7 +45,7 @@ export class PlatformController {
         type: 'urn:noxh:problem:not-ready',
         title: 'Dependencies unavailable',
         status: 503,
-        detail: 'Postgres, Redis and migrations 001–005 must be ready.',
+        detail: 'Postgres, Redis and migrations 001–006 must be ready.',
         checks: result.checks,
       };
     }

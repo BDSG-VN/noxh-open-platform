@@ -811,6 +811,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
+        /** @description Role, agency, active project and expected version checked. Project cannot change; editing content resets investor approval. */
         put: operations["updatePartnerCampaign"];
         post?: never;
         delete?: never;
@@ -1293,7 +1294,10 @@ export interface components {
             status: "active" | "suspended";
         };
         CampaignWrite: {
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @description Assigned project. Immutable after creation; create a new campaign for a different project. Existing consultation consent cannot be transferred.
+             */
             projectId: string;
             name: string;
             /** @enum {string} */

@@ -273,6 +273,33 @@ it('revoking a project blocks old campaign links and guessed lead writes, not on
   );
   expect(await service.leads(consultant)).toHaveLength(0);
   await expect(service.campaign(campaign)).rejects.toMatchObject({ status: 404 });
+  // Grant a different project, then attempt to move the old campaign to recover its contacts.
+  await service.update(
+    staff,
+    partner,
+    {
+      name: 'ĐỐI TÁC GIẢ LẬP A',
+      status: 'active',
+      projectIds: ['20000000-0000-4000-8000-000000000002'],
+    },
+    2,
+  );
+  await expect(
+    service.saveCampaign(
+      manager,
+      { ...campaignBody, projectId: '20000000-0000-4000-8000-000000000002' },
+      campaign,
+      3,
+    ),
+  ).rejects.toMatchObject({ status: 409 });
+  await expect(
+    db.query('UPDATE partner_campaigns SET project_id=$2 WHERE id=$1', [
+      campaign,
+      '20000000-0000-4000-8000-000000000002',
+    ]),
+  ).rejects.toThrow('campaign scope and creation provenance are immutable');
+  expect(await service.leads(consultant)).toHaveLength(0);
+
   await expect(
     service.updateLead(consultant, fresh, { status: 'contacting', note: '' }, 2),
   ).rejects.toMatchObject({ status: 404 });
@@ -280,7 +307,7 @@ it('revoking a project blocks old campaign links and guessed lead writes, not on
     staff,
     partner,
     { name: 'ĐỐI TÁC GIẢ LẬP A', status: 'suspended', projectIds: [project] },
-    2,
+    3,
   );
   await expect(service.workspace(admin)).rejects.toMatchObject({ status: 403 });
   expect(secondPartner).toBeTruthy();

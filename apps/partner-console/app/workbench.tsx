@@ -88,7 +88,8 @@ function CampaignEditor({
       <h2>{campaign ? 'Chỉnh sửa chiến dịch' : 'Tạo chiến dịch truyền thông'}</h2>
       <p>
         Nội dung sẽ cần chủ đầu tư duyệt trước khi đường dẫn tư vấn hoạt động. Chỉnh sửa bản đang
-        chạy sẽ đưa chiến dịch về bản nháp.
+        chạy sẽ đưa chiến dịch về bản nháp. Dự án đã chọn được cố định; muốn đổi dự án cần tạo chiến
+        dịch mới.
       </p>
       <div className="form-grid">
         <label>
@@ -103,18 +104,30 @@ function CampaignEditor({
         </label>
         <label>
           Dự án được giao
-          <select
-            className="search-input"
-            name="projectId"
-            required
-            defaultValue={campaign?.project_id ?? projects[0]?.id}
-          >
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
+          {campaign ? (
+            <>
+              <input type="hidden" name="projectId" value={campaign.project_id} />
+              <input
+                className="search-input"
+                readOnly
+                value={campaign.project_name}
+                aria-label="Dự án cố định của chiến dịch"
+              />
+            </>
+          ) : (
+            <select
+              className="search-input"
+              name="projectId"
+              required
+              defaultValue={projects[0]?.id}
+            >
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          )}
         </label>
       </div>
       <label>

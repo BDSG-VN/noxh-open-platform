@@ -397,6 +397,7 @@ export class OpenAiService {
     }
   }
   async confirm(c: Citizen, id: string, proposalId: string, body: unknown) {
+    proposalId = uuid(proposalId);
     const b = record(body);
     if (b.accepted !== true || Object.keys(b).some((k) => k !== 'accepted'))
       throw new BadRequestException('Cần xác nhận riêng thao tác đã xem');

@@ -10,6 +10,7 @@ await test('embedded PostgreSQL executes migration, constraints and non-superuse
     await db.exec(await readFile('db/migrations/003_preparation_workflow.sql', 'utf8'));
     await db.exec(await readFile('db/migrations/004_assistance.sql', 'utf8'));
     await db.exec(await readFile('db/migrations/005_partner_workspace.sql', 'utf8'));
+    await db.exec(await readFile('db/migrations/006_campaign_project_guard.sql', 'utf8'));
     await db.exec(await readFile('db/fixtures/seed.sql', 'utf8'));
     const scope = async (
       project = '20000000-0000-4000-8000-000000000001',

@@ -26,7 +26,7 @@ export function uuid(value: unknown) {
   const s = text(value, 36);
   if (!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(s))
     throw new BadRequestException('Mã định danh không hợp lệ');
-  return s;
+  return s.toLowerCase();
 }
 export function version(value: unknown) {
   if (typeof value !== 'string' || !/^"?\d+"?$/.test(value))

@@ -6299,7 +6299,7 @@
     "/api/v1/partner/campaigns/{id}": {
       "put": {
         "operationId": "updatePartnerCampaign",
-        "description": "",
+        "description": "Role, agency, active project and expected version checked. Project cannot change; editing content resets investor approval.",
         "parameters": [
           {
             "name": "id",
@@ -8582,7 +8582,8 @@
           "projectId": {
             "type": "string",
             "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+            "description": "Assigned project. Immutable after creation; create a new campaign for a different project. Existing consultation consent cannot be transferred."
           },
           "name": {
             "type": "string",

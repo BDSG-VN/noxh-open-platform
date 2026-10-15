@@ -238,7 +238,7 @@ it('requires owner confirmation; applies once with audit; rejects replay and cro
   await expect(ai.confirm(c, id, proposalId, { accepted: false })).rejects.toMatchObject({
     status: 400,
   });
-  await ai.confirm(c, id, proposalId, { accepted: true });
+  await ai.confirm(c, id, proposalId.toUpperCase(), { accepted: true });
   const detail = await dossiers.detail(c, id);
   expect(detail.declaration.fullName).toBe('TÊN MỚI GIẢ LẬP');
   expect(detail.declaration.confirmed).toBe(false);

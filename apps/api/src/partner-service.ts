@@ -313,11 +313,15 @@ export class PartnerService {
       if (id) {
         const r = (
           await q.query(
-            'SELECT version FROM partner_campaigns WHERE id=$1 AND organization_id=$2 AND partner_id=$3 FOR UPDATE',
+            'SELECT version,project_id FROM partner_campaigns WHERE id=$1 AND organization_id=$2 AND partner_id=$3 FOR UPDATE',
             [ref, a.organizationId, a.partnerId],
           )
         ).rows[0];
         if (!r) throw new NotFoundException('Không có chiến dịch');
+        if (r.project_id !== b.projectId.toLowerCase())
+          throw new ConflictException(
+            'Không được đổi dự án của chiến dịch. Hãy tạo chiến dịch mới để giữ đúng phạm vi đồng ý của khách.',
+          );
         if (Number(r.version) !== expected) throw new ConflictException('Chiến dịch đã thay đổi');
         await q.query(
           "UPDATE partner_campaigns SET project_id=$4,name=$5,channel=$6,headline=$7,description=$8,status='draft',review_note='',reviewed_by=NULL,reviewed_at=NULL,version=version+1,updated_at=now() WHERE id=$1 AND organization_id=$2 AND partner_id=$3",
@@ -584,6 +588,7 @@ export class PartnerService {
     });
   }
   async updateLead(c: Citizen, id: string, body: unknown, expected: number) {
+    id = uuid(id);
     const p = LeadUpdateSchema.safeParse(body);
     if (!p.success) throw new BadRequestException('Trạng thái tư vấn hoặc ghi chú không hợp lệ');
     return this.db.tx(async (q) => {
