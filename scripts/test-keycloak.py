@@ -6,7 +6,7 @@ if '--prepare' in sys.argv:
     realmfile=Path('deploy/keycloak/noxh-realm.json');realm=json.loads(realmfile.read_text())
     state={'password':secrets.token_urlsafe(32),'otp':base64.b32encode(secrets.token_bytes(20)).decode()}
     statefile.write_text(json.dumps(state));os.chmod(statefile,0o600)
-    realm['users']=[{'username':'ci-synthetic-admin','enabled':True,'emailVerified':True,'firstName':'Synthetic','lastName':'CI','email':'ci@example.test','realmRoles':['org_admin'],'credentials':[{'type':'password','value':state['password'],'temporary':False},{'type':'otp','secretData':json.dumps({'value':state['otp']}),'credentialData':json.dumps({'subType':'totp','digits':6,'counter':0,'period':30,'algorithm':'HmacSHA1'})}]}]
+    realm['users']=[{'username':'ci-synthetic-admin','enabled':True,'emailVerified':True,'firstName':'Synthetic','lastName':'CI','email':'ci@example.test','realmRoles':['org_admin'],'credentials':[{'type':'password','value':state['password'],'temporary':False},{'type':'otp','secretData':json.dumps({'value':state['otp']}),'credentialData':json.dumps({'subType':'totp','digits':6,'counter':0,'period':30,'algorithm':'HmacSHA1','secretEncoding':'BASE32'})}]}]
     realmfile.write_text(json.dumps(realm))
     print('Prepared isolated CI identity; no default human users in source realm.')
     sys.exit()
