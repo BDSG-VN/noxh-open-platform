@@ -62,3 +62,29 @@ it('does not expose a business write endpoint', async () =>
   expect(
     (await request(app.getHttpServer()).post('/api/v1/dossiers').send({ ownerId: 'other' })).status,
   ).toBe(404));
+it('denies unauthenticated staff mutations and private customer routes at HTTP boundary', async () => {
+  process.env.WORKFORCE_ISSUER = 'https://identity.example.test/realms/noxh';
+  try {
+    for (const path of [
+      '/api/v1/admin/dashboard',
+      '/api/v1/admin/projects',
+      '/api/v1/admin/settings/zalo',
+      '/api/v1/citizen/dashboard',
+    ])
+      expect((await request(app.getHttpServer()).get(path)).status).toBe(401);
+    for (const path of [
+      '/api/v1/admin/projects',
+      '/api/v1/admin/rounds',
+      '/api/v1/citizen/dossiers',
+    ])
+      expect(
+        (
+          await request(app.getHttpServer())
+            .post(path)
+            .send({ role: 'org_admin', organizationId: 'caller-controlled', ownerId: 'other' })
+        ).status,
+      ).toBe(401);
+  } finally {
+    delete process.env.WORKFORCE_ISSUER;
+  }
+});

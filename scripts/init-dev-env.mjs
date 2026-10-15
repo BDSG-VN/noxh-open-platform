@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { writeFile } from 'node:fs/promises';
+import { writeFile, readFile, chmod } from 'node:fs/promises';
 const password = () => randomBytes(24).toString('hex');
 const pg = password();
 const content = `NODE_ENV=development
@@ -28,5 +28,22 @@ ALLOW_SYNTHETIC_FIXTURES=true
 EXTERNAL_AI_ENABLED=false
 LOTTERY_PRODUCTION_ENABLED=false
 `;
-await writeFile('.env', content, { flag: 'wx', mode: 0o600 });
-console.log('Created ignored .env with fresh local-only credentials. Never commit this file.');
+if (process.argv.includes('--add-auth-keys')) {
+  const existing = await readFile('.env', 'utf8');
+  const additions = content
+    .split('\n')
+    .filter(
+      (line) =>
+        /^(AUTH_|WORKFORCE_|INVESTOR_PUBLIC_ORIGIN=|CITIZEN_PUBLIC_ORIGIN=)/.test(line) &&
+        !existing.split('\n').some((old) => old.split('=')[0] === line.split('=')[0]),
+    );
+  if (additions.length)
+    await writeFile('.env', '\n' + additions.join('\n') + '\n', { flag: 'a', mode: 0o600 });
+  await chmod('.env', 0o600);
+  console.log(
+    'Added missing local auth settings; existing values preserved. No credentials displayed.',
+  );
+} else {
+  await writeFile('.env', content, { flag: 'wx', mode: 0o600 });
+  console.log('Created ignored .env with fresh local-only credentials. Never commit this file.');
+}

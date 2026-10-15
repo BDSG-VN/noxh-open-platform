@@ -4,7 +4,7 @@ BDSG Foundation phát hành mã MIT, tự triển khai. Bản này có backend n
 
 ## Khởi tạo quản trị
 
-1. Chạy `node scripts/init-dev-env.mjs`, rồi Docker Compose theo README. Với `.env` cũ, bổ sung `AUTH_ORGANIZATION_ID`, `AUTH_ENCRYPTION_KEY` và `AUTH_HASH_KEY`; mỗi khóa phải là 32 byte ngẫu nhiên ở dạng 64 ký tự hex. Giữ khóa ổn định và sao lưu riêng với DB; đổi trực tiếp sẽ làm mất khả năng giải mã hoặc tìm tài khoản cũ.
+1. Chạy `node scripts/init-dev-env.mjs`, rồi Docker Compose theo README. Với `.env` development cũ, chạy `node scripts/init-dev-env.mjs --add-auth-keys` để chỉ thêm biến thiếu, giữ các giá trị đã có. Cần có `AUTH_ORGANIZATION_ID`, `AUTH_ENCRYPTION_KEY` và `AUTH_HASH_KEY`; mỗi khóa phải là 32 byte ngẫu nhiên ở dạng 64 ký tự hex. Giữ khóa ổn định và sao lưu riêng với DB; đổi trực tiếp sẽ làm mất khả năng giải mã hoặc tìm tài khoản cũ.
 2. Mở Keycloak http://localhost:8080 bằng tài khoản bootstrap trong `.env`. Chọn realm `noxh`; tạo tài khoản nhân sự của chính chủ đầu tư, đặt mật khẩu và gán realm role `org_admin`. Không có tài khoản nhân sự/mật khẩu mặc định trong mã nguồn. OTP bắt buộc; người dùng thiết lập ứng dụng TOTP khi đăng nhập lần đầu.
 3. Mở http://localhost:3001, chọn đăng nhập Keycloak. Luồng Authorization Code + PKCE yêu cầu mật khẩu và TOTP. API xác minh chữ ký RS256, issuer, audience `noxh-api`, client `noxh-investor`, hạn token và `amr` chứa `otp`, sau đó kiểm tra role. BFF chỉ lưu token trong cookie HttpOnly.
 4. Quản trị dự án (nháp/công bố/lưu trữ), lịch tiếp nhận và xem số liệu DB. Sửa/lưu trữ dùng `If-Match`; phiên bản cũ trả 409. Lưu trữ giữ hồ sơ liên quan. Lịch tiếp nhận chưa kích hoạt nộp đơn chính thức.

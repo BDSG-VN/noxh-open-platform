@@ -13,8 +13,6 @@ x-node: &node
     EXTERNAL_AI_ENABLED: 'false'
     LOTTERY_PRODUCTION_ENABLED: 'false'
     AUTH_ORGANIZATION_ID: ${AUTH_ORGANIZATION_ID:-10000000-0000-4000-8000-000000000001}
-    AUTH_ENCRYPTION_KEY: ${AUTH_ENCRYPTION_KEY:?Generate auth keys in .env}
-    AUTH_HASH_KEY: ${AUTH_HASH_KEY:?Generate auth keys in .env}
     WORKFORCE_ISSUER: http://localhost:8080/realms/noxh
     WORKFORCE_JWKS_URL: http://keycloak:8080/realms/noxh/protocol/openid-connect/certs
     WORKFORCE_PUBLIC_ISSUER: http://localhost:8080/realms/noxh
@@ -126,6 +124,10 @@ services:
       migrate: { condition: service_completed_successfully }
   api:
     <<: *node
+    environment:
+      <<: *node-env
+      AUTH_ENCRYPTION_KEY: ${AUTH_ENCRYPTION_KEY:?Generate auth keys in .env}
+      AUTH_HASH_KEY: ${AUTH_HASH_KEY:?Generate auth keys in .env}
     command: ['pnpm', '--filter', '@noxh/api', 'start']
     ports: ['127.0.0.1:4000:4000']
     depends_on:
@@ -163,8 +165,9 @@ services:
   citizen-web:
     <<: *node
     environment:
-      <<: *node-env
       NODE_ENV: production
+      INTERNAL_API_URL: http://api:4000
+      CITIZEN_PUBLIC_ORIGIN: http://localhost:3000
     command: ['pnpm', '--filter', '@noxh/citizen-web', 'start']
     ports: ['127.0.0.1:3000:3000']
     depends_on:
@@ -183,8 +186,12 @@ services:
   investor-console:
     <<: *node
     environment:
-      <<: *node-env
       NODE_ENV: production
+      INTERNAL_API_URL: http://api:4000
+      WORKFORCE_PUBLIC_ISSUER: http://localhost:8080/realms/noxh
+      WORKFORCE_TOKEN_ISSUER: http://keycloak:8080/realms/noxh
+      WORKFORCE_CLIENT_ID: noxh-investor
+      INVESTOR_PUBLIC_ORIGIN: http://localhost:3001
     command: ['pnpm', '--filter', '@noxh/investor-console', 'start']
     ports: ['127.0.0.1:3001:3001']
     healthcheck:
@@ -201,8 +208,8 @@ services:
   transparency-web:
     <<: *node
     environment:
-      <<: *node-env
       NODE_ENV: production
+      INTERNAL_API_URL: http://api:4000
     command: ['pnpm', '--filter', '@noxh/transparency-web', 'start']
     ports: ['127.0.0.1:3002:3002']
     healthcheck:

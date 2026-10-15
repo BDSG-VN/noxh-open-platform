@@ -15,7 +15,8 @@ export interface Staff {
 }
 export function organizationId() {
   const id = process.env.AUTH_ORGANIZATION_ID ?? '';
-  if (!/^[a-f0-9-]{36}$/i.test(id)) throw new ServiceUnavailableException('Chưa cấu hình tổ chức');
+  if (!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(id))
+    throw new ServiceUnavailableException('Chưa cấu hình tổ chức');
   return id;
 }
 @Injectable()

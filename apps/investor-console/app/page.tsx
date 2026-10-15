@@ -50,10 +50,7 @@ export default async function Admin() {
           <StaffLogout />
         </header>
         <h1 className="text-4xl!">Bảng điều khiển chủ đầu tư.</h1>
-        <p>
-          Phạm vi tổ chức: {staff.organizationId} · Vai trò: {staff.role}. Các tác vụ đều kiểm tra
-          quyền tại backend.
-        </p>
+        <p>Quản lý dự án, lịch tiếp nhận và đăng nhập khách hàng của chủ đầu tư.</p>
         <AdminWorkbench projects={projects} rounds={rounds} settings={settings} counts={counts} />
         <p className="text-sm mt-8">
           Đã có quản lý dự án, lịch tiếp nhận và cấu hình xác thực. Biểu mẫu pháp lý, nộp đơn chính

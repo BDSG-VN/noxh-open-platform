@@ -16,8 +16,8 @@ export default async function Login({
       </p>
       {error && (
         <p className="error" role="alert">
-          Chưa hoàn tất xác thực. Kiểm tra tài khoản, vai trò org_admin/project_manager và cấu hình
-          OTP của Keycloak.
+          Chưa hoàn tất xác thực. Kiểm tra tài khoản, vai trò org_admin và cấu hình OTP của
+          Keycloak.
         </p>
       )}
       <a href="/auth/start" className="inline-flex bg-primary text-white rounded-lg px-6 py-3">

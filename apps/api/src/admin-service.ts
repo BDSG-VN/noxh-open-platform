@@ -57,7 +57,7 @@ export class AdminService {
   constructor(@Inject(Database) readonly db: Database) {}
   async dashboard(s: Staff) {
     const [row] = await this.db.query(
-      `SELECT (SELECT count(*)::int FROM projects WHERE organization_id=$1 AND archived_at IS NULL) AS projects,(SELECT count(*)::int FROM intake_rounds WHERE organization_id=$1 AND status='open') AS open_rounds,(SELECT count(*)::int FROM prep_dossiers WHERE organization_id=$1) AS preparatory_dossiers,(SELECT count(*)::int FROM identity_private.phone_accounts WHERE organization_id=$1) AS citizen_accounts`,
+      `SELECT (SELECT count(*)::int FROM projects WHERE organization_id=$1 AND archived_at IS NULL) AS projects,(SELECT count(*)::int FROM intake_rounds r JOIN projects p ON p.id=r.project_id AND p.organization_id=r.organization_id WHERE r.organization_id=$1 AND r.status='open' AND p.archived_at IS NULL AND r.opens_at<=now() AND r.closes_at>now()) AS open_rounds,(SELECT count(*)::int FROM prep_dossiers WHERE organization_id=$1) AS preparatory_dossiers,(SELECT count(*)::int FROM identity_private.phone_accounts WHERE organization_id=$1) AS citizen_accounts`,
       [s.organizationId],
     );
     return { ...row, officialApplicationsAvailable: false };
@@ -112,7 +112,7 @@ export class AdminService {
   }
   async rounds(s: Staff) {
     return this.db.query(
-      'SELECT r.id,r.project_id,p.name AS project_name,r.name,r.status,r.opens_at,r.closes_at,r.version FROM intake_rounds r JOIN projects p ON p.id=r.project_id AND p.organization_id=r.organization_id WHERE r.organization_id=$1 ORDER BY r.created_at DESC',
+      'SELECT r.id,r.project_id,p.name AS project_name,r.name,r.status,r.opens_at,r.closes_at,r.version FROM intake_rounds r JOIN projects p ON p.id=r.project_id AND p.organization_id=r.organization_id WHERE r.organization_id=$1 AND p.archived_at IS NULL ORDER BY r.created_at DESC',
       [s.organizationId],
     );
   }

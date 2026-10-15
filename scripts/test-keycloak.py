@@ -49,6 +49,10 @@ assert api('me')['role']=='org_admin'
 assert api('dashboard')['projects']>=2
 assert len(api('projects')['items'])>=2
 assert api('settings/zalo')['version']==0
+page=urllib.request.urlopen(urllib.request.Request('http://localhost:3001/',headers={'Cookie':'noxh_staff='+token}),timeout=20).read().decode()
+assert 'Bảng điều khiển chủ đầu tư.' in page and 'Khu nhà ở mẫu An Bình' in page
+assert token not in page, 'Bearer must never be serialized to frontend HTML'
+
 assert api('logout','POST',{})['loggedOut']
 try:api('me');raise AssertionError('Logged-out JWT accepted')
 except urllib.error.HTTPError as e:assert e.code==401

@@ -409,7 +409,7 @@ export default function AdminWorkbench({
               </CardHeader>
               <CardContent>
                 <strong className="text-4xl">{count}</strong>
-                <p className="text-sm">Số liệu đọc từ cơ sở dữ liệu của tổ chức.</p>
+                <p className="text-sm">Cập nhật theo dữ liệu hiện có.</p>
               </CardContent>
             </Card>
           ))}
