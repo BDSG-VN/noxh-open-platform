@@ -22,7 +22,10 @@ class Form(html.parser.HTMLParser):
     def handle_starttag(self,tag,attrs):
         attrs=dict(attrs)
         if tag=='form' and attrs.get('id') in ['kc-form-login','kc-otp-login-form','kc-totp-login-form']:self.action=attrs.get('action')
-redirect=NoRedirect();browser=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()),redirect)
+# Browsers treat localhost as trustworthy for Secure cookies; urllib does not.
+# This policy exists only in the fixed-loopback CI driver, never application code.
+policy=http.cookiejar.DefaultCookiePolicy(secure_protocols=('https','wss','http'))
+redirect=NoRedirect();browser=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar(policy)),redirect)
 verifier=secrets.token_urlsafe(32)
 challenge=base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).decode().rstrip('=')
 issuer='http://localhost:8080/realms/noxh'
@@ -58,6 +61,11 @@ except urllib.error.HTTPError as e:
 params=urllib.parse.parse_qs(urllib.parse.urlsplit(redirect.callback).query);assert params.get('state')==['ci'] and 'code' in params
 response=post(issuer+'/protocol/openid-connect/token',{'grant_type':'authorization_code','client_id':'noxh-investor','redirect_uri':'http://localhost:3001/auth/callback','code':params['code'][0],'code_verifier':verifier})
 token=json.load(response)['access_token']
+if '--identity-only' in sys.argv:
+    claims=json.loads(base64.urlsafe_b64decode(token.split('.')[1]+'==='))
+    assert 'otp' in claims.get('amr',[]) and 'noxh-api' in ([claims.get('aud')] if isinstance(claims.get('aud'),str) else claims.get('aud',[]))
+    print('PASS: real Keycloak PKCE/password/TOTP and AMR/audience configuration.')
+    sys.exit()
 def api(path,method='GET',body=None):
     request=urllib.request.Request('http://localhost:4000/api/v1/admin/'+path, data=json.dumps(body).encode() if body is not None else None,method=method,headers={'Authorization':'Bearer '+token,'Content-Type':'application/json'})
     with urllib.request.urlopen(request,timeout=20) as response:return json.load(response)

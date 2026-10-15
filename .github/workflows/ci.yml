@@ -55,6 +55,8 @@ jobs:
       - run: node scripts/init-dev-env.mjs
       - run: python3 scripts/test-keycloak.py --prepare
       - run: docker compose config --quiet
+      - run: docker compose up --wait --wait-timeout 180 keycloak-db keycloak
+      - run: python3 scripts/test-keycloak.py --identity-only
       - run: docker compose up --build --wait --wait-timeout 600
       - run: |
           curl --fail http://localhost:4000/health/ready
