@@ -2,6 +2,22 @@
 
 Local v0.2 checks: lint, typecheck, tests and builds passed during development. New tests exercise exact migrations 001/002 in PGlite, encrypted provider settings/role/version checks, organization boundaries, intake dates, OTP cooldown/expiry/proof/attempt lock/provider failure/single consumption, private dashboard/idempotent drafts, logout revocation, immutable events, signed RS256 JWT rejection and BFF origin/body limits. No live Zalo credentials were used; fake transport is test-only. Full stack and real Keycloak PKCE + password + TOTP checks run in GitHub CI; results are appended after completion.
 
+## Verified v0.2 revision
+
+[Run 38661274909](https://github.com/BDSG-VN/noxh-open-platform/actions/runs/38661274909) at code commit `c6094ad4068b2f6c42e6d03eb2d6fd0f1c867bd2` passed all four jobs: Node, Python, Rust and Compose.
+
+- Local and CI Node checks: lint, typecheck, 41 Vitest cases plus 12 Node test results, OpenAPI/generated types, secret pattern gate, runtime dependency audit and builds passed.
+- Exact PostgreSQL migrations ran twice and synthetic seed/RLS checks passed on TCP PostgreSQL.
+- Real Keycloak Authorization Code + PKCE, password and TOTP completed. Tokens contained the required subject, issuer, audience, client, signed OTP AMR and org_admin role. API validated the real token and returned scoped dashboard/projects/settings metadata.
+- Investor SSR page rendered the dashboard and project data after authentication; the bearer token was absent from HTML. Staff logout persisted revocation; replay returned 401.
+- Full Docker stack started; health/readiness and citizen/investor/transparency HTTP checks passed; anonymous private-bucket access returned 403.
+- Local browser checks: customer phone login and staff login pages rendered; unauthenticated customer dashboard and investor root redirected to their login pages.
+- Zalo transport success/error contracts were tested with injected test responses. No live Zalo credential, message or paid transaction was used. Investor configuration and real provider acceptance must be verified by the deploying owner.
+
+Initial smoke-driver failures were corrected (auxiliary form selection, localhost Secure-cookie handling and explicit Base32 fixture encoding). The integration check also found and corrected a missing Keycloak `basic` scope for the required subject claim. No application authentication rule was relaxed.
+
+Documentation-only evidence updates after this verified code revision use `[skip ci]`; application/deployment code stays at the tested revision. Production limitations remain in ADMIN-AND-ZALO.md and THREAT_MODEL.md.
+
 Historical v0.1 evidence below refers only to that earlier revision; its shell/disabled-login descriptions do not describe v0.2.
 
 # Validation evidence — Sprint 0
