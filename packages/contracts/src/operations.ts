@@ -17,6 +17,18 @@ export const operationPermissions = [
   'finance_write',
   'finance_post',
 ] as const;
+export const sensitivePermissions = [
+  'form_legal_approver',
+  'privacy_officer',
+  'lottery_operator',
+  'lottery_supervisor',
+  'price_approver',
+  'intake_officer',
+  'reviewer',
+  'approver',
+  'auditor',
+] as const;
+export const employeePermissions = [...operationPermissions, ...sensitivePermissions] as const;
 export const departmentLabels: Record<(typeof departments)[number], string> = {
   project_office: 'Ban quản lý dự án',
   accounting: 'Kế toán',
@@ -24,7 +36,7 @@ export const departmentLabels: Record<(typeof departments)[number], string> = {
   legal: 'Pháp chế',
   business: 'Kinh doanh',
 };
-export const permissionLabels: Record<(typeof operationPermissions)[number], string> = {
+export const permissionLabels: Record<(typeof employeePermissions)[number], string> = {
   workflow_read: 'Xem tiến độ',
   workflow_write: 'Cập nhật công việc',
   workflow_review: 'Duyệt tiến độ / chứng cứ',
@@ -34,6 +46,15 @@ export const permissionLabels: Record<(typeof operationPermissions)[number], str
   finance_read: 'Đọc sổ nội bộ',
   finance_write: 'Lập bút toán',
   finance_post: 'Duyệt ghi sổ',
+  form_legal_approver: 'Rà soát pháp lý biểu mẫu',
+  privacy_officer: 'Rà soát bảo vệ dữ liệu',
+  lottery_operator: 'Vận hành bốc thăm diễn tập',
+  lottery_supervisor: 'Giám sát bốc thăm diễn tập',
+  price_approver: 'Rà soát phương án giá',
+  intake_officer: 'Tiếp nhận hồ sơ đăng ký',
+  reviewer: 'Thẩm định hồ sơ đăng ký',
+  approver: 'Phê duyệt hồ sơ đăng ký',
+  auditor: 'Kiểm tra hồ sơ đăng ký',
 };
 export const EmployeeSchema = z
   .object({
@@ -46,7 +67,7 @@ export const EmployeeSchema = z
     name: z.string().trim().min(2).max(120),
     department: z.enum(departments),
     status: z.enum(['active', 'suspended']),
-    permissions: z.array(z.enum(operationPermissions)).max(9),
+    permissions: z.array(z.enum(employeePermissions)).max(employeePermissions.length),
     projectIds: z.array(z.uuid()).max(100),
   })
   .strict();

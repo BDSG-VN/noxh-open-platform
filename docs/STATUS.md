@@ -42,3 +42,7 @@ Added in v0.4:
 Still missing: project staff assignments and full role separation; production least-privilege DB integration; consent withdrawal/retention/recovery; trusted Mini App identity/linking; private document ingestion/scanning/OCR; complete legally reviewed form/rule coverage and deterministic filled PDFs; official application snapshots/receipts/review/appeals; RAG/lottery/verifier; security/load/restore/pilot gates. Source retrieval is not legal approval; local and special-regime coverage needs further review.
 
 Live Zalo delivery requires investor-owned approved template and credentials. No real provider credentials, paid sends, citizen PII or production infrastructure from other BDSG projects were used. Local demo OTP transport is outside the repository and isolated to synthetic accounts. Production readiness is not claimed.
+
+# Cầu nối SaaS (15/10/2026)
+
+Workforce có audience tùy chọn và cổng kiểm tra membership HTTPS cho instance riêng theo tổ chức. JWT/MFA vẫn bắt buộc; cổng phân quyền ràng buộc tổ chức/subject, không cache, không dùng quyền realm khi cổng lỗi. Quyền dự án nội bộ rộng hơn phạm vi provider bị từ chối toàn phiên. Kiểm thử ký JWT thật, thu hồi membership, sai phạm vi, sự cố và cấu hình thiếu nằm trong `workforce-gateway.test.ts`. Đây là tích hợp lõi MIT; website kinh doanh, dữ liệu dự án demo và cấu hình vận hành BDSG Housing được giữ riêng.

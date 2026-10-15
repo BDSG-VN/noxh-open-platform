@@ -23403,7 +23403,7 @@
             "enum": ["active", "suspended"]
           },
           "permissions": {
-            "maxItems": 9,
+            "maxItems": 18,
             "type": "array",
             "items": {
               "type": "string",
@@ -23416,7 +23416,16 @@
                 "records_review",
                 "finance_read",
                 "finance_write",
-                "finance_post"
+                "finance_post",
+                "form_legal_approver",
+                "privacy_officer",
+                "lottery_operator",
+                "lottery_supervisor",
+                "price_approver",
+                "intake_officer",
+                "reviewer",
+                "approver",
+                "auditor"
               ]
             }
           },
@@ -24756,7 +24765,7 @@
             "enum": ["active", "suspended"]
           },
           "permissions": {
-            "maxItems": 9,
+            "maxItems": 18,
             "type": "array",
             "items": {
               "type": "string",
@@ -24769,7 +24778,16 @@
                 "records_review",
                 "finance_read",
                 "finance_write",
-                "finance_post"
+                "finance_post",
+                "form_legal_approver",
+                "privacy_officer",
+                "lottery_operator",
+                "lottery_supervisor",
+                "price_approver",
+                "intake_officer",
+                "reviewer",
+                "approver",
+                "auditor"
               ]
             }
           },
