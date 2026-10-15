@@ -1,8 +1,18 @@
+FROM rust:1.99.0-bookworm AS native
+WORKDIR /build
+COPY Cargo.toml Cargo.lock ./
+COPY crates ./crates
+RUN cargo build --workspace --release --locked
+
 FROM node:22.22.3-bookworm-slim
 WORKDIR /app
 RUN npm install -g pnpm@11.25.0 && chown node:node /app
+COPY --from=native /build/target/release/lottery-runner /build/target/release/lottery-verifier /build/target/release/pricing-engine /build/target/release/audit-verifier /opt/noxh/bin/
+ENV LOTTERY_ENGINE_BIN=/opt/noxh/bin/lottery-runner \
+    PRICING_ENGINE_BIN=/opt/noxh/bin/pricing-engine \
+    AUDIT_VERIFIER_BIN=/opt/noxh/bin/audit-verifier
 COPY --chown=node:node . .
 USER node
 RUN pnpm install --frozen-lockfile
-RUN pnpm build
+RUN pnpm build:node
 CMD ["pnpm","--filter","@noxh/api","start"]

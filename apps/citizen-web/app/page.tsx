@@ -135,8 +135,8 @@ export default async function Home() {
           <div className="help-note amber">
             <Icon name="file" />
             <p>
-              Hồ sơ chuẩn bị chưa phải đơn đăng ký đã nộp. Biểu mẫu pháp lý, nộp đơn chính thức và
-              xét duyệt chưa được tích hợp trong bản này.
+              Hồ sơ chuẩn bị chưa phải đơn đăng ký đã nộp. Mở mục Nộp & theo dõi hồ sơ để kiểm tra
+              đợt tiếp nhận, giấy tờ và biên nhận. Bản phát triển hiện chỉ tiếp nhận diễn tập.
             </p>
           </div>
         </section>

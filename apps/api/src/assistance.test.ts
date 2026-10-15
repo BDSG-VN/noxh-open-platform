@@ -1,3 +1,4 @@
+import { seedSyntheticPrivacy } from './test-privacy';
 import 'reflect-metadata';
 import { beforeAll, afterAll, it, expect, vi } from 'vitest';
 import { readFile, readdir } from 'node:fs/promises';
@@ -50,6 +51,7 @@ beforeAll(async () => {
   db.testExecutor = {
     query: async (q, v = []) => ({ rows: (await pg.query<Record<string, unknown>>(q, v)).rows }),
   };
+  await seedSyntheticPrivacy(db, [c]);
   dossiers = new DossierService(db);
   service = new AssistanceService(db);
   transport = new FakeTransport();

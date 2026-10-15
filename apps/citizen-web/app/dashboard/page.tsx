@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { api } from '@noxh/contracts/server';
 import { Icon, PageHeading, EmptyState, Button } from '@noxh/ui';
 import CustomerShell from '../customer-shell';
+import Applications from './applications';
 import { StartDossier } from './actions';
 import Consultations from './consultations';
 import { loadProjects } from '../projects-data';
@@ -150,6 +151,7 @@ export default async function Dashboard() {
               <Icon name="plus" />
             </div>
             <StartDossier projects={items} />
+            <Applications />
           </section>
           <section className="surface">
             <div className="surface-body">

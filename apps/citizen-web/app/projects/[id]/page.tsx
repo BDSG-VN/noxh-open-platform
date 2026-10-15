@@ -82,8 +82,8 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
                 <div className="help-note amber">
                   <Icon name="clock" />
                   <p>
-                    Lịch công bố dùng để tham khảo thời gian. Bản phát triển chưa hỗ trợ nộp đơn
-                    đăng ký chính thức.
+                    Đợt tiếp nhận phải đang mở và thuộc dự án của hồ sơ. Bản phát triển hiện chỉ
+                    tiếp nhận diễn tập; hồ sơ thật cần được chủ đầu tư mở sau nghiệm thu.
                   </p>
                 </div>
               </div>

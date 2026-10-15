@@ -1,6 +1,7 @@
+import { seedSyntheticPrivacy } from './test-privacy';
 import 'reflect-metadata';
 import { beforeAll, afterAll, it, expect } from 'vitest';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { PGlite } from '@electric-sql/pglite';
 import { generateKeyPair, SignJWT, createLocalJWKSet, exportJWK } from 'jose';
@@ -24,13 +25,9 @@ beforeAll(async () => {
   process.env.WORKFORCE_ISSUER = 'https://identity.example.test/realms/noxh';
   delete process.env.DATABASE_URL;
   pg = new PGlite();
-  for (const p of [
-    'db/migrations/001_foundation.sql',
-    'db/migrations/002_admin_and_phone_auth.sql',
-    'db/migrations/003_preparation_workflow.sql',
-    'db/fixtures/seed.sql',
-  ])
-    await pg.exec(await readFile(resolve('../..', p), 'utf8'));
+  for (const f of (await readdir(resolve('../..', 'db/migrations'))).sort())
+    await pg.exec(await readFile(resolve('../..', 'db/migrations', f), 'utf8'));
+  await pg.exec(await readFile(resolve('../..', 'db/fixtures/seed.sql'), 'utf8'));
   db = new Database();
   db.testExecutor = {
     query: async (q, v = []) => ({ rows: (await pg.query<Record<string, unknown>>(q, v)).rows }),
@@ -185,6 +182,7 @@ it('consumes OTP once, scopes customer data, creates draft idempotently and revo
   expect(initial.dossiers).toHaveLength(0);
   expect(initial.legalIdentityVerified).toBe(false);
   expect(initial.phoneMasked).not.toContain('0900000003');
+  await seedSyntheticPrivacy(db, [citizen]);
   const a = await phone.createDossier(citizen, {
     projectId: project,
     ownerId: 'caller-cannot-set-owner',

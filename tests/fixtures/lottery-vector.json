@@ -1,0 +1,53 @@
+{
+  "id": "50000000-0000-4000-8000-000000000001",
+  "config": {
+    "projectId": "20000000-0000-4000-8000-000000000001",
+    "title": "DIỄN TẬP · BDSG",
+    "kind": "selection",
+    "seats": 2,
+    "entries": ["DEMO-0004", "DEMO-0001", "DEMO-0003", "DEMO-0002"],
+    "units": [],
+    "rules": "Quy chế kiểm thử độc lập bằng dữ liệu giả lập.",
+    "legalBasis": "Bằng chứng số học; không phê duyệt pháp lý.",
+    "priorityResolution": "Danh sách giả lập sau xử lý ưu tiên; không xác nhận điều kiện.",
+    "eligibilityEvidenceHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "scheduledAt": "2099-01-01T00:00:00.000Z",
+    "entropySource": "Nguồn diễn tập cố định phục vụ test vector.",
+    "synthetic": true
+  },
+  "result": {
+    "algorithm": "noxh-hkdf-hmac-fisher-yates-v1",
+    "snapshotHash": "3cbd8e4404942ee4627125526cb2ca644a9fde367a2a01d63f5471f9f527205b",
+    "commitment": "294a4bb9778e9f89833f151a302c742b22a5d0bc39871c38be0f903cb4de8635",
+    "secret": "1111111111111111111111111111111111111111111111111111111111111111",
+    "entropy": "2222222222222222222222222222222222222222222222222222222222222222",
+    "ranking": [
+      {
+        "code": "DEMO-0004",
+        "rank": 1,
+        "selected": true,
+        "unit": null
+      },
+      {
+        "code": "DEMO-0003",
+        "rank": 2,
+        "selected": true,
+        "unit": null
+      },
+      {
+        "code": "DEMO-0001",
+        "rank": 3,
+        "selected": false,
+        "unit": null
+      },
+      {
+        "code": "DEMO-0002",
+        "rank": 4,
+        "selected": false,
+        "unit": null
+      }
+    ]
+  },
+  "snapshotHash": "3cbd8e4404942ee4627125526cb2ca644a9fde367a2a01d63f5471f9f527205b",
+  "commitment": "294a4bb9778e9f89833f151a302c742b22a5d0bc39871c38be0f903cb4de8635"
+}

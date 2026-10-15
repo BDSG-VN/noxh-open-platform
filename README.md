@@ -2,13 +2,13 @@
 
 Giải pháp mã nguồn mở của **BDSG Foundation** cho nhà ở xã hội: một chủ đầu tư, nhiều dự án, cổng công dân và kênh Zalo dùng chung backend. Giấy phép **MIT**.
 
-**v0.4: quản trị dự án, đăng nhập điện thoại/Zalo OTP, hồ sơ hộ gia đình có phiên bản, checklist chuẩn bị và hỗ trợ khách hàng. Bản phát triển; chưa hoàn thành toàn bộ blueprint, chưa tiếp nhận hồ sơ pháp lý thật.**
+**v0.5 đang phát triển:** cổng khách hàng, chủ đầu tư, nhân viên và đối tác; giấy tờ riêng tư, tạo PDF theo mẫu đã duyệt, tiếp nhận–xét duyệt hồ sơ, quy trình dự án, bảng hàng và bốc thăm diễn tập có kiểm chứng. Tiếp nhận thật và bốc thăm thật chưa được mở. Xem [phạm vi triển khai và phần còn thiếu](docs/IMPLEMENTATION-MATRIX.md).
 
 [![Sprint 0 validation](https://github.com/BDSG-VN/noxh-open-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/BDSG-VN/noxh-open-platform/actions/workflows/ci.yml) Blueprint v2 được lưu nguyên bản tại [docs/blueprint](docs/blueprint/README.md); lựa chọn MIT thay thế đề xuất AGPL trong tài liệu gốc.
 
 ## Chạy bằng Docker
 
-Yêu cầu Node 22.12+ hoặc 24, pnpm 11.25.0 và Docker Engine/Desktop có Compose.
+Yêu cầu Node 22.12+ hoặc 24, pnpm 11.25.0 và Docker Engine/Desktop có Compose. Image ứng dụng tự biên dịch các binary Rust bằng toolchain **1.99.0**; máy chạy Docker không cần cài Rust riêng.
 
 ```sh
 git clone https://github.com/BDSG-VN/noxh-open-platform.git
@@ -29,19 +29,27 @@ docker compose --profile ai up --build --wait --wait-timeout 600
 docker compose down
 ```
 
-Không dùng `down -v` nếu cần giữ dữ liệu. Migration chạy trước API; seed chỉ chứa dữ liệu giả lập. `/health/ready` kiểm tra Postgres, Redis và migration 001–003; không chứng minh đăng nhập/storage/legal readiness. API danh mục đọc dự án đã công bố từ Postgres, có nhãn riêng cho dữ liệu giả lập.
+Không dùng `down -v` nếu cần giữ dữ liệu. Migration chạy trước API; seed chỉ chứa dữ liệu giả lập. `/health/ready` kiểm tra Postgres, Redis, migration 001–014 và khả năng truy cập/thực thi ba binary Rust; không chứng minh thuật toán đã được kiểm toán hay đăng nhập/storage/legal readiness. API danh mục đọc dự án đã công bố từ Postgres, có nhãn riêng cho dữ liệu giả lập.
 
 ## Đăng nhập và quản trị
 
 Xem [hướng dẫn thiết lập Keycloak, admin và Zalo OTP](docs/ADMIN-AND-ZALO.md). Không có tài khoản nhân sự mặc định; chủ đầu tư tạo nhân sự trong realm `noxh`, gán `org_admin` và đăng ký TOTP. Trang quản trị có quản lý dự án, lịch tiếp nhận, thống kê và cấu hình OA/template/token đã mã hóa. Khách đăng nhập tại `/login`, xem `/dashboard`, tạo hồ sơ chuẩn bị riêng và tiếp tục khai báo tại `/dossiers/:id`. Quản trị có hàng đợi hỗ trợ và nhật ký hoạt động. Xem [bảng đối chiếu toàn bộ yêu cầu](docs/IMPLEMENTATION-MATRIX.md).
 
-## Phát triển không dùng Docker cho ứng dụng Node
+## Phát triển không dùng Docker
+
+Cài Rust qua rustup và toolchain đúng phiên bản đã khóa trong `rust-toolchain.toml`. `pnpm build` và `pnpm check` đều biên dịch Rust trước các bước Node. Ví dụ trên macOS/Linux, chạy từ thư mục gốc kho:
 
 ```sh
+rustup toolchain install 1.99.0 --profile minimal --component rustfmt
 pnpm install --frozen-lockfile
 pnpm build
+export LOTTERY_ENGINE_BIN="$PWD/target/release/lottery-runner"
+export PRICING_ENGINE_BIN="$PWD/target/release/pricing-engine"
+export AUDIT_VERIFIER_BIN="$PWD/target/release/audit-verifier"
 pnpm check
 ```
+
+Ba biến trên phải là **đường dẫn tuyệt đối**, trỏ đến binary phù hợp hệ điều hành/kiến trúc máy chạy API. Giữ các biến này trong môi trường tiến trình API khi chạy native; nếu không cấu hình, API dùng đường dẫn của image Docker `/opt/noxh/bin/`. `pnpm native:build` chỉ dựng binary; `pnpm build:node` chỉ dựng các ứng dụng Node và không thay thế bước dựng Rust.
 
 Để chỉ xem giao diện và API giả lập (không cần Postgres/Redis):
 
@@ -72,7 +80,17 @@ pnpm check:secrets
 
 `db:migrate` dùng giao dịch, advisory lock và checksum; chạy lặp không áp lại migration. `test:db` chạy RLS bằng role không phải superuser và kiểm tra khóa ngoại xuyên tổ chức. Role `noxh_runtime` không có quyền đăng nhập; API development hiện dùng DB owner và kiểm tra scope trong truy vấn, chưa là cấu hình quyền DB production. Không đưa biến phạm vi do client gửi trực tiếp vào RLS.
 
-Python worker: `python -m venv .venv`, `.venv/bin/pip install -r services/ai-worker/requirements.txt`, rồi `cd services/ai-worker && ../../.venv/bin/python -m pytest`. Rust shells: `cargo test --workspace`; verifier cố ý thoát mã 2 vì chưa triển khai.
+Python worker: `python -m venv .venv`, `.venv/bin/pip install -r services/ai-worker/requirements.txt`, rồi `cd services/ai-worker && ../../.venv/bin/python -m pytest`. Rust: `cargo test --workspace --locked` hoặc `pnpm native:test`; CI dùng Rust 1.99.0, kiểm tra định dạng và lockfile. Engine và CLI verifier kiểm chứng cùng bộ dữ liệu chuẩn với Node/Python. Các kiểm thử API native gọi binary thật sau khi build; fixture đơn vị có thể tiêm bộ tham chiếu tường minh. Chỉ hỗ trợ dữ liệu diễn tập, chưa có chứng nhận độc lập cho bốc thăm thật.
+
+### Ba bộ xử lý Rust trong runtime
+
+| Binary           | Công việc được giao                                                                              | Khi không có kết quả hợp lệ                                                                             |
+| ---------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| `lottery-runner` | Chạy và tái lập kết quả bốc thăm từ cấu hình, bí mật và entropy đã khóa                          | API trả 503, không ghi kết quả hay tự chuyển sang Node                                                  |
+| `pricing-engine` | Tính hệ số chuẩn hóa và giá bằng số nguyên có kiểm tra tràn; API kiểm tra chứng cứ trước khi lưu | Không tạo bảng giá, trả 503 nếu bộ xử lý không sẵn sàng/đầu ra sai                                      |
+| `audit-verifier` | Kiểm tra nội dung, liên kết hash và phạm vi tổ chức của chuỗi nhật ký `audit-v1`                 | Vẫn đọc được nhật ký; hiển thị chưa kiểm chứng (`valid: null`, `engine: unavailable`), không báo hợp lệ |
+
+NestJS tiếp tục kiểm soát đăng nhập, phân quyền, phiên bản, giao dịch và lưu trữ. Cầu nối chỉ gọi các binary cố định, không qua shell; bí mật truyền qua stdin, không nằm trong tham số lệnh hoặc log. Cầu nối giới hạn đầu vào/đầu ra 2.000.000 byte, thời gian chờ và số tiến trình đồng thời. Không có fallback Node cho các kết quả runtime này. Kiểm chứng audit bằng Rust không tạo chữ ký hay checkpoint tin cậy ngoài máy, và không phát hiện được mọi trường hợp cắt đuôi nếu chỉ nhận một tiền tố hợp lệ. Xem [ADR 015 — Rust trong runtime](docs/adr/015-mandatory-rust-kernels.md).
 
 ## Cấu trúc
 
@@ -81,7 +99,8 @@ apps/        api (NestJS), citizen-web, investor-console,
              transparency-web (Next.js), zalo-miniapp (React + SDK)
 packages/    contracts, ui, authz, form-engine
 services/    ai-worker (FastAPI placeholder)
-crates/      lottery-engine, lottery-verifier (fail-closed placeholders)
+crates/      lottery-engine, lottery-runner, lottery-verifier,
+             pricing-engine, audit-verifier
 db/          migrations, synthetic fixtures
 scripts/     migration, seed, local env, contract/security gates
 docs/        blueprint, ADRs, threat model, status, validation
@@ -105,4 +124,75 @@ Cổng đối tác: `http://localhost:3004`. Chủ đầu tư cấp đơn vị/d
 
 Admin có **Biểu mẫu & pháp lý**, **Cấu hình trợ lý AI** và **Đối tác & marketing**. Khách có **Thủ tục trực tuyến**, **Trợ lý AI** và quản lý yêu cầu tư vấn. OpenAI cần deployment flag `EXTERNAL_AI_ENABLED=true`, sau đó chủ đầu tư tự nhập model/key/hạn mức trong admin; mặc định tắt. Không đưa khóa vào chat hoặc mã nguồn. [Thiết kế và giới hạn tích hợp](docs/adr/013-openai-dvc-legal-sources.md), [nguồn pháp lý và phạm vi chưa xác minh](legal/README.md).
 
-DVC hiện mở đúng thủ tục và lưu biên nhận do khách tự cập nhật; chưa có API được cấp quyền để đồng bộ trạng thái chính thức. AI tạo đề xuất và thực hiện một số thao tác sau xác nhận, chưa đọc giấy tờ hoặc xuất một bộ PDF đã điền hoàn chỉnh. Phần chưa xong của blueprint được liệt kê trong [ma trận triển khai](docs/IMPLEMENTATION-MATRIX.md).
+DVC hiện mở đúng thủ tục và lưu biên nhận do khách tự cập nhật; chưa có API được cấp quyền để đồng bộ trạng thái chính thức. AI có thể trích xuất giấy tờ đã quét an toàn, đưa đề xuất có nguồn và chờ khách xác nhận; bộ máy PDF điền dữ liệu theo ánh xạ của mẫu đã duyệt, giữ mẫu gốc và xuất gói ZIP có manifest. Chủ đầu tư phải duyệt phạm vi áp dụng và tọa độ ánh xạ từng mẫu; hệ thống không tự chế giấy xác nhận hoặc chữ ký. Phần chưa xong của blueprint được liệt kê trong [ma trận triển khai](docs/IMPLEMENTATION-MATRIX.md).
+
+## Các phân hệ và luồng nghiệp vụ
+
+| Không gian | Chức năng đã có trong mã nguồn                                                                                                                                                                                                                                                                              | Quyền và giới hạn chính                                                                                                                                                                      |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Khách hàng | Đăng nhập điện thoại/OTP, danh mục dự án, hồ sơ hộ gia đình có phiên bản, hướng dẫn biểu mẫu, tải giấy tờ, trích xuất có xác nhận, tạo/xem/xác nhận PDF, tải gói biểu mẫu; gửi hồ sơ và biên nhận; bổ sung, theo dõi quyết định, đề nghị xem xét lại; lựa chọn căn; yêu cầu hỗ trợ và quản lý quyền dữ liệu | Chỉ hồ sơ của mình. Điểm chuẩn bị không phải kết luận đủ điều kiện. Tệp cách ly đến khi antivirus thật trả kết quả an toàn.                                                                  |
+| Chủ đầu tư | Dự án và lịch tiếp nhận; nhân viên/phòng ban/phạm vi dự án; quy trình công việc và chứng cứ; wiki, hồ sơ, tệp lưu trữ; bút toán cân đối nội bộ; biểu mẫu pháp lý và ánh xạ PDF; tiếp nhận/phân công/xét duyệt; đối tác/marketing; bảng hàng/giá; đồng ý dữ liệu; bốc thăm và nhật ký                        | Quyền đặc biệt cấp riêng, có MFA. Người soạn không tự duyệt mẫu, đề xuất xét duyệt, giá hay chứng nhận kết quả của mình. Sổ nội bộ chưa thay thế phần mềm kế toán và báo cáo thuế pháp định. |
+| Nhân viên  | Công việc, hồ sơ/tài liệu, sổ nội bộ hoặc tiếp nhận–thẩm định–phê duyệt theo quyền; người duyệt giá có phạm vi dự án                                                                                                                                                                                        | Đọc lại quyền và trạng thái nhân sự từ máy chủ; không kế thừa toàn bộ quyền quản trị. Tài khoản đăng nhập được tạo trong Keycloak, sau đó cấp hồ sơ nhân viên và dự án.                      |
+| Đối tác    | Quản trị đơn vị, nhân viên, vai trò quản lý chiến dịch/chuyên viên; soạn và trình chiến dịch; trang giới thiệu công khai; tiếp nhận khách đồng ý chia sẻ, phân công và ghi nhận tư vấn                                                                                                                      | Chiến dịch cần chủ đầu tư duyệt. Chuyên viên chỉ thấy liên hệ được giao, không mở hồ sơ/giấy tờ riêng của khách.                                                                             |
+| Minh bạch  | Danh sách phiên bốc thăm, phòng hiển thị mã hồ sơ, thứ hạng, timeline, commitment, snapshot, chứng cứ JSON/CSV; CLI kiểm chứng độc lập                                                                                                                                                                      | Chỉ diễn tập. Danh sách dự bốc thăm gắn đợt tiếp nhận đã đóng và tập hồ sơ được duyệt, có kiểm soát loại trừ và phiên thay thế sau hủy. Không công khai thông tin cá nhân.                   |
+
+### Giấy tờ, biểu mẫu và trợ lý AI
+
+1. Chủ đầu tư chọn nguồn pháp lý và mẫu, khai phạm vi hình thức/nhóm đối tượng/ngày hiệu lực, nhập hướng dẫn và được người khác có quyền pháp chế duyệt.
+2. Chủ đầu tư ánh xạ các trường bản khai vào vị trí trên PDF, xem trước và duyệt ánh xạ độc lập. Mẫu thu hồi/hết hạn/thay thế không được dùng tạo hay xác nhận bản mới.
+3. Khách khai và xác nhận bản khai; tải giấy tờ PDF/JPEG/PNG vào kho mã hóa riêng; antivirus quét trước khi đọc/trích xuất.
+4. OpenAI chỉ chạy khi đơn vị tự cấu hình và khách đồng ý cho mục đích tương ứng. Khách xem đề xuất, nguồn giấy tờ, trường không chắc chắn và xác nhận; AI không tự ghi đè bản khai.
+5. PDF được điền bằng bộ máy xác định, gắn phiên bản mẫu, đầu vào, SHA-256 và nguồn trường. Khách kiểm tra rồi xác nhận; thay đổi bản khai làm bản PDF cũ không còn đủ điều kiện dùng cho lần nộp mới.
+6. Gói ZIP có PDF và manifest. Chữ ký, dấu và xác nhận của cơ quan có thẩm quyền được thực hiện theo thủ tục thật; hệ thống không sinh thay.
+
+Xem [luồng giấy tờ và biểu mẫu](docs/DOCUMENTS-AND-FORMS.md), [nguồn pháp lý](legal/README.md).
+
+### Tiếp nhận, xét duyệt và phân căn
+
+Hồ sơ chuẩn bị và hồ sơ đã nộp là hai đối tượng khác nhau. Lần gửi có khóa chống lặp; máy chủ khóa bản chụp khai báo/chứng cứ, phát biên nhận và mã hồ sơ ổn định. Nhân sự tiếp nhận phân công người thẩm định; người thẩm định yêu cầu bổ sung hoặc lập đề xuất có lý do/chứng cứ; người phê duyệt độc lập quyết định. Khách xem lý do và gửi đề nghị xem xét lại. Đây là luồng xử lý trên nền tảng, không tự coi là kết quả xác minh liên cơ quan.
+
+Bảng hàng có tọa độ mặt bằng, diện tích, hệ số tầng/vị trí/hướng và bảng giá bằng số nguyên chính xác. Hệ số được chuẩn hóa theo diện tích trong tòa; giá cần người khác duyệt. Quy cách bán có chế độ khách chọn theo lượt hoặc phân căn từ kết quả bốc thăm đã công bố. Máy chủ gắn lượt với hồ sơ đã duyệt, mã và thứ hạng thực; kiểm tra đồng thời để tránh cấp trùng căn. Phiên hiện tại giới hạn diễn tập mua; xem [bảng hàng và phân căn](docs/INVENTORY-AND-ALLOCATION.md).
+
+### Bốc thăm và ưu tiên
+
+Bảng tính ưu tiên hiển thị tử số/mẫu số chính xác, hợp nhất người thuộc nhiều nhóm theo xác nhận được kiểm tra và phân bổ theo thứ tự nhóm. Không tự suy diễn cách làm tròn nếu quy định đã kiểm chứng chưa nêu; cần căn cứ được rà soát. Nhóm vượt số suất phải có quy trình bốc thăm và xử lý người không trúng theo quy chế áp dụng, không cho AI tự quyết định ưu tiên.
+
+Phiên diễn tập: chốt tập hồ sơ của đợt/hình thức → duyệt độc lập → khóa snapshot và commitment → ghi entropy theo quy chế → chạy thuật toán xác định bằng Rust → tái lập bằng Rust và chứng nhận độc lập → công bố. Không chạy lại cùng phiên để chọn kết quả; hủy giữ chứng cứ và tạo tập thay thế có lý do. Node/Python/Rust dùng cùng bộ dữ liệu chuẩn; Node và Python là bộ tham chiếu/kiểm chứng, không thay bộ máy Rust runtime. Entropy diễn tập nhập thủ công, chưa phải nguồn ngẫu nhiên công cộng được tin cậy hay chứng thư ký số.
+
+### Quy trình chủ đầu tư, lưu trữ và dữ liệu cá nhân
+
+Phân hệ điều hành có kế hoạch từ xác định nhánh đầu tư, đất đai/quy hoạch, thiết kế–xây dựng, giá/pháp lý, thông báo–tiếp nhận–gửi cơ quan, xét duyệt–lựa chọn, hợp đồng đến bàn giao/vận hành. Có phụ thuộc công việc, người phụ trách, thời hạn, chờ cơ quan bên ngoài, chứng cứ và bước người khác duyệt hoàn tất/không áp dụng. Pháp chế phải chốt thủ tục, cơ quan và chuyển tiếp của từng dự án; mẫu kế hoạch không phải chứng nhận tuân thủ mọi chế độ vốn. [Hướng dẫn điều hành](docs/INVESTOR-OPERATIONS.md).
+
+Thông báo dữ liệu có phiên bản/hash và duyệt độc lập; khách chủ động đồng ý, hạn chế/rút đồng ý và gửi yêu cầu truy cập/sửa/xóa/phản đối. Chia sẻ với OpenAI và đối tác có xác nhận riêng. Quyết định pháp lý và hồ sơ phải lưu theo căn cứ tương ứng; thao tác trả lời yêu cầu không tự khẳng định đã xóa mọi dữ liệu hoặc mọi bản sao lưu. Đơn vị vận hành còn phải thực hiện hồ sơ đánh giá, hợp đồng bên xử lý, lưu giữ và quy trình sự cố theo phạm vi thực tế.
+
+### Cổng cơ quan nhà nước
+
+Có danh mục liên kết/hướng dẫn cho Cổng DVC quốc gia, DVC Bộ Xây dựng, DVC nông nghiệp–môi trường, thông tin quy hoạch, hệ thống thông tin nhà ở/thị trường BĐS, mạng đấu thầu và thuế điện tử. Mở đúng cổng và lưu biên nhận do người dùng cập nhật **không đồng nghĩa đồng bộ chính thức**. Trao đổi tự động cần cơ quan cấp tài khoản, đặc tả và quyền API; chưa có hợp đồng nào được xác minh cho triển khai này.
+
+## Trạng thái phát hành
+
+Các tích hợp thật cần kiểm tra bằng tài khoản của đơn vị: Zalo OA/mẫu OTP, OpenAI/model/hạn mức, antivirus và kho riêng, API cơ quan nhà nước nếu được cấp quyền. Trước tiếp nhận thật cần phê duyệt bộ mẫu/quy trình áp dụng, kiểm thử vận hành, quyền DB tối thiểu, sao lưu–khôi phục, bảo mật độc lập và pilot. Không có tài khoản/mật khẩu demo cố định trong kho công khai.
+
+Xem [ma trận nghiệm thu](docs/IMPLEMENTATION-MATRIX.md) và [bằng chứng kiểm thử](docs/VALIDATION.md) để phân biệt phần đã kiểm tra với điều kiện còn mở.
+
+## Ảnh giao diện chạy thực tế
+
+Ảnh từ demo cục bộ, dữ liệu giả lập; không dùng mockup để thay cho ảnh ứng dụng. Phân quyền và trạng thái thể hiện theo backend tại thời điểm chụp.
+
+### Chủ đầu tư và tiếp nhận
+
+![Tổng quan chủ đầu tư](docs/screenshots/investor-overview-v05.jpg)
+![Tiếp nhận và xét duyệt](docs/screenshots/investor-applications-v05.jpg)
+
+### Điều hành và bảng hàng
+
+![Điều hành dự án và nhân sự](docs/screenshots/investor-operations-v05.jpg)
+![Bảng hàng diễn tập](docs/screenshots/investor-inventory-v05.jpg)
+
+### Khách hàng, đối tác và minh bạch
+
+![Bảng điều khiển khách hàng](docs/screenshots/citizen-dashboard-v05.jpg)
+![Chuyên viên đối tác chỉ thấy liên hệ được giao](docs/screenshots/partner-consultant.png)
+![Phòng bốc thăm diễn tập](docs/screenshots/lottery-room-v05.jpg)
+
+Xem [danh mục ảnh và phạm vi kiểm tra](docs/screenshots/README.md).

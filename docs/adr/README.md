@@ -9,3 +9,5 @@ ADRs 001–010 record the initial Sprint 0 design. ADRs 011–014 extend impleme
 - [013 — OpenAI, DVC and legal sources](013-openai-dvc-legal-sources.md)
 
 - [014 — Partners and consultant permissions](014-partner-consultant-access.md)
+
+- [015 — Mandatory Rust kernels](015-mandatory-rust-kernels.md)

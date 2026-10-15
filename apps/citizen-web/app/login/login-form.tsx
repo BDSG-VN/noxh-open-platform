@@ -34,6 +34,9 @@ export default function LoginForm({ returnTo = '/dashboard' }: { returnTo?: stri
   return (
     <form onSubmit={submit} className="">
       {step === 'code' && <h2 style={{ fontSize: 18 }}>Nhập mã xác thực</h2>}
+      <p>
+        <a href="/privacy">Đọc thông báo bảo vệ dữ liệu cá nhân</a>
+      </p>
       {step === 'phone' ? (
         <>
           <label htmlFor="phone">Số điện thoại có tài khoản Zalo</label>

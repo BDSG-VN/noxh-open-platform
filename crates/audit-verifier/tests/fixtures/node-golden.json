@@ -1,0 +1,38 @@
+{
+  "events": [
+    {
+      "id": "70000000-0000-4000-8000-000000000001",
+      "actor_ref": "DIỄN TẬP — người kiểm tra 👩🏽‍💻",
+      "action": "hồ_sơ.đã_nhận",
+      "resource_ref": "Tệp \"giả lập\" \\ mẫu\n\t\b\f\r\u0000\u001f / <>&    ",
+      "occurred_at": "2026-10-15T07:00:00.001Z",
+      "sequence": "1",
+      "organization_id": "10000000-0000-4000-8000-000000000001",
+      "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "event_hash": "c4d34ac6478a48e0433dfea2e1cb2b331034930373ed29e220c2fc8f5c59b98c"
+    },
+    {
+      "id": "70000000-0000-4000-8000-000000000002",
+      "actor_ref": "é không chuẩn hóa thành é",
+      "action": "biểu_mẫu.đối_chiếu",
+      "resource_ref": "Dữ liệu GIẢ LẬP — không có hồ sơ thật",
+      "occurred_at": "2026-10-15T07:00:00.001Z",
+      "sequence": 4,
+      "organization_id": "10000000-0000-4000-8000-000000000001",
+      "prev_hash": "c4d34ac6478a48e0433dfea2e1cb2b331034930373ed29e220c2fc8f5c59b98c",
+      "event_hash": "b86cabe68c46963cb6aede19d616cdbc4191723c986f50600c4a471e382ad573"
+    },
+    {
+      "id": "70000000-0000-4000-8000-000000000003",
+      "actor_ref": "nhân sự giả lập",
+      "action": "hồ_sơ.kiểm_tra",
+      "resource_ref": "Nguồn tổng hợp: kiểm thử UTF-8",
+      "occurred_at": "2026-10-15T06:59:59.999Z",
+      "sequence": "9007199254740993",
+      "organization_id": "10000000-0000-4000-8000-000000000001",
+      "prev_hash": "b86cabe68c46963cb6aede19d616cdbc4191723c986f50600c4a471e382ad573",
+      "event_hash": "f2e361bf491cb0056e1f8dfab51bf8da7fc26ec0b0fafc81de57f3720d711ff8"
+    }
+  ],
+  "expectedOrganizationId": "10000000-0000-4000-8000-000000000001"
+}

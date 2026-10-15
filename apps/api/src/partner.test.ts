@@ -1,3 +1,4 @@
+import { seedSyntheticPrivacy } from './test-privacy';
 import 'reflect-metadata';
 import { beforeAll, afterAll, it, expect } from 'vitest';
 import { readFile, readdir } from 'node:fs/promises';
@@ -61,6 +62,14 @@ beforeAll(async () => {
       [org, u.userId, digest('phone', org + ':' + normalized), seal(normalized, 'phone:' + org)],
     );
   }
+  await seedSyntheticPrivacy(db, [
+    citizen,
+    admin,
+    manager,
+    consultant,
+    otherConsultant,
+    otherAdmin,
+  ]);
 }, 30000);
 afterAll(async () => {
   await pg.close();

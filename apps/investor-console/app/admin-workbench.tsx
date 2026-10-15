@@ -1,8 +1,15 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { Button, Icon, Brand, PageHeading, EmptyState } from '@noxh/ui';
 import type { SupportRequest } from '@noxh/contracts';
 import { LegalTemplates, OpenAiSettings } from './integrations';
+import PrivacyAdmin from './privacy-admin';
+import LotteryAdmin from './lottery-admin';
+import GovernmentPortals from './government-portals';
+import OperationsAdmin, { type OperationsStaff } from './operations-admin';
+import InventoryAdmin from './inventory-admin';
+import { FormMappingAdmin } from './form-mapping-admin';
+import ApplicationsAdmin from './applications-admin';
 import Partners from './partners';
 export interface ProjectRow {
   id: string;
@@ -564,7 +571,7 @@ const actionLabels: Record<string, string> = {
 };
 function AuditPanel() {
   const [data, setData] = useState<{
-      verification: { valid: boolean | null; checked: number; reason?: string };
+      verification: { valid: boolean | null; checked: number; reason?: string; engine?: string };
       items: {
         id: string;
         action: string;
@@ -600,7 +607,7 @@ function AuditPanel() {
         <Icon name="shield" />
         <p>
           {data.verification.valid === true
-            ? `Đã kiểm tra ${data.verification.checked} sự kiện trong chuỗi; các liên kết và mã băm khớp.`
+            ? `Bộ kiểm chứng Rust đã đối chiếu ${data.verification.checked} sự kiện; các liên kết và mã băm khớp.`
             : (data.verification.reason ??
               'Phát hiện chuỗi không khớp. Cần kiểm tra nhật ký.')}{' '}
           Chuỗi bắt đầu từ phiên bản 0.3; chưa có checkpoint độc lập ngoài máy chủ.
@@ -609,7 +616,12 @@ function AuditPanel() {
       <section className="surface">
         <div className="surface-head">
           <h2 className="section-title">100 sự kiện gần nhất</h2>
-          <span className="status-badge blue">Chỉ đọc</span>
+          <div className="top-actions">
+            <span className="status-badge blue">Chỉ đọc</span>
+            <a className="text-button" href="/api/admin/audit/export">
+              Tải chứng cứ kiểm tra ↗
+            </a>
+          </div>
         </div>
         <div className="table-scroll">
           <table className="data-table">
@@ -655,7 +667,11 @@ export default function AdminWorkbench({
   settings,
   counts,
   initialTab = 'overview',
+  staff,
+  citizenOrigin = 'http://localhost:3000',
+  transparencyOrigin = 'http://localhost:3002',
 }: {
+  staff: OperationsStaff;
   projects: ProjectRow[];
   rounds: RoundRow[];
   settings?: SettingsRow;
@@ -666,18 +682,34 @@ export default function AdminWorkbench({
     citizen_accounts: number;
   };
   initialTab?: string;
+  citizenOrigin?: string;
+  transparencyOrigin?: string;
 }) {
   const tabs = [
     ['overview', 'Tổng quan', 'grid'],
-    ['projects', 'Quản lý dự án', 'building'],
-    ['rounds', 'Lịch tiếp nhận', 'calendar'],
+    ['projects', 'Dự án', 'building'],
+    ['rounds', 'Đợt tiếp nhận', 'calendar'],
+    ['applications', 'Tiếp nhận & xét duyệt', 'file'],
     ['requests', 'Hỗ trợ khách hàng', 'chat'],
     ['forms', 'Biểu mẫu & pháp lý', 'file'],
+    ['form-mappings', 'Thiết kế mẫu điền', 'file'],
+    ['inventory', 'Bảng hàng & giá căn', 'grid'],
+    ['lotteries', 'Bốc thăm & ưu tiên', 'grid'],
     ['partners', 'Đối tác & marketing', 'user'],
+    ['operations', 'Điều hành & nhân sự', 'building'],
+    ['government', 'Cổng cơ quan nhà nước', 'building'],
+    ['privacy', 'Bảo vệ dữ liệu', 'shield'],
     ['openai', 'Cấu hình trợ lý AI', 'settings'],
     ['audit', 'Nhật ký hoạt động', 'shield'],
     ...(settings ? [['zalo', 'Cấu hình Zalo OTP', 'settings']] : []),
   ];
+  const navGroups: Record<string, string> = {
+    overview: 'Dự án',
+    applications: 'Hồ sơ khách hàng',
+    inventory: 'Kinh doanh & lựa chọn',
+    operations: 'Điều hành',
+    privacy: 'Quản trị hệ thống',
+  };
   const [tab, setTab] = useState(tabs.some((t) => t[0] === initialTab) ? initialTab : 'overview'),
     [search, setSearch] = useState(''),
     [editing, setEditing] = useState<string | null>(null);
@@ -692,12 +724,19 @@ export default function AdminWorkbench({
     (p.name + ' ' + p.locality).toLocaleLowerCase('vi').includes(search.toLocaleLowerCase('vi')),
   );
   const descriptions: Record<string, string> = {
+    operations: 'Quy trình dự án, nhân viên, tài liệu và sổ theo dõi kế toán.',
+    applications: 'Phân công thẩm định, bổ sung, quyết định độc lập và đề nghị xem xét lại.',
+    inventory: 'Mặt bằng căn, hệ số giá và lựa chọn căn theo hồ sơ được phê duyệt.',
+    'form-mappings': 'Ánh xạ trường bản khai vào mẫu được phê duyệt và kiểm tra bản xem trước.',
     overview: 'Theo dõi dự án, lịch tiếp nhận và hoạt động chuẩn bị hồ sơ.',
     projects: 'Công bố thông tin dự án để khách hàng khám phá và bắt đầu chuẩn bị hồ sơ.',
     rounds: 'Tạo và điều chỉnh thời gian cho từng đợt tiếp nhận của dự án.',
     requests: 'Tiếp nhận câu hỏi và phản hồi hướng dẫn từ cùng một nơi.',
     partners: 'Quản lý đối tác, phân quyền nhân viên, giao dự án và duyệt chiến dịch truyền thông.',
     forms: 'Rà soát mẫu nguồn và công bố hướng dẫn cho khách theo từng dự án.',
+    privacy: 'Thông báo theo phiên bản, đồng ý xử lý và yêu cầu quyền dữ liệu cá nhân.',
+    lotteries: 'Tính suất ưu tiên, duyệt quy chế và điều khiển phiên diễn tập có kiểm chứng.',
+    government: 'Mở cổng chính thức theo nghiệp vụ; hiển thị đúng mức độ kết nối.',
     openai: 'Quản lý OpenAI API, mô hình và hạn mức sử dụng cho tổ chức.',
     audit: 'Kiểm tra các thao tác và tính toàn vẹn của chuỗi sự kiện.',
     zalo: 'Chủ đầu tư tự cấu hình kênh xác thực điện thoại cho khách hàng.',
@@ -709,16 +748,18 @@ export default function AdminWorkbench({
         <div className="workspace-label">QUẢN TRỊ CHỦ ĐẦU TƯ</div>
         <nav aria-label="Phân hệ quản trị">
           {tabs.map(([id, label, icon]) => (
-            <button
-              type="button"
-              key={id}
-              className={tab === id ? 'active' : ''}
-              aria-current={tab === id ? 'page' : undefined}
-              onClick={() => select(id!)}
-            >
-              <Icon name={icon} />
-              {label}
-            </button>
+            <Fragment key={id}>
+              {navGroups[id!] && <span className="nav-group-label">{navGroups[id!]}</span>}
+              <button
+                type="button"
+                className={tab === id ? 'active' : ''}
+                aria-current={tab === id ? 'page' : undefined}
+                onClick={() => select(id!)}
+              >
+                <Icon name={icon} />
+                {label}
+              </button>
+            </Fragment>
           ))}
         </nav>
         <div className="sidebar-bottom">
@@ -850,8 +891,8 @@ export default function AdminWorkbench({
                       ))}
                       <div className="help-note amber">
                         <p>
-                          Biểu mẫu pháp lý, nộp đơn và xét duyệt chưa được tích hợp. Lịch tiếp nhận
-                          hiện dùng để công bố thời gian.
+                          Quản lý bộ mẫu, ánh xạ PDF và hàng đợi xét duyệt tại các mục tương ứng.
+                          Tiếp nhận thật cần nghiệm thu quy trình và cấu hình triển khai.
                         </p>
                       </div>
                     </div>
@@ -949,8 +990,17 @@ export default function AdminWorkbench({
                 )}
               </section>
             ))}
+          {tab === 'operations' && <OperationsAdmin staff={staff} />}
+          {tab === 'applications' && <ApplicationsAdmin staff={staff} />}
+          {tab === 'inventory' && <InventoryAdmin projects={projects} />}
+          {tab === 'form-mappings' && <FormMappingAdmin projects={projects} />}
           {tab === 'requests' && <RequestQueue />}
           {tab === 'forms' && <LegalTemplates projects={projects} />}
+          {tab === 'privacy' && <PrivacyAdmin citizenOrigin={citizenOrigin} />}
+          {tab === 'lotteries' && (
+            <LotteryAdmin projects={projects} transparencyOrigin={transparencyOrigin} />
+          )}
+          {tab === 'government' && <GovernmentPortals />}
           {tab === 'partners' && <Partners projects={projects} />}
           {tab === 'openai' && <OpenAiSettings />}
           {tab === 'audit' && <AuditPanel />}

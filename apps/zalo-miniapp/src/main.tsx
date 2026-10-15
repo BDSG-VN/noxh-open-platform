@@ -1,5 +1,6 @@
 import { createRoot } from 'react-dom/client';
 import { isZaloEnvironment } from './channel';
+import '@noxh/ui/fonts.css';
 import './style.css';
 const inZalo = isZaloEnvironment(navigator.userAgent);
 function App() {
@@ -26,7 +27,7 @@ function App() {
           Mở cổng công dân →
         </a>
       </p>
-      <footer>Sprint 0 · Không nhập thông tin cá nhân</footer>
+      <footer>Kênh Zalo · Chưa mở liên kết danh tính</footer>
     </main>
   );
 }

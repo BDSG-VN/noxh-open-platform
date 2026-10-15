@@ -3,11 +3,16 @@ import { useEffect, useState } from 'react';
 import { type DossierDetail, type Declaration, type Readiness } from '@noxh/contracts';
 import { Button, Icon } from '@noxh/ui';
 import { ProjectForms, OnlineServices, AiAssistant } from './assistance';
+import { DocumentWorkspace } from './document-workspace';
+import SubmissionWorkspace from './submission-workspace';
+import InventorySelection from '../../dashboard/inventory-selection';
 const steps = [
   ['declarations', 'Thông tin người khai'],
   ['household', 'Thành viên hộ gia đình'],
   ['documents', 'Giấy tờ & biểu mẫu'],
   ['summary', 'Kiểm tra & xác nhận'],
+  ['submission', 'Nộp & theo dõi hồ sơ'],
+  ['inventory', 'Lựa chọn căn hộ'],
   ['support', 'Hỗ trợ từ chủ đầu tư'],
   ['online', 'Thủ tục trực tuyến'],
   ['assistant', 'Trợ lý AI'],
@@ -79,7 +84,12 @@ export default function DossierWorkbench({ initial }: { initial: DossierDetail }
   };
   const activeRequest = requests.find((r) => r.status !== 'closed');
   return (
-    <div className="content-columns">
+    <div
+      className={
+        'content-columns' +
+        (['documents', 'submission', 'inventory'].includes(tab) ? ' focused-dossier' : '')
+      }
+    >
       <div className="stack">
         <section className="surface">
           <div className="surface-head">
@@ -310,7 +320,14 @@ export default function DossierWorkbench({ initial }: { initial: DossierDetail }
                   </Button>
                 </>
               )}
-              {tab === 'documents' && <ProjectForms id={initial.id} />}
+              {tab === 'documents' && (
+                <div className="stack">
+                  <DocumentWorkspace id={initial.id} />
+                  <ProjectForms id={initial.id} />
+                </div>
+              )}
+              {tab === 'submission' && <SubmissionWorkspace id={initial.id} dirty={dirty} />}
+              {tab === 'inventory' && <InventorySelection projectId={initial.project_id} />}
               {tab === 'online' && <OnlineServices id={initial.id} />}
               {tab === 'assistant' && <AiAssistant id={initial.id} dirty={dirty} />}
               {tab === 'summary' && (
@@ -507,7 +524,12 @@ export default function DossierWorkbench({ initial }: { initial: DossierDetail }
           </div>
         </section>
       </div>
-      <aside className="stack">
+      <aside
+        className={
+          'stack' +
+          (['documents', 'submission', 'inventory'].includes(tab) ? ' dossier-secondary' : '')
+        }
+      >
         <section className="surface">
           <div className="surface-head">
             <h2 className="section-title">Mức độ chuẩn bị</h2>

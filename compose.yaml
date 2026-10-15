@@ -128,6 +128,13 @@ services:
       <<: *node-env
       AUTH_ENCRYPTION_KEY: ${AUTH_ENCRYPTION_KEY:?Generate auth keys in .env}
       AUTH_HASH_KEY: ${AUTH_HASH_KEY:?Generate auth keys in .env}
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: noxh-private
+      S3_REGION: us-east-1
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-noxh-local}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?Generate local .env}
+      CLAMD_HOST: '${CLAMD_HOST:-}'
+      CLAMD_PORT: '3310'
     command: ['pnpm', '--filter', '@noxh/api', 'start']
     ports: ['127.0.0.1:4000:4000']
     depends_on:
@@ -243,6 +250,17 @@ services:
       interval: 10s
       timeout: 5s
       retries: 30
+  clamav:
+    profiles: ['documents']
+    image: clamav/clamav-debian:1.5.4
+    volumes: ['clamav-signatures:/var/lib/clamav']
+    expose: ['3310']
+    healthcheck:
+      test: ['CMD', 'clamdscan', '--ping=1']
+      interval: 30s
+      timeout: 10s
+      retries: 20
+      start_period: 180s
   ai-worker:
     profiles: ['ai']
     build: { context: services/ai-worker }
@@ -265,3 +283,4 @@ volumes:
   keycloak-db-data:
   keycloak-data:
   minio-data:
+  clamav-signatures:

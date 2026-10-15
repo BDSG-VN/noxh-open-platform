@@ -11,6 +11,7 @@ minimumReleaseAgeExclude:
   - turbo@2.11.8
   - zmp-sdk@2.53.2
   - '@electric-sql/pglite@0.5.10'
+  - '@aws-sdk/client-s3@3.1152.0'
 allowBuilds:
   esbuild: true
   sharp: true

@@ -1,3 +1,4 @@
+import { PrivacyService } from './privacy-service';
 import {
   BadRequestException,
   ConflictException,
@@ -126,6 +127,7 @@ export class PartnerService {
     });
   }
   private async actor(q: Sql, c: Citizen, roles?: PartnerRole[]): Promise<PartnerActor> {
+    await q.query('SELECT id FROM organizations WHERE id=$1 FOR SHARE', [c.organizationId]);
     const r = (
       await q.query(
         "SELECT m.*,p.name AS partner_name FROM identity_private.partner_members m JOIN partners p ON p.id=m.partner_id AND p.organization_id=m.organization_id JOIN identity_private.phone_accounts a ON a.organization_id=m.organization_id AND a.phone_ref=m.phone_ref WHERE a.organization_id=$1 AND a.user_id=$2 AND m.status='active' AND p.status='active' FOR UPDATE OF p,m",
@@ -436,6 +438,7 @@ export class PartnerService {
     if (!p.success)
       throw new BadRequestException('Cần tên, nội dung và đồng ý chia sẻ liên hệ với đối tác');
     return this.db.tx(async (q) => {
+      await new PrivacyService(this.db).assertProcessing(c, q);
       const campaign = await this.publicCampaign(q, id);
       if (campaign.organization_id !== c.organizationId)
         throw new NotFoundException('Không có chiến dịch');
@@ -525,7 +528,7 @@ export class PartnerService {
   private async lead(q: Sql, a: PartnerActor, id: string) {
     const r = (
       await q.query(
-        "SELECT l.* FROM identity_private.partner_leads l JOIN partner_campaigns c ON c.organization_id=l.organization_id AND c.partner_id=l.partner_id AND c.id=l.campaign_id JOIN partner_projects pp ON pp.organization_id=c.organization_id AND pp.partner_id=c.partner_id AND pp.project_id=c.project_id JOIN projects p ON p.organization_id=c.organization_id AND p.id=c.project_id WHERE l.id=$1 AND l.organization_id=$2 AND l.partner_id=$3 AND l.status<>'withdrawn' AND pp.active AND p.archived_at IS NULL AND ($4::uuid IS NULL OR l.assignee_id=$4) FOR UPDATE OF l",
+        "SELECT l.* FROM identity_private.partner_leads l JOIN partner_campaigns c ON c.organization_id=l.organization_id AND c.partner_id=l.partner_id AND c.id=l.campaign_id JOIN partner_projects pp ON pp.organization_id=c.organization_id AND pp.partner_id=c.partner_id AND pp.project_id=c.project_id JOIN projects p ON p.organization_id=c.organization_id AND p.id=c.project_id WHERE l.id=$1 AND l.organization_id=$2 AND l.partner_id=$3 AND l.status<>'withdrawn' AND NOT EXISTS(SELECT 1 FROM identity_private.privacy_preferences pref WHERE pref.organization_id=l.organization_id AND pref.user_id=l.owner_user_id AND pref.restricted) AND pp.active AND p.archived_at IS NULL AND ($4::uuid IS NULL OR l.assignee_id=$4) FOR UPDATE OF l",
         [uuid(id), a.organizationId, a.partnerId, a.role === 'consultant' ? a.memberId : null],
       )
     ).rows[0];
@@ -537,7 +540,7 @@ export class PartnerService {
       const a = await this.actor(q, c);
       const rows = (
         await q.query(
-          "SELECT l.*,c.name AS campaign_name,p.name AS project_name FROM identity_private.partner_leads l JOIN partner_campaigns c ON c.organization_id=l.organization_id AND c.partner_id=l.partner_id AND c.id=l.campaign_id JOIN projects p ON p.organization_id=c.organization_id AND p.id=c.project_id JOIN partner_projects pp ON pp.organization_id=c.organization_id AND pp.partner_id=c.partner_id AND pp.project_id=c.project_id WHERE l.organization_id=$1 AND l.partner_id=$2 AND l.status<>'withdrawn' AND pp.active AND p.archived_at IS NULL AND ($3::uuid IS NULL OR l.assignee_id=$3) ORDER BY l.created_at DESC LIMIT 200",
+          "SELECT l.*,c.name AS campaign_name,p.name AS project_name FROM identity_private.partner_leads l JOIN partner_campaigns c ON c.organization_id=l.organization_id AND c.partner_id=l.partner_id AND c.id=l.campaign_id JOIN projects p ON p.organization_id=c.organization_id AND p.id=c.project_id JOIN partner_projects pp ON pp.organization_id=c.organization_id AND pp.partner_id=c.partner_id AND pp.project_id=c.project_id WHERE l.organization_id=$1 AND l.partner_id=$2 AND l.status<>'withdrawn' AND NOT EXISTS(SELECT 1 FROM identity_private.privacy_preferences pref WHERE pref.organization_id=l.organization_id AND pref.user_id=l.owner_user_id AND pref.restricted) AND pp.active AND p.archived_at IS NULL AND ($3::uuid IS NULL OR l.assignee_id=$3) ORDER BY l.created_at DESC LIMIT 200",
           [a.organizationId, a.partnerId, a.role === 'consultant' ? a.memberId : null],
         )
       ).rows;

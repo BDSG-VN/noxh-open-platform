@@ -1,3 +1,4 @@
+import { PrivacyService } from './privacy-service';
 import {
   BadRequestException,
   ConflictException,
@@ -142,6 +143,10 @@ export class AssistanceService {
     )
       throw new BadRequestException('Cần quyết định và xác nhận rà soát riêng');
     return this.db.tx(async (q) => {
+      await q.query('SELECT id FROM projects WHERE id=$1 AND organization_id=$2 FOR UPDATE', [
+        uuid(project),
+        s.organizationId,
+      ]);
       const r = (
         await q.query(
           'SELECT * FROM project_form_releases WHERE id=$1 AND organization_id=$2 AND project_id=$3 FOR UPDATE',
@@ -204,6 +209,8 @@ export class AssistanceService {
     const parsed = OnlineCaseSchema.safeParse(body);
     if (!parsed.success) throw new BadRequestException('Thông tin biên nhận không hợp lệ');
     return this.db.tx(async (q) => {
+      await this.owner(q, c, dossier);
+      await new PrivacyService(this.db).assertProcessing(c, q);
       const d = await this.owner(q, c, dossier, true);
       if (
         !id &&

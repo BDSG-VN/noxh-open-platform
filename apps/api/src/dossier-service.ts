@@ -1,8 +1,12 @@
+import { PrivacyService } from './privacy-service';
 import {
   Injectable,
   Inject,
   BadRequestException,
   ConflictException,
+  ForbiddenException,
+  ServiceUnavailableException,
+  HttpException,
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
@@ -12,11 +16,12 @@ import { event, record, text, uuid } from './admin-service';
 import { seal, unseal } from './identity-crypto';
 import type { Citizen } from './phone-service';
 import type { Staff } from './workforce';
-import { verifyAudit } from './audit';
+import { runRustKernel } from './native-kernel';
 
 @Injectable()
 export class DossierService {
   constructor(@Inject(Database) readonly db: Database) {}
+  auditKernel = runRustKernel;
   private async owner(q: Sql, c: Citizen, id: string, lock = false) {
     const r = (
       await q.query(
@@ -110,6 +115,8 @@ export class DossierService {
     )
       throw new BadRequestException('Hãy hoàn thành thông tin trước khi xác nhận');
     const apply = async (q: Sql) => {
+      await this.owner(q, c, id);
+      await new PrivacyService(this.db).assertProcessing(c, q);
       const dossier = await this.owner(q, c, id, true);
       if (Number(dossier.version) !== expected)
         throw new ConflictException('Hồ sơ đã thay đổi ở cửa sổ khác. Tải lại trước khi lưu.');
@@ -162,6 +169,8 @@ export class DossierService {
   }
   async assess(c: Citizen, id: string, expected: number) {
     return this.db.tx(async (q) => {
+      await this.owner(q, c, id);
+      await new PrivacyService(this.db).assertProcessing(c, q);
       const d = await this.owner(q, c, id, true);
       if (Number(d.version) !== expected)
         throw new ConflictException('Thông tin đã thay đổi; tải lại hồ sơ');
@@ -194,6 +203,8 @@ export class DossierService {
     if (b.accepted !== true)
       throw new BadRequestException('Cần đồng ý chia sẻ nội dung yêu cầu với chủ đầu tư');
     const apply = async (q: Sql) => {
+      await this.owner(q, c, id);
+      await new PrivacyService(this.db).assertProcessing(c, q);
       const d = await this.owner(q, c, id, true);
       const active = (
         await q.query(
@@ -273,21 +284,94 @@ export class DossierService {
       return { id, status: 'responded', version: expected + 1 };
     });
   }
-  async audit(s: Staff) {
-    // Single query gives a consistent snapshot. Bound export; never declare a truncated chain valid.
+  private async auditEvidence(s: Staff) {
+    if (s.role !== 'org_admin')
+      throw new ForbiddenException('Chỉ quản trị tổ chức được xuất toàn bộ chuỗi nhật ký');
     const rows = await this.db.query(
       'SELECT * FROM identity_private.audit_chain WHERE organization_id=$1 ORDER BY sequence LIMIT 10001',
       [s.organizationId],
     );
-    const verification =
-      rows.length > 10000
-        ? { valid: null, checked: 0, reason: 'Cần xuất kiểm tra đầy đủ khi vượt 10.000 sự kiện' }
-        : verifyAudit(rows);
+    const payload = {
+      expectedOrganizationId: s.organizationId,
+      events: rows.map((r) => ({
+        id: r.id,
+        organization_id: r.organization_id,
+        actor_ref: r.actor_ref,
+        action: r.action,
+        resource_ref: r.resource_ref,
+        occurred_at: r.occurred_at,
+        prev_hash: r.prev_hash,
+        event_hash: r.event_hash,
+        sequence: String(r.sequence),
+      })),
+    };
+    const bounded = rows.length <= 10000 && Buffer.byteLength(JSON.stringify(payload)) <= 2_000_000;
+    return { rows, payload, bounded };
+  }
+  async audit(s: Staff) {
+    const { rows, payload, bounded } = await this.auditEvidence(s);
+    let verification: {
+      valid: boolean | null;
+      checked: number;
+      head?: string;
+      reason?: string;
+      engine: 'rust' | 'unavailable';
+    } = {
+      valid: null,
+      checked: 0,
+      reason: 'Bộ kiểm chứng Rust chưa sẵn sàng; chưa kết luận tính toàn vẹn.',
+      engine: 'unavailable',
+    };
+    if (!bounded)
+      verification.reason =
+        'Chuỗi vượt giới hạn kiểm chứng trực tuyến; cần quy trình xuất có checkpoint và công cụ ngoại tuyến.';
+    else
+      try {
+        const raw = await this.auditKernel('audit', payload);
+        const v = raw as { valid?: unknown; checked?: unknown; head?: unknown; code?: unknown };
+        if (
+          typeof v.valid !== 'boolean' ||
+          !Number.isInteger(v.checked) ||
+          Number(v.checked) < 0 ||
+          Number(v.checked) > rows.length
+        )
+          throw new ServiceUnavailableException();
+        if (
+          v.valid &&
+          (v.checked !== rows.length ||
+            typeof v.head !== 'string' ||
+            !/^[a-f0-9]{64}$/.test(v.head) ||
+            v.head !== (rows.at(-1)?.event_hash ?? '0'.repeat(64)))
+        )
+          throw new ServiceUnavailableException();
+        verification = {
+          valid: v.valid,
+          checked: Number(v.checked),
+          engine: 'rust',
+          ...(v.valid
+            ? { head: String(v.head) }
+            : {
+                reason:
+                  'Bộ kiểm chứng Rust phát hiện chuỗi hoặc nội dung sự kiện không khớp. Hãy giữ chứng cứ để điều tra.',
+              }),
+        };
+      } catch {
+        /* Keep the log readable without misrepresenting an unavailable native verification. */
+      }
     return {
       verification,
       items: rows.slice(-100).reverse(),
       externalCheckpoint: false,
       legacyOperationsIncluded: false,
     };
+  }
+  async auditExport(s: Staff) {
+    const { payload, bounded } = await this.auditEvidence(s);
+    if (!bounded)
+      throw new HttpException(
+        'Chuỗi vượt giới hạn xuất trực tuyến 2 MB/10.000 sự kiện; cần quy trình snapshot có checkpoint.',
+        413,
+      );
+    return payload;
   }
 }

@@ -12,7 +12,8 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "zmp-sdk": "2.53.2",
-    "@noxh/contracts": "workspace:*"
+    "@noxh/contracts": "workspace:*",
+    "@noxh/ui": "workspace:*"
   },
   "devDependencies": {
     "vite": "8.3.4",

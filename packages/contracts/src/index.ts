@@ -2,6 +2,13 @@ import { z } from 'zod';
 export * from './dossier';
 export * from './assistance';
 export * from './partner';
+export * from './privacy';
+export * from './lottery';
+export * from './government';
+export * from './applications';
+export * from './operations';
+export * from './inventory';
+export * from './documents';
 export const ProjectSchema = z.object({
   id: z.uuid(),
   organizationId: z.uuid(),
@@ -51,3 +58,4 @@ export const demoProjects: Project[] = [
 ];
 
 export type { paths, operations } from './generated';
+export * from './documents';

@@ -23,6 +23,7 @@
   },
   "exports": {
     ".": "./src/index.ts",
-    "./styles.css": "./styles.css"
+    "./styles.css": "./styles.css",
+    "./fonts.css": "./fonts.css"
   }
 }

@@ -1,3 +1,4 @@
+import { seedSyntheticPrivacy } from './test-privacy';
 import 'reflect-metadata';
 import { beforeAll, afterAll, it, expect } from 'vitest';
 import { readFile, readdir } from 'node:fs/promises';
@@ -35,7 +36,12 @@ beforeAll(async () => {
   db.testExecutor = {
     query: async (q, v = []) => ({ rows: (await pg.query<Record<string, unknown>>(q, v)).rows }),
   };
+  await seedSyntheticPrivacy(db, [c]);
   service = new DossierService(db);
+  service.auditKernel = async (_kind, payload) => {
+    const events = (payload as { events: Record<string, unknown>[] }).events;
+    return verifyAudit(events);
+  };
 }, 30000);
 afterAll(async () => {
   await pg.close();

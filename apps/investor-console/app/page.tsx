@@ -6,6 +6,8 @@ import AdminWorkbench, {
   type RoundRow,
   type SettingsRow,
 } from './admin-workbench';
+import StaffWorkspace from './staff-workspace';
+import type { OperationsStaff } from './operations-admin';
 export const dynamic = 'force-dynamic';
 export default async function Admin({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const { tab } = await searchParams;
@@ -21,7 +23,8 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           <p>Kiểm tra Keycloak, cơ sở dữ liệu và cấu hình tổ chức.</p>
         </main>
       );
-    const staff = (await me.json()) as { role: string; organizationId: string };
+    const staff = (await me.json()) as OperationsStaff;
+    if (staff.role !== 'org_admin') return <StaffWorkspace staff={staff} />;
     const [d, p, r, s] = await Promise.all([
       api('/api/v1/admin/dashboard', token),
       api('/api/v1/admin/projects', token),
@@ -43,11 +46,14 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
     const settings = s ? ((await s.json()) as SettingsRow) : undefined;
     return (
       <AdminWorkbench
+        staff={staff}
         projects={projects}
         rounds={rounds}
         settings={settings}
         counts={counts}
         initialTab={tab}
+        citizenOrigin={process.env.CITIZEN_PUBLIC_ORIGIN ?? 'http://localhost:3000'}
+        transparencyOrigin={process.env.TRANSPARENCY_PUBLIC_ORIGIN ?? 'http://localhost:3002'}
       />
     );
   } catch (e) {

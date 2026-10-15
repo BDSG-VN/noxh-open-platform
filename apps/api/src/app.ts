@@ -27,6 +27,26 @@ import { PartnerService } from './partner-service';
 import { AssistanceController } from './assistance-controller';
 import { AssistanceService } from './assistance-service';
 import { OpenAiService, OpenAiTransport } from './openai-service';
+import { APP_GUARD } from '@nestjs/core';
+import { PrivacyService } from './privacy-service';
+import { PrivacyController } from './privacy-controller';
+import { PrivacyGuard } from './privacy-guard';
+import { LotteryService } from './lottery-service';
+import { LotteryController } from './lottery-controller';
+import { OperationsService } from './operations-service';
+import { OperationsController } from './operations-controller';
+import { WorkforceAccessGuard } from './workforce-access-guard';
+import { InventoryService } from './inventory-service';
+import { InventoryController } from './inventory-controller';
+import { DocumentController } from './document-controller';
+import { DocumentService } from './document-service';
+import { DocumentStorage } from './document-storage';
+import { DocumentScanner } from './document-scanner';
+import { FormService } from './form-service';
+import { ApplicationService } from './application-service';
+import { InternalFileController } from './internal-file-controller';
+import { InternalFileService } from './internal-file-service';
+import { ApplicationController } from './application-controller';
 @Controller()
 export class PlatformController {
   constructor(
@@ -34,7 +54,7 @@ export class PlatformController {
     @Inject(Database) private readonly db: Database,
   ) {}
   @Get('health/live') live() {
-    return { status: 'alive', release: '0.4.0', productionReady: false };
+    return { status: 'alive', release: '0.5.0', productionReady: false };
   }
   @Get('health/ready') async ready(@Res({ passthrough: true }) res: Response) {
     const result = await this.health.check();
@@ -45,7 +65,7 @@ export class PlatformController {
         type: 'urn:noxh:problem:not-ready',
         title: 'Dependencies unavailable',
         status: 503,
-        detail: 'Postgres, Redis and migrations 001–006 must be ready.',
+        detail: 'Postgres, Redis, migrations 001–014 and the Rust kernels must be ready.',
         checks: result.checks,
       };
     }
@@ -77,7 +97,7 @@ export class PlatformController {
     return {
       items: await this.catalog(),
       mode: this.db.available ? 'database' : 'synthetic',
-      release: '0.4.0',
+      release: '0.5.0',
     };
   }
   @Get('api/v1/projects/:id') async project(@Param('id') id: string) {
@@ -97,12 +117,12 @@ export class PlatformController {
   }
   @Get('api/v1/capabilities') capabilities() {
     return {
-      release: '0.4.0',
+      release: '0.5.0',
       externalAi: 'organization-opt-in',
       officialSubmission: false,
-      officialForms: 'source-catalog-project-review',
+      officialForms: 'reviewed-mappings-deterministic-pdf',
       dvc: 'manual-handoff',
-      lottery: false,
+      lottery: 'synthetic-reviewed-cohorts',
       zaloTokenExchange: false,
     };
   }
@@ -124,6 +144,13 @@ export class PlatformController {
     DossierController,
     AssistanceController,
     PartnerController,
+    PrivacyController,
+    LotteryController,
+    OperationsController,
+    InventoryController,
+    DocumentController,
+    ApplicationController,
+    InternalFileController,
   ],
   providers: [
     HealthService,
@@ -137,6 +164,18 @@ export class PlatformController {
     PartnerService,
     OpenAiService,
     OpenAiTransport,
+    PrivacyService,
+    LotteryService,
+    OperationsService,
+    InventoryService,
+    DocumentService,
+    DocumentStorage,
+    DocumentScanner,
+    FormService,
+    ApplicationService,
+    InternalFileService,
+    { provide: APP_GUARD, useClass: WorkforceAccessGuard },
+    { provide: APP_GUARD, useClass: PrivacyGuard },
   ],
 })
 export class AppModule {}

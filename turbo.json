@@ -21,5 +21,6 @@
     "@noxh/ui#build": {
       "outputs": []
     }
-  }
+  },
+  "globalDependencies": ["Cargo.toml", "Cargo.lock", "crates/**", "tests/fixtures/**"]
 }

@@ -92,8 +92,8 @@ export function ProjectForms({ id }: { id: string }) {
       <div className="help-note amber">
         <Icon name="shield" />
         <p>
-          Giấy xác nhận phải do đúng cơ quan có thẩm quyền xác nhận. Chức năng đọc giấy tờ và xuất
-          bộ PDF đã điền đang được triển khai; bản này chưa tạo bộ hồ sơ hoàn chỉnh tự động.
+          Giấy xác nhận phải do đúng cơ quan có thẩm quyền xác nhận. Dùng mục điền mẫu phía trên để
+          tạo PDF theo mẫu và ánh xạ được duyệt; kiểm tra từng trường trước khi in hoặc sử dụng.
         </p>
       </div>
     </>

@@ -1,3 +1,23 @@
+# v0.5 — Bản tích hợp đang nghiệm thu
+
+BDSG Foundation · MIT · cập nhật 2026-10-15. Mã nguồn đang được mở rộng theo yêu cầu chủ dự án; không công bố tỷ lệ hoàn thành 100% hoặc chứng nhận pháp lý/bảo mật.
+
+Đã có mã triển khai cho các phân hệ: thông báo/đồng ý/quyền dữ liệu; giấy tờ riêng tư và quét an toàn; trích xuất OpenAI có xác nhận; PDF theo ánh xạ được duyệt và gói ZIP; tiếp nhận/bổ sung/thẩm định/quyết định/xem xét lại; nhân viên/phòng ban/quy trình/wiki/lưu trữ/sổ nội bộ; bảng hàng/hệ số giá/lượt chọn; tập hồ sơ bốc thăm, commitment/entropy/chứng nhận/công bố và verifier Node/Python/Rust. Hướng dẫn chi tiết trong README và ma trận nghiệm thu.
+
+Runtime đã dùng ba bộ xử lý Rust bắt buộc: `lottery-runner` cho thực hiện/tái lập bốc thăm, `pricing-engine` cho tính giá số nguyên chính xác, `audit-verifier` cho kiểm chứng chuỗi nhật ký. NestJS vẫn xử lý phân quyền, giao dịch và lưu trữ; ghi hash sự kiện audit hiện thực hiện phía Node. Không có fallback Node khi các bộ xử lý Rust không sẵn sàng. Bốc thăm/tạo bảng giá dừng với 503 khi không có kết quả hợp lệ. Nhật ký vẫn đọc được nhưng thể hiện chưa kiểm chứng (`valid: null`, `engine: unavailable`); không tự coi lỗi hoặc quá giới hạn là chuỗi hợp lệ.
+
+Toolchain được khóa **Rust 1.99.0** trong `rust-toolchain.toml`, CI và tầng build Docker. `pnpm build`/`pnpm check` dựng native trước Node; Docker chứa binary dưới `/opt/noxh/bin/`. Chạy host cần `pnpm native:build` và cấu hình đường dẫn tuyệt đối cho `LOTTERY_ENGINE_BIN`, `PRICING_ENGINE_BIN`, `AUDIT_VERIFIER_BIN`. Readiness kiểm tra ba tệp thực thi cùng Postgres/Redis/migrations, không thay kiểm thử hay chứng nhận thuật toán. Xem [ADR 015](adr/015-mandatory-rust-kernels.md) và [hướng dẫn chạy](../README.md).
+
+Tích hợp thật chưa được nghiệm thu với Zalo/OpenAI/API cơ quan nhà nước. Bốc thăm và phân căn hiện chỉ diễn tập. Chưa có tài khoản API cơ quan để đồng bộ tự động. Danh mục nguồn/mẫu không đồng nghĩa đã rà soát mọi địa phương và mọi chế độ vốn/đối tượng; nhóm mới và quy định chuyển tiếp phải được pháp chế chốt. Sổ nội bộ chưa phải ERP/kế toán thuế đầy đủ. Runtime DB tối thiểu, ký số/checkpoint ngoài máy, rà soát bảo mật độc lập và pilot còn là điều kiện phát hành thật.
+
+Kết quả kiểm tra bản tích hợp được cập nhật trong VALIDATION.md sau khi chạy, không suy ra từ việc có thư mục hoặc giao diện.
+
+---
+
+## Lịch sử v0.4
+
+Phần dưới là ghi nhận tại thời điểm v0.4; các mục “Still missing” ở đây không phải danh sách thiếu hiện hành. Dùng phần v0.5 phía trên và [ma trận hiện hành](IMPLEMENTATION-MATRIX.md) để đánh giá bản tích hợp.
+
 # v0.4 — Preparation, OpenAI, DVC and partner workspaces
 
 BDSG Foundation · MIT. Development software; the full blueprint is **not complete**. See [implementation matrix](IMPLEMENTATION-MATRIX.md). Scope expanded by owner requests on 2026-10-15; the imported Sprint 0 limit is historical.

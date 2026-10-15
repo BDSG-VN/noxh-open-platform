@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "turbo run dev",
-    "build": "turbo run build",
+    "build": "pnpm native:build && pnpm build:node",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
     "typecheck": "turbo run typecheck",
@@ -19,7 +19,11 @@
     "test:db": "node --test tests/database.integration.mjs",
     "check:openapi": "node scripts/check-openapi.mjs",
     "check:secrets": "node scripts/check-secrets.mjs",
-    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm check:openapi && pnpm check:secrets"
+    "check": "pnpm native:build && pnpm lint && pnpm typecheck && pnpm test && pnpm check:openapi && pnpm check:secrets && pnpm check:fonts",
+    "check:fonts": "node scripts/check-fonts.mjs",
+    "native:build": "cargo build --workspace --release --locked",
+    "native:test": "cargo test --workspace --locked",
+    "build:node": "turbo run build"
   },
   "devDependencies": {
     "@apidevtools/swagger-parser": "12.1.0",

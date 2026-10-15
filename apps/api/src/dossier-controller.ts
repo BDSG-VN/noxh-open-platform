@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Patch, Headers, Param, Body, Inject } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Headers, Param, Body, Inject, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import { PhoneService } from './phone-service';
 import { WorkforceAuth } from './workforce';
 import { DossierService } from './dossier-service';
@@ -61,5 +62,16 @@ export class DossierController {
   }
   @Get('admin/audit') async audit(@Headers('authorization') h: unknown) {
     return this.service.audit(await this.staff.authenticate(h));
+  }
+  @Get('admin/audit/export') async auditExport(
+    @Headers('authorization') h: unknown,
+    @Res() res: Response,
+  ) {
+    const evidence = await this.service.auditExport(await this.staff.authenticate(h));
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="noxh-audit-evidence.json"');
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.send(JSON.stringify(evidence));
   }
 }
