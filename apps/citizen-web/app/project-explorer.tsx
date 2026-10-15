@@ -1,52 +1,51 @@
 'use client';
 import { useState } from 'react';
 import type { Project } from '@noxh/contracts';
-import { Card, CardHeader, CardTitle, CardContent } from '@noxh/ui';
+import { Icon } from '@noxh/ui';
+import ArchitectureArt from './architecture-art';
 export default function ProjectExplorer({ projects }: { projects: Project[] }) {
   const [query, setQuery] = useState('');
   const filtered = projects.filter((p) =>
-    `${p.name} ${p.locality}`.toLocaleLowerCase('vi').includes(query.toLocaleLowerCase('vi')),
+    (p.name + ' ' + p.locality).toLocaleLowerCase('vi').includes(query.toLocaleLowerCase('vi')),
   );
   return (
     <>
-      <label htmlFor="project-search" className="text-sm">
-        Tìm trong danh mục giả lập
-      </label>
-      <input
-        id="project-search"
-        className="search-input"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Nhập tên dự án hoặc địa bàn…"
-      />
-      <div aria-live="polite" className="mb-4 text-sm text-muted-foreground">
-        {filtered.length} dự án mẫu
+      <div className="toolbar">
+        <input
+          aria-label="Tìm tên dự án hoặc địa bàn"
+          className="search-input"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Tìm tên dự án hoặc địa bàn…"
+        />
+        <small aria-live="polite">{filtered.length} dự án phù hợp</small>
       </div>
-      <div className="grid-two">
+      <div className="grid-three">
         {filtered.map((p) => (
-          <Card key={p.id}>
-            <CardHeader>
-              <div className="project-art" aria-hidden="true">
-                ▥
-              </div>
-              {p.synthetic && <span className="pill w-fit mt-3">DỮ LIỆU GIẢ LẬP</span>}
-              <CardTitle>{p.name}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p>{p.locality}</p>
-              <p className="text-sm">
-                {p.phase === 'intake'
-                  ? 'Minh họa giai đoạn tiếp nhận'
-                  : 'Minh họa giai đoạn chuẩn bị'}
+          <article className="project-card" key={p.id}>
+            <div className="project-card-art">
+              <ArchitectureArt />
+            </div>
+            <div className="project-card-content">
+              <span className="status-badge blue">
+                {p.synthetic ? 'Dữ liệu giả lập' : 'Đã công bố'}
+              </span>
+              <h3>{p.name}</h3>
+              <p style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+                <Icon name="pin" size={14} />
+                {p.locality}
               </p>
-              <a className="font-bold text-sm" href={`/projects/${p.id}`}>
-                Xem cấu trúc dự án →
-              </a>
-            </CardContent>
-          </Card>
+              <div className="card-bottom">
+                <small style={{ fontSize: 10, color: '#8598a2' }}>Chuẩn bị hồ sơ</small>
+                <a className="text-link" href={'/projects/' + p.id}>
+                  Xem dự án <Icon name="arrow" size={14} />
+                </a>
+              </div>
+            </div>
+          </article>
         ))}
       </div>
-      {filtered.length === 0 && <p>Không có dự án mẫu phù hợp.</p>}
+      {!filtered.length && <p>Không có dự án phù hợp. Hãy thử tên hoặc địa bàn khác.</p>}
     </>
   );
 }

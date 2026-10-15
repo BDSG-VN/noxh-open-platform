@@ -1,6 +1,9 @@
 'use client';
-import { useState } from 'react';
-import { Button, Card, CardHeader, CardTitle, CardContent } from '@noxh/ui';
+import { useEffect, useState } from 'react';
+import { Button, Icon, Brand, PageHeading, EmptyState } from '@noxh/ui';
+import type { SupportRequest } from '@noxh/contracts';
+import { LegalTemplates, OpenAiSettings } from './integrations';
+import Partners from './partners';
 export interface ProjectRow {
   id: string;
   name: string;
@@ -144,6 +147,11 @@ function ProjectEditor({ project }: { project?: ProjectRow }) {
     </form>
   );
 }
+function vietnamDate(value: string) {
+  const d = new Date(value + (value.length === 16 ? ':00' : '') + '+07:00');
+  if (!Number.isFinite(d.getTime())) throw new Error('Hãy nhập đầy đủ ngày và giờ Việt Nam');
+  return d.toISOString();
+}
 function localDate(value: string) {
   return new Date(new Date(value).getTime() + 7 * 3600000).toISOString().slice(0, 16);
 }
@@ -151,8 +159,6 @@ function RoundEditor({ projects, round }: { projects: ProjectRow[]; round?: Roun
   const [projectId, setProject] = useState(round?.project_id ?? projects[0]?.id ?? ''),
     [name, setName] = useState(round?.name ?? ''),
     [status, setStatus] = useState(round?.status ?? 'draft'),
-    [opensAt, setOpen] = useState(round ? localDate(round.opens_at) : ''),
-    [closesAt, setClose] = useState(round ? localDate(round.closes_at) : ''),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
   return (
@@ -160,6 +166,7 @@ function RoundEditor({ projects, round }: { projects: ProjectRow[]; round?: Roun
       className="status-panel"
       onSubmit={async (e) => {
         e.preventDefault();
+        const submitted = new FormData(e.currentTarget);
         setBusy(true);
         try {
           await mutation(
@@ -168,8 +175,8 @@ function RoundEditor({ projects, round }: { projects: ProjectRow[]; round?: Roun
               projectId,
               name,
               status,
-              opensAt: new Date(opensAt + ':00+07:00').toISOString(),
-              closesAt: new Date(closesAt + ':00+07:00').toISOString(),
+              opensAt: vietnamDate(String(submitted.get('opensAt') ?? '')),
+              closesAt: vietnamDate(String(submitted.get('closesAt') ?? '')),
             },
             round ? 'PUT' : 'POST',
             round?.version,
@@ -213,8 +220,8 @@ function RoundEditor({ projects, round }: { projects: ProjectRow[]; round?: Roun
           className="search-input"
           type="datetime-local"
           required
-          value={opensAt}
-          onChange={(e) => setOpen(e.target.value)}
+          name="opensAt"
+          defaultValue={round ? localDate(round.opens_at) : ''}
         />
       </label>
       <label>
@@ -223,8 +230,8 @@ function RoundEditor({ projects, round }: { projects: ProjectRow[]; round?: Roun
           className="search-input"
           type="datetime-local"
           required
-          value={closesAt}
-          onChange={(e) => setClose(e.target.value)}
+          name="closesAt"
+          defaultValue={round ? localDate(round.closes_at) : ''}
         />
       </label>
       <label>
@@ -364,11 +371,290 @@ function ZaloSettings({ settings }: { settings: SettingsRow }) {
     </form>
   );
 }
+const dateLabel = (s: string) =>
+  new Date(s).toLocaleString('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    dateStyle: 'short',
+    timeStyle: 'short',
+  });
+async function query(path: string) {
+  const r = await fetch('/api/admin/' + path, { cache: 'no-store' });
+  const b = await r.json();
+  if (!r.ok) throw new Error(b.detail ?? 'Chưa tải được dữ liệu');
+  return b;
+}
+function RequestQueue() {
+  const [items, setItems] = useState<SupportRequest[]>([]),
+    [error, setError] = useState(''),
+    [loading, setLoading] = useState(true),
+    [reply, setReply] = useState(''),
+    [selected, setSelected] = useState<SupportRequest>(),
+    [busy, setBusy] = useState(false),
+    [filter, setFilter] = useState('open');
+  useEffect(() => {
+    let live = true;
+    query('requests')
+      .then((b) => {
+        if (live) setItems(b.items);
+      })
+      .catch((e) => {
+        if (live) setError(e.message);
+      })
+      .finally(() => {
+        if (live) setLoading(false);
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
+  const visible = items.filter((r) => filter === 'all' || r.status === filter);
+  return (
+    <div className="stack">
+      <div className="toolbar">
+        <select
+          aria-label="Lọc yêu cầu"
+          className="search-input"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+        >
+          <option value="open">Chờ phản hồi</option>
+          <option value="responded">Đã phản hồi</option>
+          <option value="closed">Đã đóng</option>
+          <option value="all">Tất cả yêu cầu</option>
+        </select>
+        <small>{visible.length} yêu cầu · Tối đa 200 yêu cầu gần nhất</small>
+      </div>
+      {error && (
+        <p role="alert" className="feedback error">
+          {error}
+        </p>
+      )}
+      <section className="surface">
+        {loading ? (
+          <div className="surface-body">Đang tải yêu cầu…</div>
+        ) : !visible.length ? (
+          <EmptyState
+            title="Không có yêu cầu trong mục này"
+            description="Yêu cầu người dân gửi từ hồ sơ chuẩn bị sẽ xuất hiện ở đây."
+          />
+        ) : (
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Yêu cầu</th>
+                  <th>Dự án</th>
+                  <th>Trạng thái</th>
+                  <th>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visible.map((r) => (
+                  <tr key={r.id}>
+                    <td>
+                      <strong>YC-{r.id.slice(-8).toUpperCase()}</strong>
+                      <small>{dateLabel(r.created_at)}</small>
+                    </td>
+                    <td>{r.project_name}</td>
+                    <td>
+                      <span className={'status-badge ' + (r.status === 'open' ? 'amber' : 'green')}>
+                        {r.status === 'open'
+                          ? 'Chờ phản hồi'
+                          : r.status === 'responded'
+                            ? 'Đã phản hồi'
+                            : 'Đã đóng'}
+                      </span>
+                    </td>
+                    <td>
+                      <button
+                        className="text-button"
+                        onClick={() => {
+                          setSelected(r);
+                          setReply('');
+                          setError('');
+                        }}
+                      >
+                        Mở yêu cầu →
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+      {selected && (
+        <section className="surface">
+          <div className="surface-head">
+            <h2 className="section-title">YC-{selected.id.slice(-8).toUpperCase()}</h2>
+            <button className="text-button" onClick={() => setSelected(undefined)}>
+              Đóng chi tiết
+            </button>
+          </div>
+          <div className="surface-body">
+            <span className="kicker">NỘI DUNG KHÁCH HÀNG ĐÃ CHIA SẺ</span>
+            <p className="request-message">{selected.message}</p>
+            {selected.reply && <div className="request-reply">{selected.reply}</div>}
+            {selected.status === 'open' && (
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  setBusy(true);
+                  setError('');
+                  try {
+                    await mutation(
+                      'requests/' + selected.id + '/reply',
+                      { message: reply },
+                      'POST',
+                      selected.version,
+                    );
+                    const b = await query('requests');
+                    setItems(b.items);
+                    setSelected(undefined);
+                    setReply('');
+                  } catch (e) {
+                    setError(e instanceof Error ? e.message : 'Không gửi được');
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                <label>
+                  Phản hồi hướng dẫn
+                  <textarea
+                    className="search-input"
+                    required
+                    maxLength={2000}
+                    value={reply}
+                    onChange={(e) => setReply(e.target.value)}
+                  />
+                </label>
+                <Button disabled={busy}>{busy ? 'Đang gửi…' : 'Gửi phản hồi'}</Button>
+              </form>
+            )}
+            <div className="help-note">
+              <Icon name="shield" />
+              <p>
+                Đây là hỗ trợ chuẩn bị, chưa phải thụ lý hoặc xét duyệt hồ sơ pháp lý. Chỉ nội dung
+                người dân đồng ý chia sẻ được hiển thị.
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+const actionLabels: Record<string, string> = {
+  'declaration.saved': 'Lưu bản khai',
+  'readiness.assessed': 'Đánh giá mức độ chuẩn bị',
+  'support.requested': 'Gửi yêu cầu hỗ trợ',
+  'support.responded': 'Phản hồi hỗ trợ',
+  'support.closed': 'Đóng yêu cầu',
+  'citizen.login': 'Khách hàng đăng nhập',
+  'phone.challenge.requested': 'Yêu cầu xác thực',
+  'project.created': 'Tạo dự án',
+  'project.updated': 'Cập nhật dự án',
+  'project.archived': 'Lưu trữ dự án',
+  'round.created': 'Tạo lịch tiếp nhận',
+  'round.updated': 'Cập nhật lịch',
+  'zalo.settings.updated': 'Cập nhật Zalo OTP',
+  'dossier.prepared': 'Tạo hồ sơ chuẩn bị',
+};
+function AuditPanel() {
+  const [data, setData] = useState<{
+      verification: { valid: boolean | null; checked: number; reason?: string };
+      items: {
+        id: string;
+        action: string;
+        resource_ref: string;
+        occurred_at: string;
+        event_hash: string;
+      }[];
+    }>(),
+    [error, setError] = useState('');
+  useEffect(() => {
+    let live = true;
+    query('audit')
+      .then((b) => {
+        if (live) setData(b);
+      })
+      .catch((e) => {
+        if (live) setError(e.message);
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
+  if (error)
+    return (
+      <p role="alert" className="feedback error">
+        {error}
+      </p>
+    );
+  if (!data) return <p>Đang kiểm tra chuỗi nhật ký…</p>;
+  return (
+    <div className="stack">
+      <div className={'help-note ' + (data.verification.valid === true ? '' : 'amber')}>
+        <Icon name="shield" />
+        <p>
+          {data.verification.valid === true
+            ? `Đã kiểm tra ${data.verification.checked} sự kiện trong chuỗi; các liên kết và mã băm khớp.`
+            : (data.verification.reason ??
+              'Phát hiện chuỗi không khớp. Cần kiểm tra nhật ký.')}{' '}
+          Chuỗi bắt đầu từ phiên bản 0.3; chưa có checkpoint độc lập ngoài máy chủ.
+        </p>
+      </div>
+      <section className="surface">
+        <div className="surface-head">
+          <h2 className="section-title">100 sự kiện gần nhất</h2>
+          <span className="status-badge blue">Chỉ đọc</span>
+        </div>
+        <div className="table-scroll">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Thời điểm Việt Nam</th>
+                <th>Thao tác</th>
+                <th>Tài nguyên</th>
+                <th>Mã kiểm tra</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.items.map((r) => (
+                <tr key={r.id}>
+                  <td>{dateLabel(r.occurred_at)}</td>
+                  <td>
+                    <strong>{actionLabels[r.action] ?? r.action}</strong>
+                  </td>
+                  <td>
+                    <small>{r.resource_ref.slice(-12)}</small>
+                  </td>
+                  <td>
+                    <code>{r.event_hash.slice(0, 12)}…</code>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {!data.items.length && (
+          <EmptyState
+            title="Chưa có sự kiện trong chuỗi mới"
+            description="Các thao tác tiếp theo sẽ được nối vào nhật ký kiểm tra."
+          />
+        )}
+      </section>
+    </div>
+  );
+}
 export default function AdminWorkbench({
   projects,
   rounds,
   settings,
   counts,
+  initialTab = 'overview',
 }: {
   projects: ProjectRow[];
   rounds: RoundRow[];
@@ -379,59 +665,366 @@ export default function AdminWorkbench({
     preparatory_dossiers: number;
     citizen_accounts: number;
   };
+  initialTab?: string;
 }) {
-  const [tab, setTab] = useState('overview');
+  const tabs = [
+    ['overview', 'Tổng quan', 'grid'],
+    ['projects', 'Quản lý dự án', 'building'],
+    ['rounds', 'Lịch tiếp nhận', 'calendar'],
+    ['requests', 'Hỗ trợ khách hàng', 'chat'],
+    ['forms', 'Biểu mẫu & pháp lý', 'file'],
+    ['partners', 'Đối tác & marketing', 'user'],
+    ['openai', 'Cấu hình trợ lý AI', 'settings'],
+    ['audit', 'Nhật ký hoạt động', 'shield'],
+    ...(settings ? [['zalo', 'Cấu hình Zalo OTP', 'settings']] : []),
+  ];
+  const [tab, setTab] = useState(tabs.some((t) => t[0] === initialTab) ? initialTab : 'overview'),
+    [search, setSearch] = useState(''),
+    [editing, setEditing] = useState<string | null>(null);
+  const select = (id: string) => {
+    setTab(id);
+    setEditing(null);
+    setSearch('');
+    window.history.replaceState(null, '', '?tab=' + id);
+  };
+  const current = tabs.find((t) => t[0] === tab)!;
+  const filtered = projects.filter((p) =>
+    (p.name + ' ' + p.locality).toLocaleLowerCase('vi').includes(search.toLocaleLowerCase('vi')),
+  );
+  const descriptions: Record<string, string> = {
+    overview: 'Theo dõi dự án, lịch tiếp nhận và hoạt động chuẩn bị hồ sơ.',
+    projects: 'Công bố thông tin dự án để khách hàng khám phá và bắt đầu chuẩn bị hồ sơ.',
+    rounds: 'Tạo và điều chỉnh thời gian cho từng đợt tiếp nhận của dự án.',
+    requests: 'Tiếp nhận câu hỏi và phản hồi hướng dẫn từ cùng một nơi.',
+    partners: 'Quản lý đối tác, phân quyền nhân viên, giao dự án và duyệt chiến dịch truyền thông.',
+    forms: 'Rà soát mẫu nguồn và công bố hướng dẫn cho khách theo từng dự án.',
+    openai: 'Quản lý OpenAI API, mô hình và hạn mức sử dụng cho tổ chức.',
+    audit: 'Kiểm tra các thao tác và tính toàn vẹn của chuỗi sự kiện.',
+    zalo: 'Chủ đầu tư tự cấu hình kênh xác thực điện thoại cho khách hàng.',
+  };
   return (
-    <>
-      <nav className="navigation my-6" aria-label="Phân hệ quản trị">
-        {[
-          ['overview', 'Tổng quan'],
-          ['projects', 'Dự án'],
-          ['rounds', 'Lịch tiếp nhận'],
-          ...(settings ? [['zalo', 'Zalo OTP']] : []),
-        ].map(([id, label]) => (
-          <Button key={id} variant={tab === id ? 'default' : 'outline'} onClick={() => setTab(id!)}>
-            {label}
-          </Button>
-        ))}
-      </nav>
-      {tab === 'overview' && (
-        <div className="grid-two">
-          {[
-            ['Dự án đang quản lý', counts.projects],
-            ['Lịch đang mở', counts.open_rounds],
-            ['Hồ sơ chuẩn bị', counts.preparatory_dossiers],
-            ['Tài khoản khách', counts.citizen_accounts],
-          ].map(([label, count]) => (
-            <Card key={label}>
-              <CardHeader>
-                <CardTitle className="text-lg">{label}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <strong className="text-4xl">{count}</strong>
-                <p className="text-sm">Cập nhật theo dữ liệu hiện có.</p>
-              </CardContent>
-            </Card>
+    <div className="workspace">
+      <aside className="workspace-sidebar">
+        <Brand compact />
+        <div className="workspace-label">QUẢN TRỊ CHỦ ĐẦU TƯ</div>
+        <nav aria-label="Phân hệ quản trị">
+          {tabs.map(([id, label, icon]) => (
+            <button
+              type="button"
+              key={id}
+              className={tab === id ? 'active' : ''}
+              aria-current={tab === id ? 'page' : undefined}
+              onClick={() => select(id!)}
+            >
+              <Icon name={icon} />
+              {label}
+            </button>
           ))}
+        </nav>
+        <div className="sidebar-bottom">
+          <Icon name="shield" />
+          <strong>Không gian quản trị bảo vệ</strong>
+          <p>Xác thực đa yếu tố. Thao tác được lưu trong nhật ký.</p>
+          <a href="https://github.com/BDSG-VN/noxh-open-platform">BDSG Foundation ↗</a>
         </div>
-      )}
-      {tab === 'projects' && (
-        <div className="grid-two">
-          <ProjectEditor />
+      </aside>
+      <div className="workspace-main">
+        <header className="workspace-top">
+          <span>Không gian chủ đầu tư / {current[1]}</span>
+          <div className="top-actions">
+            <span className="environment-dot">Bản phát triển</span>
+            <StaffLogout />
+          </div>
+        </header>
+        <main className="workspace-content">
+          <PageHeading
+            eyebrow="BDSG FOUNDATION / NOXH OPEN PLATFORM"
+            title={current[1]!}
+            description={descriptions[tab]!}
+            action={
+              ['projects', 'rounds'].includes(tab) ? (
+                <Button onClick={() => setEditing(editing === null ? 'new' : null)}>
+                  <Icon name="plus" size={17} />
+                  {editing === null
+                    ? tab === 'projects'
+                      ? 'Thêm dự án'
+                      : 'Tạo đợt tiếp nhận'
+                    : 'Về danh sách'}
+                </Button>
+              ) : undefined
+            }
+          />
+          {tab === 'overview' && (
+            <>
+              <div className="metric-grid">
+                {[
+                  ['Dự án đang quản lý', counts.projects, 'building'],
+                  ['Lịch đang mở', counts.open_rounds, 'calendar'],
+                  ['Hồ sơ chuẩn bị', counts.preparatory_dossiers, 'folder'],
+                  ['Tài khoản khách', counts.citizen_accounts, 'user'],
+                ].map(([label, count, icon]) => (
+                  <div className="metric" key={label}>
+                    <Icon name={String(icon)} />
+                    <span>{label}</span>
+                    <strong>{count}</strong>
+                    <small>Dữ liệu từ hệ thống</small>
+                  </div>
+                ))}
+              </div>
+              <div className="content-columns">
+                <div className="stack">
+                  <section className="surface">
+                    <div className="surface-head">
+                      <div>
+                        <h2 className="section-title">Danh mục dự án</h2>
+                        <p className="section-subtitle">Trạng thái công bố mới nhất</p>
+                      </div>
+                      <button className="text-button" onClick={() => select('projects')}>
+                        Quản lý dự án →
+                      </button>
+                    </div>
+                    <ProjectTable
+                      projects={projects.slice(0, 5)}
+                      onEdit={(id) => {
+                        select('projects');
+                        setEditing(id);
+                      }}
+                    />
+                  </section>
+                  <section className="surface">
+                    <div className="surface-head">
+                      <h2 className="section-title">Lịch tiếp nhận</h2>
+                      <button className="text-button" onClick={() => select('rounds')}>
+                        Xem tất cả →
+                      </button>
+                    </div>
+                    <div className="surface-body">
+                      {rounds.length ? (
+                        rounds.slice(0, 3).map((r) => (
+                          <div className="timeline-row" key={r.id}>
+                            <Icon name="calendar" />
+                            <div>
+                              <strong>{r.name}</strong>
+                              <small>
+                                {r.project_name} · {dateLabel(r.opens_at)} —{' '}
+                                {dateLabel(r.closes_at)}
+                              </small>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <EmptyState
+                          title="Chưa có lịch tiếp nhận"
+                          description="Tạo một đợt cho dự án để công bố thời gian chuẩn bị."
+                        />
+                      )}
+                    </div>
+                  </section>
+                </div>
+                <div className="stack">
+                  <div className="welcome-banner" style={{ display: 'block' }}>
+                    <Icon name="chat" size={30} />
+                    <h2 style={{ fontSize: 20, marginTop: 18 }}>Đồng hành cùng khách hàng</h2>
+                    <p>Trả lời câu hỏi về quy trình và hướng dẫn chuẩn bị hồ sơ.</p>
+                    <Button variant="secondary" className="mt-5" onClick={() => select('requests')}>
+                      Mở yêu cầu hỗ trợ <Icon name="arrow" size={15} />
+                    </Button>
+                  </div>
+                  <section className="surface">
+                    <div className="surface-body">
+                      <h3>Thiết lập vận hành</h3>
+                      {[
+                        [
+                          'Dự án đã công bố',
+                          projects.some((p) => p.publication_status === 'published'),
+                        ],
+                        ['Lịch tiếp nhận', rounds.length > 0],
+                        ['Xác thực Zalo OTP', Boolean(settings?.enabled)],
+                      ].map(([label, done]) => (
+                        <div className="checklist-item" key={String(label)}>
+                          <span className={'checklist-marker ' + (done ? 'done' : '')}>
+                            <Icon name={done ? 'check' : 'clock'} size={13} />
+                          </span>
+                          {label}
+                        </div>
+                      ))}
+                      <div className="help-note amber">
+                        <p>
+                          Biểu mẫu pháp lý, nộp đơn và xét duyệt chưa được tích hợp. Lịch tiếp nhận
+                          hiện dùng để công bố thời gian.
+                        </p>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </div>
+            </>
+          )}
+          {tab === 'projects' &&
+            (editing !== null ? (
+              <section className="surface">
+                <ProjectEditor key={editing} project={projects.find((p) => p.id === editing)} />
+              </section>
+            ) : (
+              <>
+                <div className="toolbar">
+                  <input
+                    className="search-input"
+                    aria-label="Tìm dự án"
+                    placeholder="Tìm tên dự án hoặc địa bàn…"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                  <small>{filtered.length} dự án</small>
+                </div>
+                <section className="surface">
+                  <ProjectTable projects={filtered} onEdit={setEditing} />
+                </section>
+              </>
+            ))}
+          {tab === 'rounds' &&
+            (editing !== null ? (
+              <section className="surface">
+                <RoundEditor
+                  key={editing}
+                  projects={projects}
+                  round={rounds.find((r) => r.id === editing)}
+                />
+              </section>
+            ) : (
+              <section className="surface">
+                {rounds.length ? (
+                  <div className="table-scroll">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Đợt tiếp nhận / dự án</th>
+                          <th>Thời gian Việt Nam</th>
+                          <th>Trạng thái</th>
+                          <th>Thao tác</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rounds.map((r) => (
+                          <tr key={r.id}>
+                            <td>
+                              <strong>{r.name}</strong>
+                              <small>{r.project_name}</small>
+                            </td>
+                            <td>
+                              <small>
+                                {dateLabel(r.opens_at)}
+                                <br />
+                                {dateLabel(r.closes_at)}
+                              </small>
+                            </td>
+                            <td>
+                              <span
+                                className={
+                                  'status-badge ' + (r.status === 'open' ? 'green' : 'amber')
+                                }
+                              >
+                                {r.status === 'open'
+                                  ? 'Mở lịch'
+                                  : r.status === 'closed'
+                                    ? 'Đã đóng'
+                                    : 'Bản nháp'}
+                              </span>
+                            </td>
+                            <td>
+                              <button className="text-button" onClick={() => setEditing(r.id)}>
+                                Chỉnh sửa →
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <EmptyState
+                    title="Chưa có lịch tiếp nhận"
+                    description="Tạo đợt tiếp nhận đầu tiên cho một dự án đang quản lý."
+                  />
+                )}
+              </section>
+            ))}
+          {tab === 'requests' && <RequestQueue />}
+          {tab === 'forms' && <LegalTemplates projects={projects} />}
+          {tab === 'partners' && <Partners projects={projects} />}
+          {tab === 'openai' && <OpenAiSettings />}
+          {tab === 'audit' && <AuditPanel />}
+          {tab === 'zalo' && settings && (
+            <section className="surface">
+              <ZaloSettings settings={settings} />
+            </section>
+          )}
+        </main>
+        <footer className="workspace-footer">
+          NOXH Open Platform · BDSG Foundation · MIT · Dữ liệu demo không dùng cho xét duyệt thật
+        </footer>
+      </div>
+    </div>
+  );
+}
+function ProjectTable({
+  projects,
+  onEdit,
+}: {
+  projects: ProjectRow[];
+  onEdit: (id: string) => void;
+}) {
+  return projects.length ? (
+    <div className="table-scroll">
+      <table className="data-table">
+        <thead>
+          <tr>
+            <th>Tên dự án</th>
+            <th>Địa bàn</th>
+            <th>Công bố</th>
+            <th>Thao tác</th>
+          </tr>
+        </thead>
+        <tbody>
           {projects.map((p) => (
-            <ProjectEditor key={p.id} project={p} />
+            <tr key={p.id}>
+              <td>
+                <div className="table-project">
+                  <span className="table-icon">
+                    <Icon name="building" />
+                  </span>
+                  <div>
+                    <strong>{p.name}</strong>
+                    <small>
+                      {p.is_synthetic ? 'Dữ liệu giả lập · ' : ''}Phiên bản {p.version}
+                    </small>
+                  </div>
+                </div>
+              </td>
+              <td>{p.locality}</td>
+              <td>
+                <span
+                  className={
+                    'status-badge ' + (p.publication_status === 'published' ? 'green' : 'amber')
+                  }
+                >
+                  {p.publication_status === 'published' ? 'Đã công bố' : 'Bản nháp'}
+                </span>
+              </td>
+              <td>
+                <button className="text-button" onClick={() => onEdit(p.id)}>
+                  Quản lý →
+                </button>
+              </td>
+            </tr>
           ))}
-        </div>
-      )}
-      {tab === 'rounds' && (
-        <div className="grid-two">
-          <RoundEditor projects={projects} />
-          {rounds.map((r) => (
-            <RoundEditor key={r.id} projects={projects} round={r} />
-          ))}
-        </div>
-      )}
-      {tab === 'zalo' && settings && <ZaloSettings settings={settings} />}
-    </>
+        </tbody>
+      </table>
+    </div>
+  ) : (
+    <EmptyState
+      title="Chưa có dự án phù hợp"
+      description="Thêm dự án mới hoặc thay đổi từ khóa tìm kiếm."
+    />
   );
 }

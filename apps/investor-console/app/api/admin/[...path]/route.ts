@@ -6,7 +6,7 @@ async function handler(request: NextRequest, context: { params: Promise<{ path: 
     const segments = (await context.params).path;
     const path = segments.join('/');
     const allowed =
-      /^(dashboard|me|projects|rounds|settings\/zalo|logout|(?:projects|rounds)\/[a-f0-9-]{36})$/.test(
+      /^(dashboard|me|projects|rounds|partners(?:\/[a-f0-9-]{36}(?:\/members(?:\/[a-f0-9-]{36})?)?)?|partner-campaigns(?:\/[a-f0-9-]{36}\/review)?|requests|audit|requests\/[a-f0-9-]{36}\/reply|settings\/(?:zalo|openai)|legal\/catalog|projects\/[a-f0-9-]{36}\/forms(?:\/[a-f0-9-]{36}\/review)?|logout|(?:projects|rounds)\/[a-f0-9-]{36})$/.test(
         path,
       );
     if (!allowed) throw new BffError(404, 'Đường dẫn không được hỗ trợ');

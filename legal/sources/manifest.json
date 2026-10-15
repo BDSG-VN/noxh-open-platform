@@ -1,0 +1,56 @@
+[
+  {
+    "id": "24-vbhn-bxd-2026",
+    "url": "https://datafiles.chinhphu.vn/cpp/files/vbpq/2026/5/24-vbhn-bxd.pdf",
+    "file": "24-vbhn-bxd-2026.pdf",
+    "sha256": "53e8ff502c4d549043472b50d5a684647247c7c7d5cb4fc26cd4954a55f533e3",
+    "bytes": 851154,
+    "retrievedOn": "2026-10-15",
+    "status": "source-verified-pending-legal-review"
+  },
+  {
+    "id": "24-vbhn-bxd-2026-phu-luc",
+    "url": "https://datafiles.chinhphu.vn/cpp/files/vbpq/2026/5/24-vbhn-bxd-pl.pdf",
+    "file": "24-vbhn-bxd-2026-phu-luc.pdf",
+    "sha256": "540dd1a4c94f32bdeef3cbc2e555fdf1de87594b07ab3ae75218e3cfa3aed6d9",
+    "bytes": 503411,
+    "retrievedOn": "2026-10-15",
+    "status": "source-verified-pending-legal-review"
+  },
+  {
+    "id": "17-vbhn-bxd-2026-cong-bao",
+    "url": "https://congbaocdn.chinhphu.vn/180507251028987904/2026/4/13/469222-1776072264_v1_1776073666_signed.pdf",
+    "file": "17-vbhn-bxd-2026-cong-bao.pdf",
+    "sha256": "f4237939ef14924d6c349f9bf2e7061357c0420bf36b6898a7ba0897e9d189df",
+    "bytes": 1322952,
+    "retrievedOn": "2026-10-15",
+    "status": "source-verified-pending-legal-review"
+  },
+  {
+    "id": "17-vbhn-bxd-2026-phu-luc",
+    "url": "https://moc.gov.vn/Images/FileVanBan/BXD_17-VBHN-BXD_24032026_Phuluc%281%29.pdf",
+    "file": "17-vbhn-bxd-2026-phu-luc.pdf",
+    "sha256": "69c09be0c3cee05960bb6940012c000f320da9a20a04e5785e63ca3ef5a3e1c7",
+    "bytes": 1183484,
+    "retrievedOn": "2026-10-15",
+    "status": "source-verified-pending-legal-review"
+  },
+  {
+    "id": "08-tt-bxd-2026-phu-luc",
+    "url": "https://www.moc.gov.vn/Images/FileVanBan/BXD_08-2026-TT-BXD_15022026_Phuluc.pdf",
+    "file": "08-tt-bxd-2026-phu-luc.pdf",
+    "sha256": "0311ff10ff1cf5bd22d61d5fef89612174ee31a236e654efda845986fa8a447c",
+    "bytes": 401297,
+    "retrievedOn": "2026-10-15",
+    "status": "source-verified-pending-legal-review"
+  },
+  {
+    "id": "79-vbhn-vpqh-2026",
+    "url": "https://congbaocdn.chinhphu.vn/180507251028987904/2026/4/10/469209-1775794482_v1_1775811756_signed.pdf",
+    "file": "79-vbhn-vpqh-2026.pdf",
+    "sha256": "3d1d5f070accd0646983c9733bd87043f601785547469130d04420eba2a76964",
+    "bytes": 2129191,
+    "retrievedOn": "2026-10-15",
+    "status": "source-verified-pending-legal-review"
+  }
+]

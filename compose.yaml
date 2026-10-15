@@ -10,7 +10,7 @@ x-node: &node
     REDIS_URL: redis://redis:6379
     INTERNAL_API_URL: http://api:4000
     ALLOW_SYNTHETIC_FIXTURES: 'true'
-    EXTERNAL_AI_ENABLED: 'false'
+    EXTERNAL_AI_ENABLED: '${EXTERNAL_AI_ENABLED:-false}'
     LOTTERY_PRODUCTION_ENABLED: 'false'
     AUTH_ORGANIZATION_ID: ${AUTH_ORGANIZATION_ID:-10000000-0000-4000-8000-000000000001}
     WORKFORCE_ISSUER: http://localhost:8080/realms/noxh
@@ -201,6 +201,26 @@ services:
           'node',
           '-e',
           "fetch('http://localhost:3001').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+  partner-console:
+    <<: *node
+    environment:
+      NODE_ENV: production
+      INTERNAL_API_URL: http://api:4000
+      PARTNER_PUBLIC_ORIGIN: '${PARTNER_PUBLIC_ORIGIN:-http://localhost:3004}'
+      CITIZEN_PUBLIC_ORIGIN: '${CITIZEN_PUBLIC_ORIGIN:-http://localhost:3000}'
+    command: ['pnpm', '--filter', '@noxh/partner-console', 'start']
+    ports: ['127.0.0.1:3004:3004']
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:3004/login').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
         ]
       interval: 10s
       timeout: 5s

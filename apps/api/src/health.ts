@@ -14,9 +14,9 @@ export class HealthService implements OnModuleDestroy {
       await this.pool.query('SELECT 1');
       checks.postgres = true;
       const r = await this.pool.query(
-        "SELECT version FROM schema_migrations WHERE version IN('001','002')",
+        "SELECT version FROM schema_migrations WHERE version IN('001','002','003','004','005')",
       );
-      checks.migration = r.rowCount === 2;
+      checks.migration = r.rowCount === 5;
     } catch {
       /* readiness stays false; never expose connection errors */
     }

@@ -27,6 +27,7 @@ beforeAll(async () => {
   for (const p of [
     'db/migrations/001_foundation.sql',
     'db/migrations/002_admin_and_phone_auth.sql',
+    'db/migrations/003_preparation_workflow.sql',
     'db/fixtures/seed.sql',
   ])
     await pg.exec(await readFile(resolve('../..', p), 'utf8'));

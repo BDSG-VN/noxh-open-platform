@@ -2,7 +2,7 @@
 
 Giải pháp mã nguồn mở của **BDSG Foundation** cho nhà ở xã hội: một chủ đầu tư, nhiều dự án, cổng công dân và kênh Zalo dùng chung backend. Giấy phép **MIT**.
 
-**v0.2: có backend quản trị chủ đầu tư, bảng điều khiển khách hàng và luồng OTP Zalo tự cấu hình. Bản phát triển, chưa nộp đơn pháp lý, xét duyệt hay bốc thăm.**
+**v0.4: quản trị dự án, đăng nhập điện thoại/Zalo OTP, hồ sơ hộ gia đình có phiên bản, checklist chuẩn bị và hỗ trợ khách hàng. Bản phát triển; chưa hoàn thành toàn bộ blueprint, chưa tiếp nhận hồ sơ pháp lý thật.**
 
 [![Sprint 0 validation](https://github.com/BDSG-VN/noxh-open-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/BDSG-VN/noxh-open-platform/actions/workflows/ci.yml) Blueprint v2 được lưu nguyên bản tại [docs/blueprint](docs/blueprint/README.md); lựa chọn MIT thay thế đề xuất AGPL trong tài liệu gốc.
 
@@ -29,11 +29,11 @@ docker compose --profile ai up --build --wait --wait-timeout 600
 docker compose down
 ```
 
-Không dùng `down -v` nếu cần giữ dữ liệu. Migration chạy trước API; seed chỉ chứa dữ liệu giả lập. `/health/ready` kiểm tra Postgres, Redis và migration; không chứng minh đăng nhập/storage/legal readiness. API danh mục đọc dự án đã công bố từ Postgres, có nhãn riêng cho dữ liệu giả lập.
+Không dùng `down -v` nếu cần giữ dữ liệu. Migration chạy trước API; seed chỉ chứa dữ liệu giả lập. `/health/ready` kiểm tra Postgres, Redis và migration 001–003; không chứng minh đăng nhập/storage/legal readiness. API danh mục đọc dự án đã công bố từ Postgres, có nhãn riêng cho dữ liệu giả lập.
 
 ## Đăng nhập và quản trị
 
-Xem [hướng dẫn thiết lập Keycloak, admin và Zalo OTP](docs/ADMIN-AND-ZALO.md). Không có tài khoản nhân sự mặc định; chủ đầu tư tạo nhân sự trong realm `noxh`, gán `org_admin` và đăng ký TOTP. Trang quản trị có quản lý dự án, lịch tiếp nhận, thống kê và cấu hình OA/template/token đã mã hóa. Khách đăng nhập tại `/login`, xem `/dashboard` và tạo hồ sơ chuẩn bị riêng.
+Xem [hướng dẫn thiết lập Keycloak, admin và Zalo OTP](docs/ADMIN-AND-ZALO.md). Không có tài khoản nhân sự mặc định; chủ đầu tư tạo nhân sự trong realm `noxh`, gán `org_admin` và đăng ký TOTP. Trang quản trị có quản lý dự án, lịch tiếp nhận, thống kê và cấu hình OA/template/token đã mã hóa. Khách đăng nhập tại `/login`, xem `/dashboard`, tạo hồ sơ chuẩn bị riêng và tiếp tục khai báo tại `/dossiers/:id`. Quản trị có hàng đợi hỗ trợ và nhật ký hoạt động. Xem [bảng đối chiếu toàn bộ yêu cầu](docs/IMPLEMENTATION-MATRIX.md).
 
 ## Phát triển không dùng Docker cho ứng dụng Node
 
@@ -98,3 +98,11 @@ Xem [trạng thái thực tế](docs/STATUS.md), [kết quả kiểm tra](docs/V
 Một số UI primitives lấy từ `AleksNeStu/ai-real-estate-assistant` theo MIT, giữ thông báo bản quyền trong [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Chi tiết [REUSE.md](docs/REUSE.md). Backend lõi được dựng mới bằng NestJS theo blueprint.
 
 Gửi issue/PR với phạm vi nhỏ, test và cập nhật tài liệu. Không đưa dữ liệu cá nhân, giấy tờ thật hoặc token vào issue. Xem [CONTRIBUTING.md](CONTRIBUTING.md) và [SECURITY.md](SECURITY.md). Phần mã công bố không đồng nghĩa đã được chứng nhận pháp lý/bảo mật.
+
+## Đối tác, chuyên viên và trợ lý
+
+Cổng đối tác: `http://localhost:3004`. Chủ đầu tư cấp đơn vị/dự án và tài khoản quản lý; đơn vị thêm nhân viên theo ba vai trò. Chiến dịch phải được chủ đầu tư duyệt trước khi khách mở trang tư vấn và chia sẻ liên hệ. Chuyên viên chỉ đọc/cập nhật các yêu cầu được giao; không có quyền mở hồ sơ riêng. Xem [hướng dẫn và ma trận quyền](docs/PARTNERS.md).
+
+Admin có **Biểu mẫu & pháp lý**, **Cấu hình trợ lý AI** và **Đối tác & marketing**. Khách có **Thủ tục trực tuyến**, **Trợ lý AI** và quản lý yêu cầu tư vấn. OpenAI cần deployment flag `EXTERNAL_AI_ENABLED=true`, sau đó chủ đầu tư tự nhập model/key/hạn mức trong admin; mặc định tắt. Không đưa khóa vào chat hoặc mã nguồn. [Thiết kế và giới hạn tích hợp](docs/adr/013-openai-dvc-legal-sources.md), [nguồn pháp lý và phạm vi chưa xác minh](legal/README.md).
+
+DVC hiện mở đúng thủ tục và lưu biên nhận do khách tự cập nhật; chưa có API được cấp quyền để đồng bộ trạng thái chính thức. AI tạo đề xuất và thực hiện một số thao tác sau xác nhận, chưa đọc giấy tờ hoặc xuất một bộ PDF đã điền hoàn chỉnh. Phần chưa xong của blueprint được liệt kê trong [ma trận triển khai](docs/IMPLEMENTATION-MATRIX.md).

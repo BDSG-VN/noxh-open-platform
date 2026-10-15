@@ -2,13 +2,13 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { api } from '@noxh/contracts/server';
 import AdminWorkbench, {
-  StaffLogout,
   type ProjectRow,
   type RoundRow,
   type SettingsRow,
 } from './admin-workbench';
 export const dynamic = 'force-dynamic';
-export default async function Admin() {
+export default async function Admin({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+  const { tab } = await searchParams;
   const token = (await cookies()).get('noxh_staff')?.value;
   if (!token) redirect('/login');
   try {
@@ -42,21 +42,13 @@ export default async function Admin() {
     const rounds = (await r.json()).items as RoundRow[];
     const settings = s ? ((await s.json()) as SettingsRow) : undefined;
     return (
-      <main className="container section">
-        <header className="section-head">
-          <a className="brand" href="/">
-            NOXH Open Platform<small>BDSG Foundation · Quản trị chủ đầu tư</small>
-          </a>
-          <StaffLogout />
-        </header>
-        <h1 className="text-4xl!">Bảng điều khiển chủ đầu tư.</h1>
-        <p>Quản lý dự án, lịch tiếp nhận và đăng nhập khách hàng của chủ đầu tư.</p>
-        <AdminWorkbench projects={projects} rounds={rounds} settings={settings} counts={counts} />
-        <p className="text-sm mt-8">
-          Đã có quản lý dự án, lịch tiếp nhận và cấu hình xác thực. Biểu mẫu pháp lý, nộp đơn chính
-          thức, xét duyệt và bốc thăm chưa được bật.
-        </p>
-      </main>
+      <AdminWorkbench
+        projects={projects}
+        rounds={rounds}
+        settings={settings}
+        counts={counts}
+        initialTab={tab}
+      />
     );
   } catch (e) {
     if (e instanceof Error && e.message === 'NEXT_REDIRECT') throw e;

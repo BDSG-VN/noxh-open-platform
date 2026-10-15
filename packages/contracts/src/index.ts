@@ -1,4 +1,7 @@
 import { z } from 'zod';
+export * from './dossier';
+export * from './assistance';
+export * from './partner';
 export const ProjectSchema = z.object({
   id: z.uuid(),
   organizationId: z.uuid(),

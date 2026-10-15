@@ -20,6 +20,13 @@ import { AdminService } from './admin-service';
 import { AdminController } from './admin-controller';
 import { PhoneController } from './phone-controller';
 import { PhoneService, ZaloDelivery } from './phone-service';
+import { DossierService } from './dossier-service';
+import { DossierController } from './dossier-controller';
+import { PartnerController } from './partner-controller';
+import { PartnerService } from './partner-service';
+import { AssistanceController } from './assistance-controller';
+import { AssistanceService } from './assistance-service';
+import { OpenAiService, OpenAiTransport } from './openai-service';
 @Controller()
 export class PlatformController {
   constructor(
@@ -27,7 +34,7 @@ export class PlatformController {
     @Inject(Database) private readonly db: Database,
   ) {}
   @Get('health/live') live() {
-    return { status: 'alive', release: '0.2.0', productionReady: false };
+    return { status: 'alive', release: '0.4.0', productionReady: false };
   }
   @Get('health/ready') async ready(@Res({ passthrough: true }) res: Response) {
     const result = await this.health.check();
@@ -38,7 +45,7 @@ export class PlatformController {
         type: 'urn:noxh:problem:not-ready',
         title: 'Dependencies unavailable',
         status: 503,
-        detail: 'Postgres, Redis and migrations 001/002 must be ready.',
+        detail: 'Postgres, Redis and migrations 001–005 must be ready.',
         checks: result.checks,
       };
     }
@@ -70,7 +77,7 @@ export class PlatformController {
     return {
       items: await this.catalog(),
       mode: this.db.available ? 'database' : 'synthetic',
-      release: '0.2.0',
+      release: '0.4.0',
     };
   }
   @Get('api/v1/projects/:id') async project(@Param('id') id: string) {
@@ -78,12 +85,23 @@ export class PlatformController {
     if (!p) throw new NotFoundException('Dự án chưa công bố hoặc không tồn tại');
     return p;
   }
+  @Get('api/v1/projects/:id/rounds') async publicRounds(@Param('id') id: string) {
+    await this.project(id);
+    if (!this.db.available) return { items: [] };
+    return {
+      items: await this.db.query(
+        "SELECT id,name,status,opens_at,closes_at FROM intake_rounds WHERE project_id=$1 AND organization_id=$2 AND status IN('open','closed') ORDER BY opens_at DESC",
+        [id, organizationId()],
+      ),
+    };
+  }
   @Get('api/v1/capabilities') capabilities() {
     return {
-      release: '0.2.0',
-      externalAi: false,
+      release: '0.4.0',
+      externalAi: 'organization-opt-in',
       officialSubmission: false,
-      officialForms: false,
+      officialForms: 'source-catalog-project-review',
+      dvc: 'manual-handoff',
       lottery: false,
       zaloTokenExchange: false,
     };
@@ -99,7 +117,26 @@ export class PlatformController {
   }
 }
 @Module({
-  controllers: [PlatformController, AdminController, PhoneController],
-  providers: [HealthService, Database, WorkforceAuth, AdminService, PhoneService, ZaloDelivery],
+  controllers: [
+    PlatformController,
+    AdminController,
+    PhoneController,
+    DossierController,
+    AssistanceController,
+    PartnerController,
+  ],
+  providers: [
+    HealthService,
+    Database,
+    WorkforceAuth,
+    AdminService,
+    PhoneService,
+    ZaloDelivery,
+    DossierService,
+    AssistanceService,
+    PartnerService,
+    OpenAiService,
+    OpenAiTransport,
+  ],
 })
 export class AppModule {}

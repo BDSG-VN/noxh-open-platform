@@ -43,6 +43,7 @@ export async function api(
   method = 'GET',
   body?: unknown,
   version?: string,
+  timeoutMs = 12000,
 ) {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers.Authorization = 'Bearer ' + token;
@@ -52,7 +53,7 @@ export async function api(
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
     cache: 'no-store',
-    signal: AbortSignal.timeout(12000),
+    signal: AbortSignal.timeout(timeoutMs),
   });
 }
 export const cookieOptions = {

@@ -12,6 +12,7 @@ export interface Staff {
   subject: string;
   organizationId: string;
   role: 'org_admin' | 'project_manager';
+  permissions?: string[];
 }
 export function organizationId() {
   const id = process.env.AUTH_ORGANIZATION_ID ?? '';
@@ -64,7 +65,12 @@ export class WorkforceAuth {
       ).length
     )
       throw new UnauthorizedException('Phiên nhân sự đã đăng xuất');
-    return { subject: payload.sub!, organizationId: organizationId(), role };
+    return {
+      subject: payload.sub!,
+      organizationId: organizationId(),
+      role,
+      permissions: roles.filter((r): r is string => r === 'form_legal_approver'),
+    };
   }
   async logout(header: unknown) {
     await this.authenticate(header);

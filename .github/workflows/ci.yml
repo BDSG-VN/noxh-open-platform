@@ -60,8 +60,9 @@ jobs:
       - run: docker compose up --build --wait --wait-timeout 600
       - run: |
           curl --fail http://localhost:4000/health/ready
-          curl --fail http://localhost:3000 | python3 -c 'import sys; assert "Khám phá dự án mẫu" in sys.stdin.read()'
+          curl --fail http://localhost:3000 | python3 -c 'import sys; assert "Khám phá dự án" in sys.stdin.read()'
           curl --fail http://localhost:3001
+          curl --fail http://localhost:3004/login
           curl --fail http://localhost:3002
           test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:9000/noxh-private/)" = "403"
       - run: python3 scripts/test-keycloak.py
