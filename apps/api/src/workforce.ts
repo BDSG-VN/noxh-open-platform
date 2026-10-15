@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { Database } from './database';
 import { sha } from './identity-crypto';
+import { employeePermissions, sensitivePermissions } from '@noxh/contracts';
 import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey, type JWTPayload } from 'jose';
 export interface Staff {
   subject: string;
@@ -42,7 +43,7 @@ export class WorkforceAuth {
       this.jwks ??= createRemoteJWKSet(url, { timeoutDuration: 3000, cooldownDuration: 30000 });
       ({ payload } = await jwtVerify(header.slice(7), this.testKey ?? this.jwks, {
         issuer,
-        audience: 'noxh-api',
+        audience: process.env.WORKFORCE_AUDIENCE ?? 'noxh-api',
         algorithms: ['RS256'],
         requiredClaims: ['sub', 'exp', 'iat'],
         maxTokenAge: '30m',
@@ -55,27 +56,8 @@ export class WorkforceAuth {
     const amr = Array.isArray(payload.amr) ? payload.amr : [];
     if (!amr.includes('otp'))
       throw new ForbiddenException('Nhân sự cần xác thực MFA bằng OTP của Keycloak');
-    const access = payload.realm_access as { roles?: unknown } | undefined;
-    const roles = Array.isArray(access?.roles) ? access.roles : [];
-    const signedPermissions = roles.filter((r): r is string =>
-      [
-        'form_legal_approver',
-        'privacy_officer',
-        'lottery_supervisor',
-        'lottery_operator',
-        'price_approver',
-        'intake_officer',
-        'reviewer',
-        'approver',
-        'auditor',
-      ].includes(String(r)),
-    );
-    const role = roles.includes('org_admin')
-      ? 'org_admin'
-      : roles.includes('noxh_staff')
-        ? 'staff'
-        : undefined;
-    if (!role) throw new ForbiddenException('Tài khoản chưa có quyền nhân sự');
+    if (typeof payload.sub !== 'string' || !payload.sub.length || payload.sub.length > 200)
+      throw new UnauthorizedException('Thiếu định danh nhân sự');
     if (
       (
         await this.db.query(
@@ -85,6 +67,28 @@ export class WorkforceAuth {
       ).length
     )
       throw new UnauthorizedException('Phiên nhân sự đã đăng xuất');
+    const membershipConfigured =
+      process.env.WORKFORCE_MEMBERSHIP_ENDPOINT !== undefined ||
+      process.env.WORKFORCE_MEMBERSHIP_KEY !== undefined;
+    const delegatedAccess = membershipConfigured
+      ? await this.membership(payload.sub, sha(header.slice(7)))
+      : undefined;
+    const access = payload.realm_access as { roles?: unknown } | undefined;
+    const roles = Array.isArray(access?.roles) ? access.roles : [];
+    const signedPermissions = membershipConfigured
+      ? []
+      : roles.filter(
+          (r): r is string =>
+            typeof r === 'string' && (sensitivePermissions as readonly string[]).includes(r),
+        );
+    const role =
+      delegatedAccess?.role ??
+      (roles.includes('org_admin')
+        ? 'org_admin'
+        : roles.includes('noxh_staff')
+          ? 'staff'
+          : undefined);
+    if (!role) throw new ForbiddenException('Tài khoản chưa có quyền nhân sự');
     if (role === 'staff') {
       const [employee] = await this.db.query(
         "SELECT id,department,permissions FROM identity_private.investor_employees WHERE organization_id=$1 AND subject=$2 AND status='active'",
@@ -96,22 +100,127 @@ export class WorkforceAuth {
         'SELECT project_id FROM investor_employee_projects WHERE organization_id=$1 AND employee_id=$2',
         [organizationId(), employee.id],
       );
+      // Some domain services reload the local grants themselves. Deny a stale
+      // broader local grant instead of relying only on the returned intersection.
+      if (
+        delegatedAccess?.projectIds.length &&
+        projects.some((p) => !delegatedAccess.projectIds.includes(String(p.project_id)))
+      )
+        throw new ForbiddenException('Quyền dự án nội bộ cần được đồng bộ với tổ chức');
       return {
         subject: payload.sub!,
         organizationId: organizationId(),
         role,
         employeeId: String(employee.id),
         department: String(employee.department),
-        projectIds: projects.map((p) => String(p.project_id)),
-        permissions: [...new Set([...(employee.permissions as string[]), ...signedPermissions])],
+        projectIds: projects
+          .map((p) => String(p.project_id))
+          .filter(
+            (id) => !delegatedAccess?.projectIds.length || delegatedAccess.projectIds.includes(id),
+          ),
+        permissions: [
+          ...new Set([...this.localPermissions(employee.permissions), ...signedPermissions]),
+        ],
       };
     }
+    // A tenant admin can configure the instance before an employee profile exists.
+    // Sensitive duties still require an explicit active local grant; realm roles
+    // never supply them when provider membership is enabled.
+    const [employee] = await this.db.query(
+      "SELECT permissions FROM identity_private.investor_employees WHERE organization_id=$1 AND subject=$2 AND status='active'",
+      [organizationId(), payload.sub],
+    );
     return {
       subject: payload.sub!,
       organizationId: organizationId(),
       role,
-      permissions: signedPermissions,
+      permissions: [
+        ...new Set([...this.localPermissions(employee?.permissions), ...signedPermissions]),
+      ],
     };
+  }
+  private localPermissions(value: unknown): string[] {
+    return Array.isArray(value)
+      ? value.filter(
+          (p): p is string =>
+            typeof p === 'string' && (employeePermissions as readonly string[]).includes(p),
+        )
+      : [];
+  }
+  private async membership(
+    subject: string,
+    tokenHash: string,
+  ): Promise<{ role: 'org_admin' | 'staff'; projectIds: string[] }> {
+    // A provider gateway can remove membership immediately, including for existing JWTs.
+    // It never supplies database/project permissions, which remain local to this instance.
+    const endpoint = process.env.WORKFORCE_MEMBERSHIP_ENDPOINT;
+    const key = process.env.WORKFORCE_MEMBERSHIP_KEY ?? '';
+    let url: URL;
+    try {
+      url = new URL(endpoint ?? '');
+      if (
+        url.protocol !== 'https:' ||
+        url.username ||
+        url.password ||
+        url.hash ||
+        url.search ||
+        !/^[A-Za-z0-9_-]{43,200}$/.test(key)
+      )
+        throw Error('Invalid gateway');
+    } catch {
+      throw new ServiceUnavailableException('Chưa cấu hình cổng phân quyền tổ chức');
+    }
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: 'POST',
+        redirect: 'error',
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
+        body: JSON.stringify({ organizationId: organizationId(), subject, tokenHash }),
+        signal: AbortSignal.timeout(3000),
+      });
+      if (response.status === 401 || response.status === 403 || response.status === 404)
+        throw new ForbiddenException('Tài khoản chưa có quyền trong tổ chức hoặc đã bị thu hồi');
+      if (
+        !response.ok ||
+        !response.headers.get('content-type')?.includes('application/json') ||
+        Number(response.headers.get('content-length') ?? 0) > 4096 ||
+        !response.body
+      )
+        throw Error('Invalid response');
+      const reader = response.body.getReader();
+      let size = 0;
+      const chunks: Uint8Array[] = [];
+      while (true) {
+        const chunk = await reader.read();
+        if (chunk.done) break;
+        size += chunk.value.byteLength;
+        if (size > 4096) {
+          await reader.cancel();
+          throw Error('Oversized response');
+        }
+        chunks.push(chunk.value);
+      }
+      const access = JSON.parse(Buffer.concat(chunks).toString()) as Record<string, unknown>;
+      if (
+        access.organizationId !== organizationId() ||
+        access.subject !== subject ||
+        access.active !== true ||
+        !['org_admin', 'staff'].includes(String(access.role))
+      )
+        throw new ForbiddenException('Quyền tổ chức không hợp lệ');
+      if (
+        !Array.isArray(access.projectIds) ||
+        access.projectIds.length > 100 ||
+        !access.projectIds.every((id) => typeof id === 'string' && /^[a-f0-9-]{36}$/i.test(id))
+      )
+        throw new ForbiddenException('Phạm vi dự án không hợp lệ');
+      return { role: access.role as 'org_admin' | 'staff', projectIds: access.projectIds };
+    } catch (error) {
+      if (error instanceof ForbiddenException) throw error;
+      throw new ServiceUnavailableException('Không xác minh được quyền tổ chức');
+    }
   }
   async logout(header: unknown) {
     await this.authenticate(header);

@@ -35,6 +35,8 @@ Không dùng `down -v` nếu cần giữ dữ liệu. Migration chạy trước 
 
 Xem [hướng dẫn thiết lập Keycloak, admin và Zalo OTP](docs/ADMIN-AND-ZALO.md). Không có tài khoản nhân sự mặc định; chủ đầu tư tạo nhân sự trong realm `noxh`, gán `org_admin` và đăng ký TOTP. Trang quản trị có quản lý dự án, lịch tiếp nhận, thống kê và cấu hình OA/template/token đã mã hóa. Khách đăng nhập tại `/login`, xem `/dashboard`, tạo hồ sơ chuẩn bị riêng và tiếp tục khai báo tại `/dossiers/:id`. Quản trị có hàng đợi hỗ trợ và nhật ký hoạt động. Xem [bảng đối chiếu toàn bộ yêu cầu](docs/IMPLEMENTATION-MATRIX.md).
 
+Nhà cung cấp dịch vụ có thể dùng [cầu nối thành viên SaaS](docs/SAAS-MEMBERSHIP.md) cho các instance riêng theo tổ chức. Bản tự triển khai vẫn dùng cấu hình mặc định và giấy phép MIT. Cầu nối xác minh membership hiện hành qua HTTPS; không tự cấp thanh toán, hạ tầng hay phê duyệt tiếp nhận thật.
+
 ## Phát triển không dùng Docker
 
 Cài Rust qua rustup và toolchain đúng phiên bản đã khóa trong `rust-toolchain.toml`. `pnpm build` và `pnpm check` đều biên dịch Rust trước các bước Node. Ví dụ trên macOS/Linux, chạy từ thư mục gốc kho:

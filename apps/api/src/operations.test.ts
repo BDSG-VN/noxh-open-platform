@@ -14,7 +14,12 @@ const org = '10000000-0000-4000-8000-000000000001',
   otherProject = '20000000-0000-4000-8000-000000000002';
 const admin: Staff = { subject: 'synthetic-admin', organizationId: org, role: 'org_admin' },
   second: Staff = { ...admin, subject: 'synthetic-second' },
-  employee: Staff = { ...admin, subject: 'synthetic-employee', role: 'staff' };
+  employee: Staff = {
+    ...admin,
+    subject: 'synthetic-employee',
+    role: 'staff',
+    projectIds: [project],
+  };
 let pg: PGlite, db: Database, svc: OperationsService, memberId: string;
 const prior = { ...process.env };
 const member = {
@@ -308,4 +313,44 @@ it('revoking a project or suspending membership immediately blocks old workforce
   await expect(svc.records(employee, project)).rejects.toMatchObject({ status: 403 });
   expect(await svc.projects(employee)).toHaveLength(0);
   await expect(svc.createJournal(employee, project, {})).rejects.toMatchObject({ status: 400 });
+});
+
+it('persists explicitly assigned sensitive duties and rejects unknown local privileges', async () => {
+  const local = {
+    ...member,
+    subject: 'synthetic-duty-reviewer',
+    permissions: [
+      'form_legal_approver',
+      'privacy_officer',
+      'lottery_operator',
+      'lottery_supervisor',
+      'price_approver',
+      'intake_officer',
+      'reviewer',
+      'approver',
+      'auditor',
+      'records_read',
+    ],
+  };
+  await expect(
+    svc.saveEmployee(admin, { ...local, permissions: ['realm_super_admin'] }),
+  ).rejects.toMatchObject({ status: 400 });
+  const created = await svc.saveEmployee(admin, local);
+  const [stored] = await db.query(
+    'SELECT permissions FROM identity_private.investor_employees WHERE id=$1 AND organization_id=$2',
+    [created.id, org],
+  );
+  expect(stored?.permissions).toEqual(local.permissions);
+});
+it('retains the authenticated project boundary if local grants expand after authentication', async () => {
+  // The Staff snapshot is limited to project. A separate admin adds a local grant
+  // after authentication; domain reads and writes must not expand that request.
+  await svc.saveEmployee(admin, { ...member, projectIds: [project, otherProject] }, memberId, 4);
+  expect((await svc.projects(employee)).map((p) => p.id)).toEqual([project]);
+  await expect(svc.records(employee, otherProject)).rejects.toMatchObject({ status: 403 });
+  await expect(svc.authorizeRecordFiles(employee, otherProject, true)).rejects.toMatchObject({
+    status: 403,
+  });
+  await expect(svc.journals(employee, otherProject)).rejects.toMatchObject({ status: 403 });
+  expect(await svc.projects({ ...employee, projectIds: undefined })).toEqual([]);
 });

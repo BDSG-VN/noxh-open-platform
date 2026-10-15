@@ -5,7 +5,7 @@ import { Button } from '@noxh/ui';
 import {
   departmentLabels,
   departments,
-  operationPermissions,
+  employeePermissions,
   permissionLabels,
 } from '@noxh/contracts';
 import type {
@@ -210,9 +210,13 @@ export default function OperationsAdmin({
           </label>
         </div>
         <fieldset>
-          <legend>Quyền được giao — không tự cấp theo tên phòng ban</legend>
+          <legend>Quyền được giao — cấp riêng theo trách nhiệm, không theo tên phòng ban</legend>
+          <p className="body">
+            Quyền rà soát và phê duyệt không thay thế điều kiện phân tách người soạn, người duyệt
+            hoặc giới hạn diễn tập. Nhân sự cần có đúng vai trò truy cập phân hệ và dự án được giao.
+          </p>
           <div className="form-grid">
-            {operationPermissions.map((k) => (
+            {employeePermissions.map((k) => (
               <label key={k} className="checkbox-label">
                 <input
                   name="permission"

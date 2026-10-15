@@ -101,6 +101,8 @@ export class OperationsService {
     permission: (typeof operationPermissions)[number],
   ) {
     project = uuid(project);
+    if (s.role !== 'org_admin' && !s.projectIds?.includes(project))
+      throw new ForbiddenException('Dự án ngoài phạm vi phiên nhân sự');
     const p = (
       await q.query(
         'SELECT id,name FROM projects WHERE id=$1 AND organization_id=$2 AND archived_at IS NULL',
@@ -128,12 +130,13 @@ export class OperationsService {
             [s.organizationId],
           )
         ).rows;
-      return (
+      const projects = (
         await q.query(
           "SELECT p.id,p.name,p.locality FROM projects p JOIN investor_employee_projects g ON g.project_id=p.id AND g.organization_id=p.organization_id JOIN identity_private.investor_employees e ON e.id=g.employee_id AND e.organization_id=g.organization_id WHERE p.organization_id=$1 AND e.subject=$2 AND e.status='active' AND p.archived_at IS NULL ORDER BY p.name",
           [s.organizationId, s.subject],
         )
       ).rows;
+      return projects.filter((p) => s.projectIds?.includes(String(p.id)));
     });
   }
   async employees(s: Staff) {

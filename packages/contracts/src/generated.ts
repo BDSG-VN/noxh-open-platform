@@ -3083,7 +3083,7 @@ export interface components {
             department: "project_office" | "accounting" | "administration" | "legal" | "business";
             /** @enum {string} */
             status: "active" | "suspended";
-            permissions: ("workflow_read" | "workflow_write" | "workflow_review" | "records_read" | "records_write" | "records_review" | "finance_read" | "finance_write" | "finance_post")[];
+            permissions: ("workflow_read" | "workflow_write" | "workflow_review" | "records_read" | "records_write" | "records_review" | "finance_read" | "finance_write" | "finance_post" | "form_legal_approver" | "privacy_officer" | "lottery_operator" | "lottery_supervisor" | "price_approver" | "intake_officer" | "reviewer" | "approver" | "auditor")[];
             projectIds: string[];
         };
         TaskUpdateWrite: {
@@ -3402,7 +3402,7 @@ export interface components {
             department: "project_office" | "accounting" | "administration" | "legal" | "business";
             /** @enum {string} */
             status: "active" | "suspended";
-            permissions: ("workflow_read" | "workflow_write" | "workflow_review" | "records_read" | "records_write" | "records_review" | "finance_read" | "finance_write" | "finance_post")[];
+            permissions: ("workflow_read" | "workflow_write" | "workflow_review" | "records_read" | "records_write" | "records_review" | "finance_read" | "finance_write" | "finance_post" | "form_legal_approver" | "privacy_officer" | "lottery_operator" | "lottery_supervisor" | "price_approver" | "intake_officer" | "reviewer" | "approver" | "auditor")[];
             projectIds: string[];
             /** Format: uuid */
             id: string;
