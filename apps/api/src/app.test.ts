@@ -70,12 +70,30 @@ it('denies unauthenticated staff mutations and private customer routes at HTTP b
       '/api/v1/admin/projects',
       '/api/v1/admin/settings/zalo',
       '/api/v1/citizen/dashboard',
+      '/api/v1/admin/requests',
+      '/api/v1/admin/audit',
+      '/api/v1/admin/legal/catalog',
+      '/api/v1/admin/settings/openai',
+      '/api/v1/admin/partners',
+      '/api/v1/admin/partner-campaigns',
+      '/api/v1/partner/workspace',
+      '/api/v1/partner/leads',
+      '/api/v1/citizen/consultations',
+      '/api/v1/dossiers/40000000-0000-4000-8000-000000000001/services',
+      '/api/v1/dossiers/40000000-0000-4000-8000-000000000001/assistant',
+      '/api/v1/dossiers/40000000-0000-4000-8000-000000000001',
     ])
       expect((await request(app.getHttpServer()).get(path)).status).toBe(401);
     for (const path of [
       '/api/v1/admin/projects',
       '/api/v1/admin/rounds',
+      '/api/v1/admin/partners',
+      '/api/v1/partner/members',
+      '/api/v1/partner/campaigns',
       '/api/v1/citizen/dossiers',
+      '/api/v1/dossiers/40000000-0000-4000-8000-000000000001/assistant',
+      '/api/v1/dossiers/40000000-0000-4000-8000-000000000001/online-cases',
+      '/api/v1/admin/projects/20000000-0000-4000-8000-000000000001/forms',
     ])
       expect(
         (

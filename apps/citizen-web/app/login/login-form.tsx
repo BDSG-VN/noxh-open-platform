@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { Button } from '@noxh/ui';
-export default function LoginForm() {
+export default function LoginForm({ returnTo = '/dashboard' }: { returnTo?: string }) {
   const [phone, setPhone] = useState(''),
     [code, setCode] = useState(''),
     [accepted, setAccepted] = useState(false),
@@ -24,7 +24,7 @@ export default function LoginForm() {
       if (step === 'phone') {
         setStep('code');
         setRetryAt(Date.now() + 60000);
-      } else window.location.assign('/dashboard');
+      } else window.location.assign(returnTo);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Lỗi kết nối');
     } finally {
@@ -32,8 +32,11 @@ export default function LoginForm() {
     }
   }
   return (
-    <form onSubmit={submit} className="status-panel">
-      <h2>{step === 'phone' ? 'Đăng nhập bằng số điện thoại' : 'Nhập mã xác nhận từ Zalo'}</h2>
+    <form onSubmit={submit} className="">
+      {step === 'code' && <h2 style={{ fontSize: 18 }}>Nhập mã xác thực</h2>}
+      <p>
+        <a href="/privacy">Đọc thông báo bảo vệ dữ liệu cá nhân</a>
+      </p>
       {step === 'phone' ? (
         <>
           <label htmlFor="phone">Số điện thoại có tài khoản Zalo</label>
@@ -47,7 +50,7 @@ export default function LoginForm() {
             onChange={(e) => setPhone(e.target.value)}
             placeholder="09xx xxx xxx"
           />
-          <label className="flex gap-3 items-start mb-5">
+          <label className="checkbox-label">
             <input
               type="checkbox"
               checked={accepted}
@@ -81,7 +84,7 @@ export default function LoginForm() {
           {error}
         </p>
       )}
-      <Button type="submit" disabled={busy || (step === 'phone' && !accepted)}>
+      <Button className="w-full" type="submit" disabled={busy || (step === 'phone' && !accepted)}>
         {busy ? 'Đang xử lý…' : step === 'phone' ? 'Nhận mã qua Zalo' : 'Xác nhận và đăng nhập'}
       </Button>
       {step === 'code' && (
@@ -101,9 +104,6 @@ export default function LoginForm() {
           Đổi số hoặc yêu cầu mã mới
         </Button>
       )}
-      <p className="text-sm">
-        Nếu chủ đầu tư chưa cấu hình Zalo, hệ thống sẽ báo rõ và không tạo phiên đăng nhập.
-      </p>
     </form>
   );
 }

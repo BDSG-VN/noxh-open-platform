@@ -21,11 +21,16 @@ jobs:
       ALLOW_SYNTHETIC_FIXTURES: 'true'
       TURBO_TELEMETRY_DISABLED: '1'
       NEXT_TELEMETRY_DISABLED: '1'
+      RUSTUP_TOOLCHAIN: '1.99.0'
+      LOTTERY_ENGINE_BIN: ${{ github.workspace }}/target/release/lottery-runner
+      PRICING_ENGINE_BIN: ${{ github.workspace }}/target/release/pricing-engine
+      AUDIT_VERIFIER_BIN: ${{ github.workspace }}/target/release/audit-verifier
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: '22.22.3' }
       - run: npm install -g pnpm@11.25.0
+      - run: rustup toolchain install 1.99.0 --profile minimal --component rustfmt
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
       - run: pnpm audit --prod --audit-level high
@@ -45,7 +50,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: cargo test --workspace
+      - run: rustup toolchain install 1.99.0 --profile minimal --component rustfmt
+      - run: cargo fmt --all -- --check
+      - run: cargo test --workspace --locked
   compose:
     runs-on: ubuntu-latest
     steps:
@@ -60,8 +67,9 @@ jobs:
       - run: docker compose up --build --wait --wait-timeout 600
       - run: |
           curl --fail http://localhost:4000/health/ready
-          curl --fail http://localhost:3000 | python3 -c 'import sys; assert "Khám phá dự án mẫu" in sys.stdin.read()'
+          curl --fail http://localhost:3000 | python3 -c 'import sys; assert "Khám phá dự án" in sys.stdin.read()'
           curl --fail http://localhost:3001
+          curl --fail http://localhost:3004/login
           curl --fail http://localhost:3002
           test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:9000/noxh-private/)" = "403"
       - run: python3 scripts/test-keycloak.py

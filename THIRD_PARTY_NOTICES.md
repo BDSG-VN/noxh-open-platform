@@ -8,3 +8,11 @@ All other first-party source in this repository is developed for BDSG Foundation
 ## Separate infrastructure images
 
 Development storage builds official MinIO sources as separate containers, not as part of the MIT application code. Server commit `9e49d5e7a648f00e26f2246f4dc28e6b07f8c84a` ([source](https://github.com/minio/minio/tree/9e49d5e7a648f00e26f2246f4dc28e6b07f8c84a)); client commit `7394ce0dd2a80935aded936b09fa12cbb3cb8096` ([source](https://github.com/minio/mc/tree/7394ce0dd2a80935aded936b09fa12cbb3cb8096)). These upstream programs keep their AGPL-3.0 licenses; each image includes the original LICENSE and source/revision labels. They are not relicensed MIT. Preserve corresponding source/license obligations if redistributing those images.
+
+## Document processing dependencies
+
+PDF overlay rendering uses pdf-lib (MIT) and @pdf-lib/fontkit (MIT), retained in the package lock. The bundled DejaVu Serif font is distributed under the Bitstream Vera/DejaVu license, including applicable glyph notices; full terms are in `packages/form-engine/assets/LICENSE-DejaVu.txt`. The optional ClamAV Debian container retains ClamAV's GPL-2.0 licensing; it is a separate service and not relicensed under this repository's MIT license. Configure and maintain signature updates before document processing.
+
+## Be Vietnam Pro
+
+Workspace web typography uses the unmodified Be Vietnam Pro fonts from Google Fonts, revision `c13390277dfb1fcc7415d84ef7ef9cfc1e52f8c1`, under the SIL Open Font License 1.1. The font copyright/license remains in `packages/ui/fonts/OFL.txt`; original URLs and SHA-256 hashes are in `packages/ui/fonts/manifest.json`. The font license is separate from the MIT application code. Fonts are served locally; no Google Fonts network request is required.

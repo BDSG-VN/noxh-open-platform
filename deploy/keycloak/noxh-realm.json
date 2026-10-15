@@ -13,6 +13,46 @@
       },
       {
         "name": "project_manager"
+      },
+      {
+        "name": "form_legal_approver",
+        "description": "Independent project form legal reviewer; also requires org_admin for the investor console."
+      },
+      {
+        "name": "privacy_officer",
+        "description": "Explicit NOXH workforce permission"
+      },
+      {
+        "name": "lottery_operator",
+        "description": "Explicit NOXH workforce permission"
+      },
+      {
+        "name": "lottery_supervisor",
+        "description": "Explicit NOXH workforce permission"
+      },
+      {
+        "name": "noxh_staff",
+        "description": "Explicit NOXH workforce permission"
+      },
+      {
+        "name": "price_approver",
+        "description": "Quyền NOXH được cấp riêng; yêu cầu MFA và phạm vi dự án phía máy chủ"
+      },
+      {
+        "name": "intake_officer",
+        "description": "Quyền NOXH được cấp riêng; yêu cầu MFA và phạm vi dự án phía máy chủ"
+      },
+      {
+        "name": "reviewer",
+        "description": "Quyền NOXH được cấp riêng; yêu cầu MFA và phạm vi dự án phía máy chủ"
+      },
+      {
+        "name": "approver",
+        "description": "Quyền NOXH được cấp riêng; yêu cầu MFA và phạm vi dự án phía máy chủ"
+      },
+      {
+        "name": "auditor",
+        "description": "Quyền NOXH được cấp riêng; yêu cầu MFA và phạm vi dự án phía máy chủ"
       }
     ]
   },

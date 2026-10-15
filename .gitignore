@@ -14,3 +14,4 @@ target/
 *.tsbuildinfo
 artifacts/
 .DS_Store
+tmp/

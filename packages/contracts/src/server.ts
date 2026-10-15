@@ -43,16 +43,19 @@ export async function api(
   method = 'GET',
   body?: unknown,
   version?: string,
+  timeoutMs = 12000,
+  idempotencyKey?: string,
 ) {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers.Authorization = 'Bearer ' + token;
   if (version) headers['If-Match'] = version;
+  if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
   return fetch((process.env.INTERNAL_API_URL ?? 'http://localhost:4000') + path, {
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
     cache: 'no-store',
-    signal: AbortSignal.timeout(12000),
+    signal: AbortSignal.timeout(timeoutMs),
   });
 }
 export const cookieOptions = {

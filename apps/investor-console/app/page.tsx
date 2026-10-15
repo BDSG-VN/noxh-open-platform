@@ -2,13 +2,15 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { api } from '@noxh/contracts/server';
 import AdminWorkbench, {
-  StaffLogout,
   type ProjectRow,
   type RoundRow,
   type SettingsRow,
 } from './admin-workbench';
+import StaffWorkspace from './staff-workspace';
+import type { OperationsStaff } from './operations-admin';
 export const dynamic = 'force-dynamic';
-export default async function Admin() {
+export default async function Admin({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+  const { tab } = await searchParams;
   const token = (await cookies()).get('noxh_staff')?.value;
   if (!token) redirect('/login');
   try {
@@ -21,7 +23,8 @@ export default async function Admin() {
           <p>Kiểm tra Keycloak, cơ sở dữ liệu và cấu hình tổ chức.</p>
         </main>
       );
-    const staff = (await me.json()) as { role: string; organizationId: string };
+    const staff = (await me.json()) as OperationsStaff;
+    if (staff.role !== 'org_admin') return <StaffWorkspace staff={staff} />;
     const [d, p, r, s] = await Promise.all([
       api('/api/v1/admin/dashboard', token),
       api('/api/v1/admin/projects', token),
@@ -42,21 +45,16 @@ export default async function Admin() {
     const rounds = (await r.json()).items as RoundRow[];
     const settings = s ? ((await s.json()) as SettingsRow) : undefined;
     return (
-      <main className="container section">
-        <header className="section-head">
-          <a className="brand" href="/">
-            NOXH Open Platform<small>BDSG Foundation · Quản trị chủ đầu tư</small>
-          </a>
-          <StaffLogout />
-        </header>
-        <h1 className="text-4xl!">Bảng điều khiển chủ đầu tư.</h1>
-        <p>Quản lý dự án, lịch tiếp nhận và đăng nhập khách hàng của chủ đầu tư.</p>
-        <AdminWorkbench projects={projects} rounds={rounds} settings={settings} counts={counts} />
-        <p className="text-sm mt-8">
-          Đã có quản lý dự án, lịch tiếp nhận và cấu hình xác thực. Biểu mẫu pháp lý, nộp đơn chính
-          thức, xét duyệt và bốc thăm chưa được bật.
-        </p>
-      </main>
+      <AdminWorkbench
+        staff={staff}
+        projects={projects}
+        rounds={rounds}
+        settings={settings}
+        counts={counts}
+        initialTab={tab}
+        citizenOrigin={process.env.CITIZEN_PUBLIC_ORIGIN ?? 'http://localhost:3000'}
+        transparencyOrigin={process.env.TRANSPARENCY_PUBLIC_ORIGIN ?? 'http://localhost:3002'}
+      />
     );
   } catch (e) {
     if (e instanceof Error && e.message === 'NEXT_REDIRECT') throw e;

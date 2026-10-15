@@ -1,3 +1,9 @@
 [workspace]
 resolver = "2"
-members = ["crates/lottery-engine", "crates/lottery-verifier"]
+members = [
+    "crates/lottery-engine",
+    "crates/lottery-verifier",
+    "crates/lottery-runner",
+    "crates/audit-verifier",
+    "crates/pricing-engine",
+]

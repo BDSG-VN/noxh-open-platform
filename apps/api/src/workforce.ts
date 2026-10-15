@@ -11,13 +11,17 @@ import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey, type JWTPayload } 
 export interface Staff {
   subject: string;
   organizationId: string;
-  role: 'org_admin' | 'project_manager';
+  role: 'org_admin' | 'project_manager' | 'staff';
+  permissions?: string[];
+  employeeId?: string;
+  department?: string;
+  projectIds?: string[];
 }
 export function organizationId() {
   const id = process.env.AUTH_ORGANIZATION_ID ?? '';
   if (!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(id))
     throw new ServiceUnavailableException('Chưa cấu hình tổ chức');
-  return id;
+  return id.toLowerCase();
 }
 @Injectable()
 export class WorkforceAuth {
@@ -53,8 +57,25 @@ export class WorkforceAuth {
       throw new ForbiddenException('Nhân sự cần xác thực MFA bằng OTP của Keycloak');
     const access = payload.realm_access as { roles?: unknown } | undefined;
     const roles = Array.isArray(access?.roles) ? access.roles : [];
-    const role = roles.includes('org_admin') ? 'org_admin' : undefined;
-    if (!role) throw new ForbiddenException('Tài khoản chưa có quyền quản trị');
+    const signedPermissions = roles.filter((r): r is string =>
+      [
+        'form_legal_approver',
+        'privacy_officer',
+        'lottery_supervisor',
+        'lottery_operator',
+        'price_approver',
+        'intake_officer',
+        'reviewer',
+        'approver',
+        'auditor',
+      ].includes(String(r)),
+    );
+    const role = roles.includes('org_admin')
+      ? 'org_admin'
+      : roles.includes('noxh_staff')
+        ? 'staff'
+        : undefined;
+    if (!role) throw new ForbiddenException('Tài khoản chưa có quyền nhân sự');
     if (
       (
         await this.db.query(
@@ -64,7 +85,33 @@ export class WorkforceAuth {
       ).length
     )
       throw new UnauthorizedException('Phiên nhân sự đã đăng xuất');
-    return { subject: payload.sub!, organizationId: organizationId(), role };
+    if (role === 'staff') {
+      const [employee] = await this.db.query(
+        "SELECT id,department,permissions FROM identity_private.investor_employees WHERE organization_id=$1 AND subject=$2 AND status='active'",
+        [organizationId(), payload.sub!],
+      );
+      if (!employee)
+        throw new ForbiddenException('Tài khoản chưa được cấp quyền hoặc đã bị tạm dừng');
+      const projects = await this.db.query(
+        'SELECT project_id FROM investor_employee_projects WHERE organization_id=$1 AND employee_id=$2',
+        [organizationId(), employee.id],
+      );
+      return {
+        subject: payload.sub!,
+        organizationId: organizationId(),
+        role,
+        employeeId: String(employee.id),
+        department: String(employee.department),
+        projectIds: projects.map((p) => String(p.project_id)),
+        permissions: [...new Set([...(employee.permissions as string[]), ...signedPermissions])],
+      };
+    }
+    return {
+      subject: payload.sub!,
+      organizationId: organizationId(),
+      role,
+      permissions: signedPermissions,
+    };
   }
   async logout(header: unknown) {
     await this.authenticate(header);

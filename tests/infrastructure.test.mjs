@@ -10,8 +10,11 @@ test('development ports bind loopback; persistent stores have volumes', () => {
     assert.ok(compose.services[service].volumes.length > 0);
   assert.equal(compose.services.keycloak.environment.KC_DB, 'postgres');
 });
-test('external AI and lottery remain disabled', () => {
-  assert.equal(compose.services.api.environment.EXTERNAL_AI_ENABLED, 'false');
+test('external AI defaults off and lottery remains disabled', () => {
+  assert.equal(
+    compose.services.api.environment.EXTERNAL_AI_ENABLED,
+    '${EXTERNAL_AI_ENABLED:-false}',
+  );
   assert.equal(compose.services.api.environment.LOTTERY_PRODUCTION_ENABLED, 'false');
   assert.deepEqual(compose.services['ai-worker'].profiles, ['ai']);
 });

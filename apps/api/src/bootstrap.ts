@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import helmet from 'helmet';
 import type { Request, Response } from 'express';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 @Catch()
 class ProblemFilter implements ExceptionFilter {
   catch(error: unknown, host: ArgumentsHost) {
@@ -27,6 +28,7 @@ class ProblemFilter implements ExceptionFilter {
   }
 }
 export function configure(app: INestApplication) {
+  (app as NestExpressApplication).useBodyParser('json', { limit: '8mb' });
   app.use(helmet());
   app.useGlobalFilters(new ProblemFilter());
   app.enableShutdownHooks();

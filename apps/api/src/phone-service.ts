@@ -1,3 +1,4 @@
+import { PrivacyService } from './privacy-service';
 import {
   Inject,
   Injectable,
@@ -273,6 +274,7 @@ export class PhoneService {
     const b = record(body),
       projectId = uuid(b.projectId);
     return this.db.tx(async (q) => {
+      await new PrivacyService(this.db).assertProcessing(c, q);
       if (
         !(
           await q.query(

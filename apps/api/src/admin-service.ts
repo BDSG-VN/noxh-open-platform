@@ -11,6 +11,7 @@ import { randomUUID } from 'node:crypto';
 import { Database, type Sql } from './database';
 import type { Staff } from './workforce';
 import { seal, unseal } from './identity-crypto';
+import { appendAudit } from './audit';
 export function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw new BadRequestException('JSON không hợp lệ');
@@ -25,7 +26,7 @@ export function uuid(value: unknown) {
   const s = text(value, 36);
   if (!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(s))
     throw new BadRequestException('Mã định danh không hợp lệ');
-  return s;
+  return s.toLowerCase();
 }
 export function version(value: unknown) {
   if (typeof value !== 'string' || !/^"?\d+"?$/.test(value))
@@ -38,10 +39,12 @@ export async function event(
   action: string,
   resource: string,
 ) {
+  const id = randomUUID();
   await sql.query(
     'INSERT INTO identity_private.operations(id,organization_id,actor_ref,action,resource_ref) VALUES($1,$2,$3,$4,$5)',
-    [randomUUID(), staff.organizationId, staff.subject, action, resource],
+    [id, staff.organizationId, staff.subject, action, resource],
   );
+  await appendAudit(sql, id, staff.organizationId, staff.subject, action, resource);
 }
 export interface ZaloSettings {
   enabled: boolean;

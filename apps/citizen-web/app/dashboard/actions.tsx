@@ -25,7 +25,6 @@ export function StartDossier({ projects }: { projects: { id: string; name: strin
     [busy, setBusy] = useState(false);
   return (
     <div className="status-panel">
-      <h2>Chuẩn bị hồ sơ</h2>
       <label htmlFor="project-id">Dự án đã công bố</label>
       <select
         id="project-id"
@@ -50,7 +49,7 @@ export function StartDossier({ projects }: { projects: { id: string; name: strin
           });
           const b = await r.json();
           setBusy(false);
-          if (r.ok) window.location.reload();
+          if (r.ok) window.location.assign('/dossiers/' + b.id);
           else setMessage(b.detail ?? 'Không tạo được hồ sơ');
         }}
       >
@@ -58,8 +57,7 @@ export function StartDossier({ projects }: { projects: { id: string; name: strin
       </Button>
       {message && <p role="alert">{message}</p>}
       <p className="text-sm">
-        Đây là bản nháp chuẩn bị, không phải đơn đã nộp chính thức. Luồng khai báo và giấy tờ đang
-        tiếp tục phát triển.
+        Lưu bản nháp, khai báo hộ gia đình và theo dõi danh sách việc cần chuẩn bị.
       </p>
     </div>
   );
