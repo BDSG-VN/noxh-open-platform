@@ -63,5 +63,7 @@ jobs:
           curl --fail http://localhost:3002
           test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:9000/noxh-private/)" = "403"
       - run: python3 scripts/test-keycloak.py
+      - run: docker compose logs --tail 80 keycloak
+        if: failure()
       - run: docker compose down
         if: always()

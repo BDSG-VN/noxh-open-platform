@@ -21,7 +21,7 @@ class Form(html.parser.HTMLParser):
     action=None
     def handle_starttag(self,tag,attrs):
         attrs=dict(attrs)
-        if tag=='form':self.action=attrs.get('action')
+        if tag=='form' and attrs.get('id') in ['kc-form-login','kc-otp-login-form','kc-totp-login-form']:self.action=attrs.get('action')
 redirect=NoRedirect();browser=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()),redirect)
 verifier=secrets.token_urlsafe(32)
 challenge=base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).decode().rstrip('=')
@@ -30,7 +30,23 @@ query=urllib.parse.urlencode({'client_id':'noxh-investor','response_type':'code'
 def form_action(page):
     p=Form();p.feed(page);assert p.action,'Expected identity form';return p.action
 def post(url,data):
-    return browser.open(urllib.request.Request(url,urllib.parse.urlencode(data).encode()),timeout=20)
+    try:
+        return browser.open(urllib.request.Request(url,urllib.parse.urlencode(data).encode()),timeout=20)
+    except urllib.error.HTTPError as e:
+        if e.code>=400:
+            class VisibleError(html.parser.HTMLParser):
+                capture=False
+                text=[]
+                def handle_starttag(self,tag,attrs):
+                    attrs=dict(attrs)
+                    if attrs.get('id') in ['kc-error-message','input-error','input-error-otp-code']:self.capture=True
+                def handle_endtag(self,tag):
+                    if tag in ['div','span']:self.capture=False
+                def handle_data(self,value):
+                    if self.capture:self.text.append(value.strip())
+            error=VisibleError();error.feed(e.read().decode())
+            raise RuntimeError('Identity HTTP '+str(e.code)+': '+' '.join(error.text)) from None
+        raise
 page=browser.open(issuer+'/protocol/openid-connect/auth?'+query,timeout=20).read().decode()
 page=post(form_action(page),{'username':'ci-synthetic-admin','password':state['password']}).read().decode()
 assert 'otp' in page.lower(),'Password alone must not finish login'
