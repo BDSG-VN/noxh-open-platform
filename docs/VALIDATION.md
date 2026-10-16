@@ -1,3 +1,17 @@
+# Bằng chứng thông báo tự động 021 — 16/10/2026
+
+Bản tích hợp trên nhánh `codex/completion-verification`, migration 001–021. Chỉ ba thay đổi hồ sơ tổng hợp tới hộp thư trong ứng dụng; cờ triển khai mặc định tắt. Chi tiết ở [hướng dẫn 021](COMPLETION-NOTIFICATION-AUTOMATION.md).
+
+- `pnpm check` đạt: ESLint/Prettier, typecheck, **242 Vitest** (API **194**), **24 kết quả Node**, OpenAPI/generated operations, secret-pattern gate và bốn trọng lượng font tiếng Việt. **19 ca PostgreSQL native** được bỏ qua trong lệnh mặc định cục bộ vì không đặt biến kết nối; kết quả riêng bên dưới không cộng lẫn vào 242 ca.
+- PostgreSQL **17.6** cô lập: **19/19 ca độc lập đạt**, gồm hai kết nối TCP, khóa chờ thực, `SKIP LOCKED`, lease/fencing, crash trước commit, đồng ý/rút/cấp lại, thu hồi mẫu/quy tắc/quyền nhân sự, chống trùng và RLS không đặc quyền. Cluster/DB/tệp cấu hình tổng hợp được dọn sau kiểm tra. CI cấu hình một service PostgreSQL riêng có đúng guard để chạy 19 ca này; kết quả CI được ghi sau khi chạy.
+- `pnpm build:node`: **10/10 gói production đạt**; Next giới hạn hai build worker. `cargo test --workspace --locked --offline`: **35 ca đạt** trên Rust 1.99.0. Python: **3 ca đạt** trên 3.11.15, có cảnh báo deprecation Starlette/httpx hiện hữu. Dependency audit runtime không báo lỗ hổng đã biết tại thời điểm kiểm tra.
+- Có thêm **13 ca PGlite** cho outbox/nghiệp vụ và **4 ca lifecycle** trong tổng Vitest phía trên. Bốn ca SSR giao diện kiểm cách trình bày/trạng thái/phân biệt người lập với người duyệt; kiểm trình duyệt thực được ghi riêng sau khi chạy.
+- Một lần kiểm tích hợp gặp lỗi socket ở bài HTTP do Supertest tự mở/đóng listener qua nhiều yêu cầu; bài kiểm hiện giữ một listener cho mỗi test và giữ nguyên mọi assertion phân quyền. Một ca CLI audit cũng lỗi trong lượt chạy trước, sau đó qua khi kiểm độc lập và trong lượt `pnpm check` đầy đủ. Không sửa hoặc bỏ qua điều kiện xác minh Rust để làm xanh.
+
+Không gửi email/Zalo, không có thông báo pháp lý được chứng thực, không nhận hồ sơ thật và không thay các điều kiện vận hành/pháp chế/provider còn mở trong [ma trận](IMPLEMENTATION-MATRIX.md).
+
+---
+
 # Bằng chứng đợt hoàn thiện — 16/10/2026
 
 Bản phát triển trên nhánh `codex/housing-completion`, migration 001–020. Các kết quả sau đã chạy trên mã tích hợp; không thay nghiệm thu provider, pháp lý hoặc production.

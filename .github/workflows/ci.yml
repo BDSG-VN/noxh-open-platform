@@ -8,6 +8,15 @@ jobs:
   node:
     runs-on: ubuntu-latest
     services:
+      notification-postgres:
+        image: postgres:17.6-bookworm
+        env:
+          POSTGRES_USER: noxh_automation_qa
+          POSTGRES_PASSWORD: ci-ephemeral-only
+          POSTGRES_DB: noxh_021_qa
+          PGDATA: /var/lib/postgresql/completion-notifications021-20261016/pg-data
+        ports: ['23699:5432']
+        options: --health-cmd "pg_isready -U noxh_automation_qa -d noxh_021_qa" --health-interval 5s --health-timeout 5s --health-retries 20
       postgres:
         image: postgres:17.6-bookworm
         env:
@@ -18,6 +27,7 @@ jobs:
         options: --health-cmd "pg_isready -U noxh_owner -d noxh" --health-interval 5s --health-timeout 5s --health-retries 20
     env:
       DATABASE_URL: postgresql://noxh_owner:ci-ephemeral-only@localhost:5432/noxh
+      NOTIFICATION_AUTOMATION_PG_URL: postgresql://noxh_automation_qa:ci-ephemeral-only@127.0.0.1:23699/noxh_021_qa
       ALLOW_SYNTHETIC_FIXTURES: 'true'
       TURBO_TELEMETRY_DISABLED: '1'
       NEXT_TELEMETRY_DISABLED: '1'

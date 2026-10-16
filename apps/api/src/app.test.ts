@@ -23,7 +23,8 @@ beforeEach(async () => {
     .compile();
   app = mod.createNestApplication();
   configure(app);
-  await app.init();
+  // Bind once per test: repeated Supertest ephemeral binds can reuse a closing keep-alive socket.
+  await app.listen(0, '127.0.0.1');
 });
 afterEach(async () => {
   await app.close();
@@ -78,6 +79,7 @@ it('denies unauthenticated staff mutations and private customer routes at HTTP b
       '/api/v1/admin/partner-campaigns',
       '/api/v1/admin/settings/zalo-miniapp',
       '/api/v1/admin/notifications/projects/20000000-0000-4000-8000-000000000001/workspace',
+      '/api/v1/admin/notifications/projects/20000000-0000-4000-8000-000000000001/automation',
       '/api/v1/citizen/notifications/workspace',
       '/api/v1/admin/audit/checkpoints',
       '/api/v1/admin/knowledge/projects/20000000-0000-4000-8000-000000000001',
@@ -91,10 +93,12 @@ it('denies unauthenticated staff mutations and private customer routes at HTTP b
       '/api/v1/dossiers/40000000-0000-4000-8000-000000000001/assistant',
       '/api/v1/dossiers/40000000-0000-4000-8000-000000000001',
     ])
-      expect((await request(app.getHttpServer()).get(path)).status).toBe(401);
+      expect((await request(app.getHttpServer()).get(path)).status, `GET ${path}`).toBe(401);
     for (const path of [
       '/api/v1/admin/projects',
       '/api/v1/admin/rounds',
+      '/api/v1/admin/notifications/projects/20000000-0000-4000-8000-000000000001/automation/policies',
+      '/api/v1/admin/notifications/projects/20000000-0000-4000-8000-000000000001/automation/policies/40000000-0000-4000-8000-000000000001/review',
       '/api/v1/admin/partners',
       '/api/v1/partner/members',
       '/api/v1/partner/campaigns',
@@ -109,6 +113,7 @@ it('denies unauthenticated staff mutations and private customer routes at HTTP b
             .post(path)
             .send({ role: 'org_admin', organizationId: 'caller-controlled', ownerId: 'other' })
         ).status,
+        `POST ${path}`,
       ).toBe(401);
   } finally {
     delete process.env.WORKFORCE_ISSUER;

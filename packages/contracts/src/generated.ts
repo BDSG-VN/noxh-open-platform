@@ -27,7 +27,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Checks PostgreSQL, Redis, migrations 001–020 and executable Rust kernels. Does not certify legal approval, provider connectivity or production readiness. */
+        /** @description Checks PostgreSQL, Redis, migrations 001–021 and executable Rust kernels. Does not certify legal approval, provider connectivity or production readiness. */
         get: operations["getReadiness"];
         put?: never;
         post?: never;
@@ -2860,6 +2860,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/notifications/projects/{project}/automation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Scoped synthetic in-app policies and bounded event history. Automation is explicitly opt-in; no external send. */
+        get: operations["getNotificationAutomation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/notifications/projects/{project}/automation/policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Idempotent policy draft mapping one supported application event to an independently approved in-app transactional template. */
+        post: operations["draftNotificationAutomationPolicy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/notifications/projects/{project}/automation/policies/{id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Author-independent active project legal reviewer approves, rejects or revokes a version-bound policy. Event-time consent pins prevent retrospective delivery. */
+        post: operations["reviewNotificationAutomationPolicy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4712,6 +4763,21 @@ export interface components {
         SignedAuditCheckpoint: {
             proposal: components["schemas"]["AuditCheckpointProposal"];
             signature: string;
+        };
+        NotificationAutomationPolicySchema: {
+            /** @enum {string} */
+            eventType: "application.supplement-requested" | "application.approved" | "application.rejected";
+            /** Format: uuid */
+            templateId: string;
+            /** Format: uuid */
+            idempotencyKey: string;
+        };
+        NotificationAutomationReviewSchema: {
+            /** @enum {string} */
+            decision: "approve" | "reject" | "revoke";
+            /** @constant */
+            accepted: true;
+            note: string;
         };
     };
     responses: never;
@@ -23284,6 +23350,210 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ZaloExchangeSchema"];
+            };
+        };
+        responses: {
+            /** @description Scoped result; development and synthetic gates still apply */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            /** @description Invalid input */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Scope, grant, consent or separation of duties denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Resource absent in caller scope */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Stale, conflicting, inactive or replayed transition */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Required provider, key, dependency or Rust kernel unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getNotificationAutomation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Scoped result; development and synthetic gates still apply */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            /** @description Invalid input */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Scope, grant, consent or separation of duties denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Resource absent in caller scope */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Stale, conflicting, inactive or replayed transition */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Required provider, key, dependency or Rust kernel unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    draftNotificationAutomationPolicy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotificationAutomationPolicySchema"];
+            };
+        };
+        responses: {
+            /** @description Scoped result; development and synthetic gates still apply */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            /** @description Invalid input */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Scope, grant, consent or separation of duties denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Resource absent in caller scope */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Stale, conflicting, inactive or replayed transition */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Required provider, key, dependency or Rust kernel unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    reviewNotificationAutomationPolicy: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Current version of the target resource; 0 for an absent initial configuration. */
+                "If-Match": string;
+            };
+            path: {
+                project: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotificationAutomationReviewSchema"];
             };
         };
         responses: {

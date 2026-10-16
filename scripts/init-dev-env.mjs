@@ -26,6 +26,7 @@ MINIO_ROOT_PASSWORD=${password()}
 INTERNAL_API_URL=http://localhost:4000
 ALLOW_SYNTHETIC_FIXTURES=true
 EXTERNAL_AI_ENABLED=false
+NOTIFICATIONS_AUTOMATION_ENABLED=false
 LOTTERY_PRODUCTION_ENABLED=false
 `;
 if (process.argv.includes('--add-auth-keys')) {

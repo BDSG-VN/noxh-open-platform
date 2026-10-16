@@ -1,6 +1,6 @@
 # Bản tích hợp hoàn thiện luồng nghiệp vụ — 2026-10-16
 
-Đợt này bổ sung migration 015–020 và các luồng dưới đây. Đây là mã đang nghiệm thu trên nhánh `codex/housing-completion`; trạng thái triển khai và kết quả chạy được ghi trong [VALIDATION.md](VALIDATION.md), không suy ra từ danh sách tính năng.
+Lõi migration 015–020 đã được hợp nhất vào main. Bản tiếp theo trên nhánh `codex/completion-verification` bổ sung migration 021: ba thay đổi hồ sơ diễn tập tạo thông báo trong ứng dụng qua outbox giao dịch, quy tắc có người duyệt độc lập và lựa chọn nhận tin của khách. Mặc định tắt; không gửi email/Zalo. Trạng thái kiểm tra được ghi trong [VALIDATION.md](VALIDATION.md), không suy ra từ danh sách tính năng.
 
 - Checklist preparation-v2 tính chứng cứ sạch và PDF đã xác nhận đúng phiên bản; checklist dự án có revision và pháp chế duyệt độc lập.
 - Tri thức hướng dẫn có nguồn/phạm vi/hiệu lực; AI đề xuất PDF từ chứng cứ hiện hành, kiểm lại lúc xác nhận và tạo bản nháp trong giao dịch.
@@ -9,7 +9,7 @@
 - Xác minh Zalo phía máy chủ, challenge một lần, liên kết sau OTP mới; Mini App có bản khai, giấy tờ và bộ PDF dùng chung hồ sơ. Chưa nghiệm thu thiết bị/provider thật.
 - Checkpoint Ed25519 ký ngoại tuyến, nhập khóa công khai ghim và Rust kiểm nhiều trang; gói khôi phục mã hóa có manifest/hash, kiểm tra PostgreSQL và kho tệp cô lập. Chưa thay quy trình giữ checkpoint/backup mới nhất ngoài máy.
 
-Chi tiết và các giới hạn nằm trong [ADR 016](adr/016-governed-completion.md), các tài liệu `COMPLETION-*.md` và [ma trận hiện hành](IMPLEMENTATION-MATRIX.md). Các điều kiện pháp lý, chữ ký, cơ quan liên thông, provider thật, quyền DB production, bảo mật độc lập và pilot chưa được chứng nhận hoàn tất.
+Chi tiết và các giới hạn nằm trong [ADR 016](adr/016-governed-completion.md), [thông báo tự động 021](COMPLETION-NOTIFICATION-AUTOMATION.md), các tài liệu `COMPLETION-*.md` và [ma trận hiện hành](IMPLEMENTATION-MATRIX.md). Các điều kiện pháp lý, chữ ký, cơ quan liên thông, provider thật, quyền DB production, bảo mật độc lập và pilot chưa được chứng nhận hoàn tất.
 
 ## Phạm vi nền tảng v0.5
 

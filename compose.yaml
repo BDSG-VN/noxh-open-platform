@@ -11,6 +11,7 @@ x-node: &node
     INTERNAL_API_URL: http://api:4000
     ALLOW_SYNTHETIC_FIXTURES: 'true'
     EXTERNAL_AI_ENABLED: '${EXTERNAL_AI_ENABLED:-false}'
+    NOTIFICATIONS_AUTOMATION_ENABLED: '${NOTIFICATIONS_AUTOMATION_ENABLED:-false}'
     LOTTERY_PRODUCTION_ENABLED: 'false'
     AUTH_ORGANIZATION_ID: ${AUTH_ORGANIZATION_ID:-10000000-0000-4000-8000-000000000001}
     WORKFORCE_ISSUER: http://localhost:8080/realms/noxh
@@ -160,6 +161,10 @@ services:
       retries: 30
   worker:
     <<: *node
+    environment:
+      <<: *node-env
+      AUTH_ENCRYPTION_KEY: ${AUTH_ENCRYPTION_KEY:?Generate auth keys in .env}
+      AUTH_HASH_KEY: ${AUTH_HASH_KEY:?Generate auth keys in .env}
     command: ['node', 'apps/api/dist/worker.js']
     healthcheck:
       test:
