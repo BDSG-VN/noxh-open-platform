@@ -32,3 +32,14 @@
 - [completion-citizen-inbox-contract-mobile.png](completion-citizen-inbox-contract-mobile.png): Hộp thư, tùy chọn nhận tin riêng từng mục đích và hợp đồng diễn tập trên màn hình nhỏ. (390 × 5250 px)
 
 Không công khai tài khoản, script seed, bản khai người thật hoặc PDF đã điền. [Bằng chứng và giới hạn kiểm tra](../VALIDATION.md).
+
+## Thông báo tự động 021 — 16/10/2026
+
+Ảnh từ production build cục bộ, dự án chung “Dự án diễn tập021”, hoàn toàn dùng dữ liệu giả lập. Hai ảnh được rà soát trước khi công khai; không chứa tài liệu dự án riêng, thông tin đăng nhập, token hoặc thông tin người thật.
+
+- [notification-automation-admin.jpg](notification-automation-admin.jpg): Chính sách đã được thu hồi sau lượt diễn tập; lịch sử vẫn ghi một thư đã phát qua worker và một sự kiện bị bỏ qua vì chưa có chính sách. (1440 × 1617 px)
+- [citizen-inbox.jpg](citizen-inbox.jpg): Khách nhận đúng thư gắn mã hồ sơ giả lập và xác nhận đã đọc; trạng thái giữ nguyên khi tải lại. Lựa chọn nhận tin áp dụng riêng từng kênh/mục đích. (1440 × 2883 px)
+
+Lượt QA có **18 xác nhận CUA** (14 kiểm tra chức năng và 4 cặp nhãn accordion/mẫu đúng), cùng **8 kiểm tra HTTP qua BFF**. Desktop 1440 px và mobile 390 px không tràn ngang toàn trang; không ghi nhận lỗi/warning console. AppModule, BFF, giao dịch sự kiện nguồn/outbox và lifecycle xử lý thông báo chạy thực. Identity, storage và antivirus dùng test-double; chỉ dự án giả lập được bật cờ tự động trong fixture. Không có gửi provider thật, giấy tờ người thật, quyết định pháp lý hoặc thao tác bốc thăm/thu tiền thật. Mọi dịch vụ, worker loop và tab QA riêng đã được dừng/đóng sau kiểm tra.
+
+Hai ảnh thể hiện kết quả của lượt chức năng; sau sửa chữ, cả bốn nhãn mở đúng form đã được kiểm lại trên production build mới với fixture độc lập. [Bằng chứng và giới hạn 021](../VALIDATION.md).

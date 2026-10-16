@@ -1,6 +1,6 @@
 # Bản tích hợp hoàn thiện luồng nghiệp vụ — 2026-10-16
 
-Lõi migration 015–020 đã được hợp nhất vào main. Bản tiếp theo trên nhánh `codex/completion-verification` bổ sung migration 021: ba thay đổi hồ sơ diễn tập tạo thông báo trong ứng dụng qua outbox giao dịch, quy tắc có người duyệt độc lập và lựa chọn nhận tin của khách. Mặc định tắt; không gửi email/Zalo. Trạng thái kiểm tra được ghi trong [VALIDATION.md](VALIDATION.md), không suy ra từ danh sách tính năng.
+Lõi migration 015–021 đã được hợp nhất vào main; bản 021 qua PR #5, merge `d932a9847ca0365c06e8c181afeef3fbfe972404`, từ source `ac3897827f914acdd92a3d5ee78944f620b9f859`. Migration 021 bổ sung ba thay đổi hồ sơ diễn tập tạo thông báo trong ứng dụng qua outbox giao dịch, quy tắc có người duyệt độc lập và lựa chọn nhận tin của khách. Mặc định tắt; không gửi email/Zalo. CI đạt 4/4 job; QA có 18 xác nhận CUA và 8 kiểm tra BFF, được ghi cùng giới hạn trong [VALIDATION.md](VALIDATION.md). Hợp nhất và kiểm thử không tự xác nhận đã nâng cấp dịch vụ đang chạy.
 
 - Checklist preparation-v2 tính chứng cứ sạch và PDF đã xác nhận đúng phiên bản; checklist dự án có revision và pháp chế duyệt độc lập.
 - Tri thức hướng dẫn có nguồn/phạm vi/hiệu lực; AI đề xuất PDF từ chứng cứ hiện hành, kiểm lại lúc xác nhận và tạo bản nháp trong giao dịch.
