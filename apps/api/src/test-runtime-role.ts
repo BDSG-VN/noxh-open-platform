@@ -3,15 +3,18 @@
  * runs under a member of the least-privilege `noxh_app` role (SET ROLE), while fixture SQL issued
  * directly from test files keeps the migration-owner session. This replays the whole API suite
  * against migration 022 grants and RLS instead of a superuser connection.
- * Inactive by default; never used outside tests.
+ * Inactive by default; never used outside tests. Fails closed: missing migrations or unclear
+ * statement attribution run as the runtime role or abort the test file.
  */
-import { afterAll } from 'vitest';
+import { afterAll, expect } from 'vitest';
+import { appendFileSync } from 'node:fs';
 import { Database, type Sql } from './database';
 
 const QA_ROLE = 'noxh_qa_runtime_member';
 const WRAPPED = Symbol('runtime-role-wrapped');
 type Wrapped = Sql & { [WRAPPED]?: true };
 
+/** Fixture SQL is SQL whose nearest non-harness caller is a test file; anything else is runtime. */
 function callerIsTestCode(): boolean {
   const frames = (new Error().stack ?? '').split('\n').slice(1);
   for (const frame of frames) {
@@ -19,33 +22,40 @@ function callerIsTestCode(): boolean {
     if (frame.includes('node_modules') || frame.includes('node:')) continue;
     return /\.test\.ts|test-privacy\.ts/.test(frame);
   }
-  return true;
+  return false;
 }
 
 const control = /^\s*(BEGIN|COMMIT|ROLLBACK)\s*;?\s*$/i;
 
-async function prepare(raw: Sql) {
-  const ready = await raw.query("SELECT to_regrole('noxh_app') IS NOT NULL AS ok");
-  if (!ready.rows[0]?.ok) return false;
+/** Returns false for in-memory fake executors (no PostgreSQL behind them). */
+async function prepare(raw: Sql): Promise<boolean> {
+  const ready = await raw.query(
+    "SELECT to_regrole('noxh_app') IS NOT NULL AND to_regclass('identity_private.instance_organizations') IS NOT NULL AS ok",
+  );
+  const row = ready.rows[0];
+  if (!row || typeof row.ok !== 'boolean') return false;
+  if (!row.ok)
+    throw new Error('NOXH_TEST_RUNTIME_ROLE=1 requires migration 022 in the test database');
+  runtimeRoleStats.wrapped++;
   await raw.query(
-    `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='${QA_ROLE}') THEN CREATE ROLE ${QA_ROLE} NOLOGIN NOSUPERUSER NOBYPASSRLS INHERIT; END IF; END $$`,
+    `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='${QA_ROLE}') THEN CREATE ROLE ${QA_ROLE} NOLOGIN INHERIT; END IF; END $$`,
   );
   await raw.query(`GRANT noxh_app TO ${QA_ROLE}`);
-  // Test fixtures create organizations freely; register each as served by this test instance.
+  // Test fixtures create organizations freely; register each for the QA runtime member.
   await raw.query(`CREATE OR REPLACE FUNCTION identity_private.qa_register_instance() RETURNS trigger LANGUAGE plpgsql AS $f$
-    BEGIN INSERT INTO identity_private.instance_organizations(organization_id, registered_by)
-      VALUES (NEW.id, 'synthetic test fixture') ON CONFLICT DO NOTHING; RETURN NEW; END $f$`);
+    BEGIN INSERT INTO identity_private.instance_organizations(runtime_role, organization_id, registered_by)
+      VALUES ('${QA_ROLE}', NEW.id, 'synthetic test fixture') ON CONFLICT DO NOTHING; RETURN NEW; END $f$`);
   await raw.query('DROP TRIGGER IF EXISTS qa_register_instance ON organizations');
   await raw.query(
     'CREATE TRIGGER qa_register_instance AFTER INSERT ON organizations FOR EACH ROW EXECUTE FUNCTION identity_private.qa_register_instance()',
   );
   await raw.query(
-    "INSERT INTO identity_private.instance_organizations(organization_id, registered_by) SELECT id, 'synthetic test fixture' FROM organizations ON CONFLICT DO NOTHING",
+    `INSERT INTO identity_private.instance_organizations(runtime_role, organization_id, registered_by) SELECT '${QA_ROLE}', id, 'synthetic test fixture' FROM organizations ON CONFLICT DO NOTHING`,
   );
   return true;
 }
 
-export const runtimeRoleStats = { asRuntime: 0, asFixture: 0 };
+export const runtimeRoleStats = { asRuntime: 0, asFixture: 0, wrapped: 0 };
 
 function wrap(raw: Sql): Wrapped {
   let prepared: Promise<boolean> | undefined;
@@ -53,8 +63,9 @@ function wrap(raw: Sql): Wrapped {
     async query(text, values) {
       const fixture = callerIsTestCode();
       prepared ??= prepare(raw);
-      if (!(await prepared) || fixture || control.test(text)) {
-        if (!control.test(text)) runtimeRoleStats.asFixture++;
+      if (!(await prepared) || control.test(text)) return raw.query(text, values);
+      if (fixture) {
+        runtimeRoleStats.asFixture++;
         return raw.query(text, values);
       }
       runtimeRoleStats.asRuntime++;
@@ -88,6 +99,13 @@ if (process.env.NOXH_TEST_RUNTIME_ROLE === '1') {
   };
   afterAll(() => {
     // Evidence that service SQL actually ran under the runtime role in this test file.
-    console.info('[runtime-role] ' + JSON.stringify(runtimeRoleStats));
+    const report = process.env.NOXH_TEST_RUNTIME_ROLE_REPORT;
+    if (report)
+      appendFileSync(
+        report,
+        JSON.stringify({ file: expect.getState().testPath, ...runtimeRoleStats }) + '\n',
+      );
+    if (runtimeRoleStats.wrapped && !runtimeRoleStats.asRuntime)
+      throw new Error('Runtime-role replay ran no service SQL under noxh_app in this file');
   });
 }

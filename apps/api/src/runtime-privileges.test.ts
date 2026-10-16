@@ -7,18 +7,19 @@ import { pathToFileURL } from 'node:url';
 
 type Rows = Record<string, unknown>[];
 interface Derived {
-  tables: Map<string, { privileges: Set<string>; lockOnly: boolean }>;
+  tables: Map<string, { privileges: Set<string>; updateColumns: Set<string>; lockOnly: boolean }>;
   sequences: string[];
   statements: number;
 }
 interface Catalog {
-  tables: { table_name: string; has_org: boolean }[];
+  tables: { table_name: string; has_org: boolean; columns: string[] }[];
   sequences: { sequence_name: string; table_name: string }[];
 }
 interface PrivilegeModule {
   readCatalog(query: (text: string, values?: unknown[]) => Promise<Rows>): Promise<Catalog>;
   deriveRuntimePrivileges(catalog: Catalog): Promise<Derived>;
-  OWNER_ONLY_TABLES: string[];
+  lockColumn(columns: string[]): string;
+  FUNCTION_SEARCH_PATH: string;
 }
 interface InventoryModule {
   sqlInventory(): Promise<{ statements: { location: string; sql: string }[] }>;
@@ -28,31 +29,47 @@ const ORG_A = '10000000-0000-4000-8000-000000000001';
 const ORG_B = '10000000-0000-4000-8000-0000000000b2';
 const PROJECT_B = '20000000-0000-4000-8000-0000000000b2';
 const MEMBER = 'qa_runtime_privilege_member';
-const ALL = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'];
+const OTHER = 'qa_runtime_other_login';
+const TABLE_PRIVILEGES = [
+  'SELECT',
+  'INSERT',
+  'UPDATE',
+  'DELETE',
+  'TRUNCATE',
+  'REFERENCES',
+  'TRIGGER',
+];
 let pg: PGlite, catalog: Catalog, derived: Derived, inventory: InventoryModule;
+let privilegeModule: PrivilegeModule;
 
 const load = async <T>(file: string) =>
   (await import(pathToFileURL(resolve('../..', 'scripts', file)).href)) as T;
 const rows = async (text: string, values: unknown[] = []) =>
   (await pg.query<Record<string, unknown>>(text, values)).rows;
 /** Runs statements as a member of noxh_app inside a rolled-back transaction. */
-async function asRuntime<T>(work: () => Promise<T>): Promise<T> {
+async function as<T>(role: string, work: () => Promise<T>): Promise<T> {
   await pg.exec('BEGIN');
-  await pg.exec(`SET LOCAL ROLE ${MEMBER}`);
+  await pg.exec(`SET LOCAL ROLE ${role}`);
   try {
     return await work();
   } finally {
     await pg.exec('ROLLBACK');
   }
 }
-async function deniedCode(sql: string) {
+const asRuntime = <T>(work: () => Promise<T>) => as(MEMBER, work);
+async function deniedCode(sql: string, role = MEMBER) {
   try {
-    await asRuntime(() => pg.exec(sql));
+    await as(role, () => pg.exec(sql));
     return 'allowed';
   } catch (e) {
     return (e as { code?: string }).code;
   }
 }
+const register = (role: string, org: string) =>
+  pg.query(
+    "INSERT INTO identity_private.instance_organizations(runtime_role,organization_id,registered_by) VALUES($1,$2,'synthetic test') ON CONFLICT DO NOTHING",
+    [role, org],
+  );
 
 beforeAll(async () => {
   pg = new PGlite();
@@ -63,52 +80,51 @@ beforeAll(async () => {
   for (const f of (await readdir(resolve('../..', 'db/migrations'))).sort())
     await pg.exec(await readFile(resolve('../..', 'db/migrations', f), 'utf8'));
   await pg.exec(await readFile(resolve('../..', 'db/fixtures/seed.sql'), 'utf8'));
-  await pg.exec(
-    `CREATE ROLE ${MEMBER} NOLOGIN NOSUPERUSER NOBYPASSRLS INHERIT; GRANT noxh_app TO ${MEMBER};`,
-  );
-  const privileges = await load<PrivilegeModule>('runtime-privileges.mjs');
+  for (const role of [MEMBER, OTHER])
+    await pg.exec(`CREATE ROLE ${role} NOLOGIN INHERIT; GRANT noxh_app TO ${role};`);
+  privilegeModule = await load<PrivilegeModule>('runtime-privileges.mjs');
   inventory = await load<InventoryModule>('sql-inventory.mjs');
-  catalog = await privileges.readCatalog(rows);
-  derived = await privileges.deriveRuntimePrivileges(catalog);
+  catalog = await privilegeModule.readCatalog(rows);
+  derived = await privilegeModule.deriveRuntimePrivileges(catalog);
 }, 60000);
 afterAll(async () => {
   await pg.close();
 });
 
 describe('runtime role privileges', () => {
-  it('grants exactly what API SQL and invoked triggers need, no table-level extras', async () => {
+  it('grants exactly what API SQL and invoked triggers need, UPDATE only per column', async () => {
     expect(derived.statements).toBeGreaterThan(500);
     const mismatches: string[] = [];
-    for (const { table_name: table } of catalog.tables) {
+    for (const { table_name: table, columns } of catalog.tables) {
       const need = derived.tables.get(table);
-      for (const privilege of ALL) {
+      for (const privilege of TABLE_PRIVILEGES) {
         const [r] = await rows('SELECT has_table_privilege($1,$2,$3) AS ok', [
           'noxh_app',
           table,
           privilege,
         ]);
-        // The scope policy function reads the owner-managed instance list; nothing else.
         const expected =
           table === 'identity_private.instance_organizations'
             ? privilege === 'SELECT'
-            : Boolean(
-                need?.privileges.has(privilege) && !(need.lockOnly && privilege === 'UPDATE'),
-              );
+            : privilege !== 'UPDATE' && Boolean(need?.privileges.has(privilege));
         if (r!.ok !== expected) mismatches.push(`${table} ${privilege} expected ${expected}`);
       }
-      if (need?.lockOnly) {
-        const [lock] = await rows(
-          "SELECT has_any_column_privilege('noxh_app',$1,'UPDATE') AS col, EXISTS(SELECT 1 FROM pg_trigger WHERE tgrelid=$1::regclass AND tgname='runtime_lock_only') AS guard",
-          [table],
-        );
-        if (!lock!.col || !lock!.guard) mismatches.push(`${table} lock-only guard missing`);
-      } else {
-        const [col] = await rows("SELECT has_any_column_privilege('noxh_app',$1,'UPDATE') AS col", [
+      const updatable = need?.lockOnly
+        ? new Set([privilegeModule.lockColumn(columns)])
+        : (need?.updateColumns ?? new Set<string>());
+      for (const column of columns) {
+        const [r] = await rows("SELECT has_column_privilege('noxh_app',$1,$2,'UPDATE') AS ok", [
           table,
+          column,
         ]);
-        if (col!.col !== Boolean(need?.privileges.has('UPDATE')))
-          mismatches.push(`${table} unexpected column UPDATE`);
+        if (r!.ok !== updatable.has(column))
+          mismatches.push(`${table}.${column} UPDATE expected ${updatable.has(column)}`);
       }
+      const [guard] = await rows(
+        "SELECT EXISTS(SELECT 1 FROM pg_trigger WHERE tgrelid=$1::regclass AND tgname='runtime_lock_only') AS ok",
+        [table],
+      );
+      if (guard!.ok !== Boolean(need?.lockOnly)) mismatches.push(`${table} lock-only guard`);
     }
     expect(mismatches).toEqual([]);
     const sequences = await rows(
@@ -117,7 +133,7 @@ describe('runtime role privileges', () => {
     expect(sequences.map((s) => s.name)).toEqual([...derived.sequences].sort());
   });
 
-  it('has no login, superuser, bypass, DDL, ownership or SECURITY DEFINER surface', async () => {
+  it('has no login, superuser, bypass, DDL, temp, ownership or SECURITY DEFINER surface', async () => {
     const [role] = await rows(
       "SELECT rolsuper,rolbypassrls,rolcreatedb,rolcreaterole,rolreplication,rolcanlogin,rolinherit FROM pg_roles WHERE rolname='noxh_app'",
     );
@@ -130,10 +146,10 @@ describe('runtime role privileges', () => {
       rolcanlogin: false,
       rolinherit: false,
     });
-    const [schema] = await rows(
-      "SELECT has_schema_privilege('noxh_app','public','CREATE') AS pub, has_schema_privilege('noxh_app','identity_private','CREATE') AS priv",
+    const [rights] = await rows(
+      "SELECT has_schema_privilege('noxh_app','public','CREATE') AS pub, has_schema_privilege('noxh_app','identity_private','CREATE') AS priv, has_database_privilege('noxh_app',current_database(),'TEMPORARY') AS temp, has_database_privilege('noxh_app',current_database(),'CREATE') AS db",
     );
-    expect(schema).toEqual({ pub: false, priv: false });
+    expect(rights).toEqual({ pub: false, priv: false, temp: false, db: false });
     expect(
       await rows(
         "SELECT relname FROM pg_class WHERE relowner IN (SELECT oid FROM pg_roles WHERE rolname IN ('noxh_app',$1))",
@@ -145,6 +161,14 @@ describe('runtime role privileges', () => {
         "SELECT p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname IN ('public','identity_private') AND p.prosecdef",
       ),
     ).toEqual([]);
+  });
+
+  it('pins search_path on every trigger function so temporary or public objects cannot shadow it', async () => {
+    const unpinned = await rows(
+      "SELECT p.oid::regprocedure::text AS fn FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname IN ('public','identity_private') AND p.prorettype='trigger'::regtype AND NOT (coalesce(p.proconfig,'{}') @> ARRAY['search_path=' || $1])",
+      [privilegeModule.FUNCTION_SEARCH_PATH],
+    );
+    expect(unpinned).toEqual([]);
   });
 
   it('forces RLS with scoped runtime policies on every table', async () => {
@@ -160,6 +184,7 @@ describe('runtime role privileges', () => {
   });
 
   it('plans every API statement under the runtime role without privilege errors', async () => {
+    await register(MEMBER, ORG_A);
     const { statements } = await inventory.sqlInventory();
     const failures: string[] = [];
     for (const s of statements) {
@@ -175,7 +200,7 @@ describe('runtime role privileges', () => {
 });
 
 describe('runtime role denials', () => {
-  it('cannot run DDL, disable RLS, truncate, escalate or edit instance scope', async () => {
+  it('cannot run DDL, disable RLS, truncate or edit instance scope', async () => {
     expect(await deniedCode('CREATE TABLE public.qa_runtime_probe(id int)')).toBe('42501');
     expect(await deniedCode('CREATE TABLE identity_private.qa_runtime_probe(id int)')).toBe(
       '42501',
@@ -183,61 +208,81 @@ describe('runtime role denials', () => {
     expect(await deniedCode('ALTER TABLE projects DISABLE ROW LEVEL SECURITY')).toBe('42501');
     expect(await deniedCode('ALTER TABLE projects NO FORCE ROW LEVEL SECURITY')).toBe('42501');
     expect(await deniedCode('DROP POLICY noxh_app_guard ON projects')).toBe('42501');
+    expect(
+      await deniedCode('ALTER FUNCTION identity_private.reject_runtime_update() RESET ALL'),
+    ).toBe('42501');
     expect(await deniedCode('TRUNCATE identity_private.audit_chain')).toBe('42501');
-    // SET ROLE is checked against the login (session) user; covered by tests/database.integration.mjs.
+    // SET ROLE and temporary schemas are checked against the login session; covered natively in
+    // tests/database.integration.mjs with a real provisioned login.
     expect(
       await deniedCode(
-        `INSERT INTO identity_private.instance_organizations(organization_id,registered_by) VALUES('${ORG_B}','x')`,
+        `INSERT INTO identity_private.instance_organizations(runtime_role,organization_id,registered_by) VALUES('${MEMBER}','${ORG_B}','x')`,
       ),
     ).toBe('42501');
     expect(await deniedCode('DELETE FROM identity_private.instance_organizations')).toBe('42501');
   });
 
-  it('cannot rewrite append-only evidence or update lock-only tables', async () => {
-    await pg.query(
-      "INSERT INTO identity_private.instance_organizations(organization_id,registered_by) VALUES($1,'synthetic test') ON CONFLICT DO NOTHING",
-      [ORG_A],
-    );
+  it('cannot rewrite append-only evidence, unchanged columns or lock-only tables', async () => {
+    await register(MEMBER, ORG_A);
     expect(await deniedCode("UPDATE identity_private.audit_chain SET action='x'")).toBe('42501');
     expect(await deniedCode('DELETE FROM identity_private.audit_chain')).toBe('42501');
     expect(await deniedCode('DELETE FROM declaration_versions')).toBe('42501');
     expect(await deniedCode('DELETE FROM application_decisions')).toBe('42501');
+    expect(await deniedCode("UPDATE consent_records SET purpose='rewritten'")).toBe('42501');
+    expect(await deniedCode("UPDATE consent_records SET granted_at='2000-01-01'")).toBe('42501');
+    expect(await deniedCode('UPDATE consent_records SET withdrawn_at=withdrawn_at')).toBe(
+      'allowed',
+    );
+    expect(await deniedCode('UPDATE projects SET organization_id=organization_id')).toBe('42501');
     expect(await deniedCode("UPDATE users SET status='disabled'")).toBe('42501');
-    expect(await deniedCode('UPDATE users SET id=id')).toBe('42501');
+    expect(await deniedCode('UPDATE users SET updated_at=now()')).toBe('42501');
     expect(await deniedCode("UPDATE organizations SET name='x'")).toBe('42501');
     expect(await deniedCode('SELECT id FROM users FOR UPDATE')).toBe('allowed');
     expect(await deniedCode('SELECT id FROM organizations FOR UPDATE')).toBe('allowed');
   });
 
-  it('limits rows to registered instance organizations and the transaction pin', async () => {
+  it('limits rows to organizations registered for the current login and the transaction pin', async () => {
     await pg.query("INSERT INTO organizations(id,name) VALUES($1,'Tổ chức khác giả lập')", [ORG_B]);
     await pg.query(
       "INSERT INTO projects(id,organization_id,name,locality,is_synthetic) VALUES($1,$2,'Dự án khác giả lập','Địa bàn giả lập',true)",
       [PROJECT_B, ORG_B],
     );
     await pg.query('DELETE FROM identity_private.instance_organizations');
-    const visible = () =>
-      asRuntime(async () =>
+    const visible = (role = MEMBER) =>
+      as(role, async () =>
         (
           await pg.query<{ organization_id: string }>('SELECT organization_id FROM projects')
         ).rows.map((r) => r.organization_id),
       );
     expect(await visible()).toEqual([]);
-    await pg.query(
-      "INSERT INTO identity_private.instance_organizations(organization_id,registered_by) VALUES($1,'synthetic test')",
-      [ORG_A],
-    );
+    expect(
+      await as(
+        MEMBER,
+        async () => (await pg.query('SELECT key FROM identity_private.auth_limits')).rows,
+      ),
+    ).toEqual([]);
+    await register(OTHER, ORG_A);
+    // Registration belongs to a login: another noxh_app member (e.g. another database's login)
+    // sees nothing, including the instance-global tables.
+    expect(await visible()).toEqual([]);
+    expect(
+      await deniedCode(
+        "INSERT INTO identity_private.auth_limits(key,window_at,requests,last_request_at) VALUES('k',now(),1,now())",
+      ),
+    ).toBe('42501');
+    expect(
+      await as(
+        MEMBER,
+        async () => (await pg.query('SELECT * FROM identity_private.instance_organizations')).rows,
+      ),
+    ).toEqual([]);
+    await register(MEMBER, ORG_A);
     const seen = await visible();
     expect(seen.length).toBe(2);
     expect(new Set(seen)).toEqual(new Set([ORG_A]));
     expect(
       await deniedCode(
         `INSERT INTO projects(id,organization_id,name,locality,is_synthetic) VALUES(gen_random_uuid(),'${ORG_B}','x','y',true)`,
-      ),
-    ).toBe('42501');
-    expect(
-      await deniedCode(
-        `UPDATE projects SET organization_id='${ORG_B}' WHERE organization_id='${ORG_A}'`,
       ),
     ).toBe('42501');
     const pinned = await asRuntime(async () => {
@@ -253,5 +298,12 @@ describe('runtime role denials', () => {
     expect(
       await asRuntime(async () => (await pg.query('SELECT id FROM organizations')).rows),
     ).toEqual([{ id: ORG_A }]);
+    // Changing to the group role itself drops every registration (fails closed).
+    expect(
+      await as(MEMBER, async () => {
+        await pg.exec('SET LOCAL ROLE noxh_app');
+        return (await pg.query('SELECT id FROM projects')).rows.length;
+      }),
+    ).toBe(0);
   });
 });

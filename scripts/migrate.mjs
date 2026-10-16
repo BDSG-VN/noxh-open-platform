@@ -6,6 +6,10 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const c = await pool.connect();
 try {
   await c.query('BEGIN');
+  // Bounded waits: a blocked advisory or table lock fails the run instead of hanging forever.
+  await c.query("SELECT set_config('lock_timeout', $1, true)", [
+    process.env.MIGRATION_LOCK_TIMEOUT ?? '60s',
+  ]);
   await c.query('SELECT pg_advisory_xact_lock(68280401)');
   await c.query(
     'CREATE TABLE IF NOT EXISTS schema_migrations(version text PRIMARY KEY,sha256 text NOT NULL,applied_at timestamptz NOT NULL DEFAULT now())',

@@ -30,7 +30,8 @@ beforeAll(async () => {
   process.env.AUDIT_VERIFIER_BIN = resolve(root, 'target/release/audit-verifier');
   pg = new PGlite();
   const files = (await readdir(resolve(root, 'db/migrations')))
-    .filter((f) => /^0(?:0[1-9]|1[0-4])_/.test(f) || f === '017_audit_checkpoints.sql')
+    // Full chain so the runtime-role replay (migration 022) also covers this service.
+    .filter((f) => f.endsWith('.sql'))
     .sort();
   for (const f of files) await pg.exec(await readFile(resolve(root, 'db/migrations', f), 'utf8'));
   db = new Database();

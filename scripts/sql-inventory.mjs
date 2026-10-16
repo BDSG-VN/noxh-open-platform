@@ -70,7 +70,11 @@ function collectConstants(file) {
 }
 
 export async function sqlInventory() {
-  const files = (await readdir(sourceDir))
+  const all = await readdir(sourceDir, { recursive: true });
+  const nested = all.filter((n) => /[\\/]/.test(n) && n.endsWith('.ts'));
+  if (nested.length)
+    throw new Error('SQL inventory does not scan subdirectories: ' + nested.join(', '));
+  const files = all
     .filter(
       (n) =>
         n.endsWith('.ts') &&
@@ -114,11 +118,54 @@ const normalize = (name) => {
   return clean.includes('.') ? clean : 'public.' + clean;
 };
 
-/** Table-level privileges a statement needs. Conservative superset; verified against PostgreSQL. */
+/** Column names assigned by a SET list starting at `start`, ending at a top-level clause. */
+function setColumns(s, start) {
+  const columns = [];
+  let depth = 0;
+  let item = '';
+  const flush = () => {
+    const target = item.split('=')[0].trim();
+    if (target.startsWith('(')) {
+      for (const c of target.replace(/[()]/g, '').split(',')) columns.push(c.trim());
+    } else if (target) columns.push(target);
+    item = '';
+  };
+  for (let i = start; i < s.length; i++) {
+    const ch = s[i];
+    if (ch === '(') depth++;
+    if (ch === ')') {
+      if (depth === 0) break;
+      depth--;
+    }
+    if (depth === 0) {
+      if (ch === ';') break;
+      if (/\W/.test(s[i - 1] ?? ' ') && /^(?:FROM|WHERE|RETURNING)\b/i.test(s.slice(i, i + 10)))
+        break;
+      if (ch === ',') {
+        flush();
+        continue;
+      }
+    }
+    item += ch;
+  }
+  flush();
+  return columns.map((c) => c.replaceAll('"', '').toLowerCase()).filter(Boolean);
+}
+
+/**
+ * Privileges a statement needs: [table, privilege] or [table, 'UPDATE', column]. Row locks are
+ * reported as [table, 'LOCK'] because they need an UPDATE privilege on some column only.
+ * Conservative; verified against PostgreSQL by EXPLAIN and the runtime-role test replay.
+ */
 export function requiredPrivileges(sql) {
-  const s = sql.replace(/--[^\n]*/g, ' ').replace(/'(?:[^']|'')*'/g, "''");
+  const s = sql
+    .replace(/--[^\n]*/g, ' ')
+    .replace(/'(?:[^']|'')*'/g, "''")
+    // PL/pgSQL RAISE ... USING ERRCODE = ... is not SQL table access.
+    .replace(/\bRAISE\b[^;]*;/gi, ' ;');
   const needs = [];
-  const add = (table, privilege) => needs.push([normalize(table), privilege]);
+  const add = (table, privilege, column) =>
+    needs.push(column ? [normalize(table), privilege, column] : [normalize(table), privilege]);
   const cteNames = new Set(
     [
       ...s.matchAll(
@@ -129,15 +176,23 @@ export function requiredPrivileges(sql) {
       ),
     ].map((m) => normalize(m[1])),
   );
-  for (const m of s.matchAll(new RegExp(String.raw`\bINSERT\s+INTO\s+${ident}`, 'gi'))) {
+  const inserts = [...s.matchAll(new RegExp(String.raw`\bINSERT\s+INTO\s+${ident}`, 'gi'))];
+  inserts.forEach((m, n) => {
     add(m[1], 'INSERT');
-    if (/\bON\s+CONFLICT\b[\s\S]*?\bDO\s+UPDATE\b/i.test(s)) add(m[1], 'UPDATE');
-    if (/\bON\s+CONFLICT\b/i.test(s) || /\bRETURNING\b/i.test(s)) add(m[1], 'SELECT');
-  }
+    const end = inserts[n + 1]?.index ?? s.length;
+    const tail = s.slice(m.index, end);
+    const upsert = /\bON\s+CONFLICT\b[\s\S]*?\bDO\s+UPDATE\s+SET\b/i.exec(tail);
+    if (upsert)
+      for (const c of setColumns(s, m.index + upsert.index + upsert[0].length))
+        add(m[1], 'UPDATE', c);
+    if (/\bON\s+CONFLICT\b/i.test(tail) || /\bRETURNING\b/i.test(tail)) add(m[1], 'SELECT');
+  });
   for (const m of s.matchAll(
     new RegExp(String.raw`\bUPDATE\s+${ident}(?:\s+(?:AS\s+)?[a-z_][a-z0-9_]*)?\s+SET\b`, 'gi'),
   )) {
-    add(m[1], 'UPDATE');
+    const columns = setColumns(s, m.index + m[0].length);
+    if (!columns.length) throw new Error('Could not parse UPDATE SET list: ' + sql.slice(0, 120));
+    for (const c of columns) add(m[1], 'UPDATE', c);
     add(m[1], 'SELECT');
   }
   for (const m of s.matchAll(new RegExp(String.raw`\bDELETE\s+FROM\s+${ident}`, 'gi'))) {
@@ -191,7 +246,7 @@ export function requiredPrivileges(sql) {
       const targets = m[1]
         ? m[1].split(',').map((x) => aliases.get(x.trim().toLowerCase()) ?? x.trim())
         : [...new Set(aliases.values())];
-      for (const t of targets) add(t, 'UPDATE');
+      for (const t of targets) add(t, 'LOCK');
     }
   }
   return needs;

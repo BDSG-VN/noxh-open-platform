@@ -7,11 +7,10 @@ import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 
 export const RUNTIME_GROUP = 'noxh_app';
-/** Tables the runtime role must never write even if code paths are added later. */
 export const RUNTIME_SCHEMAS = ['public', 'identity_private'];
-/** Owner-managed bookkeeping that the runtime only reads or never touches. */
+/** Owner-managed bookkeeping that the runtime may only read (its own rows). */
 export const OWNER_ONLY_TABLES = ['identity_private.instance_organizations'];
-/** No organization column; access is instance-global and limited to digests/expiry metadata. */
+/** No organization column: limited to logins registered for this database. */
 export const GLOBAL_TABLES = [
   'identity_private.auth_limits',
   'identity_private.revoked_staff_sessions',
@@ -21,45 +20,45 @@ export const PARENT_SCOPED_TABLES = {
   'public.application_generated_forms':
     'EXISTS (SELECT 1 FROM public.applications a WHERE a.id = application_id)',
 };
-
-const lockClause =
-  /\bFOR\s+(?:NO\s+KEY\s+UPDATE|UPDATE|KEY\s+SHARE|SHARE)(?:\s+OF\s+[a-z_][a-z0-9_]*(?:\s*,\s*[a-z_][a-z0-9_]*)*)?(?:\s+(?:NOWAIT|SKIP\s+LOCKED))?/gi;
+/** Columns the lock-only grant prefers: bookkeeping fields that carry no business meaning. */
+const HARMLESS_LOCK_COLUMNS = ['updated_at', 'version', 'created_at', 'linked_at'];
+/** Fixed search_path for every trigger function so pg_temp/public objects cannot shadow names. */
+export const FUNCTION_SEARCH_PATH = 'pg_catalog, public, identity_private, pg_temp';
 
 /** Catalog facts needed for derivation; queried with the migration owner connection. */
 export async function readCatalog(query) {
   const triggers = await query(
-    `
-    SELECT n.nspname || '.' || c.relname AS table_name,
-           t.tgtype::int AS tgtype,
-           p.prosrc AS body,
-           p.prosecdef AS security_definer
-      FROM pg_trigger t
-      JOIN pg_class c ON c.oid = t.tgrelid
-      JOIN pg_namespace n ON n.oid = c.relnamespace
-      JOIN pg_proc p ON p.oid = t.tgfoid
-     WHERE NOT t.tgisinternal AND n.nspname = ANY($1)`,
+    `SELECT n.nspname || '.' || c.relname AS table_name,
+            t.tgname AS trigger_name,
+            t.tgtype::int AS tgtype,
+            p.prosrc AS body,
+            p.prosecdef AS security_definer
+       FROM pg_trigger t
+       JOIN pg_class c ON c.oid = t.tgrelid
+       JOIN pg_namespace n ON n.oid = c.relnamespace
+       JOIN pg_proc p ON p.oid = t.tgfoid
+      WHERE NOT t.tgisinternal AND n.nspname = ANY($1)
+      ORDER BY 1, 2`,
     [RUNTIME_SCHEMAS],
   );
   const tables = await query(
-    `
-    SELECT n.nspname || '.' || c.relname AS table_name,
-           (SELECT a.attname FROM pg_attribute a WHERE a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped ORDER BY a.attnum LIMIT 1) AS first_column,
-           EXISTS (SELECT 1 FROM pg_attribute a WHERE a.attrelid = c.oid AND a.attname = 'organization_id' AND NOT a.attisdropped) AS has_org
-      FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-     WHERE c.relkind IN ('r','p') AND n.nspname = ANY($1)
-     ORDER BY 1`,
+    `SELECT n.nspname || '.' || c.relname AS table_name,
+            ARRAY(SELECT a.attname::text FROM pg_attribute a WHERE a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped ORDER BY a.attnum) AS columns,
+            EXISTS (SELECT 1 FROM pg_attribute a WHERE a.attrelid = c.oid AND a.attname = 'organization_id' AND NOT a.attisdropped) AS has_org
+       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE c.relkind IN ('r','p') AND n.nspname = ANY($1)
+      ORDER BY 1`,
     [RUNTIME_SCHEMAS],
   );
   const sequences = await query(
-    `
-    SELECT sn.nspname || '.' || s.relname AS sequence_name, tn.nspname || '.' || t.relname AS table_name
-      FROM pg_depend d
-      JOIN pg_class s ON s.oid = d.objid AND s.relkind = 'S'
-      JOIN pg_namespace sn ON sn.oid = s.relnamespace
-      JOIN pg_class t ON t.oid = d.refobjid
-      JOIN pg_namespace tn ON tn.oid = t.relnamespace
-     WHERE d.deptype IN ('a','i') AND tn.nspname = ANY($1)
-     ORDER BY 1`,
+    `SELECT sn.nspname || '.' || s.relname AS sequence_name, tn.nspname || '.' || t.relname AS table_name
+       FROM pg_depend d
+       JOIN pg_class s ON s.oid = d.objid AND s.relkind = 'S'
+       JOIN pg_namespace sn ON sn.oid = s.relnamespace
+       JOIN pg_class t ON t.oid = d.refobjid
+       JOIN pg_namespace tn ON tn.oid = t.relnamespace
+      WHERE d.deptype IN ('a','i') AND tn.nspname = ANY($1)
+      ORDER BY 1`,
     [RUNTIME_SCHEMAS],
   );
   return { triggers, tables, sequences };
@@ -70,58 +69,71 @@ const TRIGGER_INSERT = 1 << 2,
   TRIGGER_UPDATE = 1 << 4;
 
 /**
- * @returns {{ tables: Map<string,{privileges:Set<string>, lockOnly:boolean}>, sequences: string[], statements: number }}
+ * @returns {{ tables: Map<string,{privileges:Set<string>, updateColumns:Set<string>, lockOnly:boolean}>, sequences: string[], statements: number }}
  */
 export async function deriveRuntimePrivileges(catalog) {
   const { statements, dynamic } = await sqlInventory();
   if (dynamic.some((d) => !d.location.startsWith('apps/api/src/database.ts')))
     throw new Error('Unresolvable SQL in API source: ' + dynamic.map((d) => d.location).join(', '));
   const need = new Map();
-  const realUpdate = new Set();
-  const add = (table, privilege) => {
-    if (!need.has(table)) need.set(table, new Set());
-    need.get(table).add(privilege);
+  const entry = (table) => {
+    if (!need.has(table))
+      need.set(table, { privileges: new Set(), updateColumns: new Set(), locked: false });
+    return need.get(table);
   };
   const absorb = (sql) => {
-    for (const [t, p] of requiredPrivileges(sql)) add(t, p);
-    for (const [t, p] of requiredPrivileges(sql.replace(lockClause, ' ')))
-      if (p === 'UPDATE') realUpdate.add(t);
+    for (const [table, privilege, column] of requiredPrivileges(sql)) {
+      const e = entry(table);
+      if (privilege === 'LOCK') e.locked = true;
+      else if (privilege === 'UPDATE') e.updateColumns.add(column);
+      else e.privileges.add(privilege);
+    }
   };
   for (const { sql } of statements) absorb(sql);
   // Trigger functions are SECURITY INVOKER: their statements run with the runtime privileges.
-  // Iterate until stable because a trigger can write a table that has its own trigger.
-  for (let changed = true; changed; ) {
-    changed = false;
+  // Iterate to a fixed point because a trigger can write a table that has its own trigger.
+  const snapshot = () =>
+    JSON.stringify(
+      [...need].map(([k, v]) => [
+        k,
+        [...v.privileges].sort(),
+        [...v.updateColumns].sort(),
+        v.locked,
+      ]),
+    );
+  for (let before = '', after = snapshot(); before !== after; before = after, after = snapshot()) {
     for (const t of catalog.triggers) {
       if (t.security_definer)
         throw new Error('SECURITY DEFINER trigger needs explicit review: ' + t.table_name);
-      const privileges = need.get(t.table_name);
-      if (!privileges) continue;
+      const e = need.get(t.table_name);
+      if (!e) continue;
       const fires =
-        (t.tgtype & TRIGGER_INSERT && privileges.has('INSERT')) ||
-        (t.tgtype & TRIGGER_DELETE && privileges.has('DELETE')) ||
-        (t.tgtype & TRIGGER_UPDATE && realUpdate.has(t.table_name));
-      if (!fires) continue;
-      const before = JSON.stringify([...need].map(([k, v]) => [k, [...v]]));
-      absorb(t.body);
-      if (JSON.stringify([...need].map(([k, v]) => [k, [...v]])) !== before) changed = true;
+        (t.tgtype & TRIGGER_INSERT && e.privileges.has('INSERT')) ||
+        (t.tgtype & TRIGGER_DELETE && e.privileges.has('DELETE')) ||
+        (t.tgtype & TRIGGER_UPDATE && e.updateColumns.size > 0);
+      if (fires && t.trigger_name !== 'runtime_lock_only') absorb(t.body);
     }
   }
-  const known = new Set(catalog.tables.map((t) => t.table_name));
-  known.add('public.schema_migrations');
-  const unknown = [...need.keys()].filter((t) => !known.has(t));
+  const byName = new Map(catalog.tables.map((t) => [t.table_name, t]));
+  const unknown = [...need.keys()].filter(
+    (t) => !byName.has(t) && t !== 'public.schema_migrations' && !OWNER_ONLY_TABLES.includes(t),
+  );
   if (unknown.length) throw new Error('SQL references unknown tables: ' + unknown.join(', '));
   const tables = new Map();
-  for (const [table, privileges] of [...need].sort(([a], [b]) => a.localeCompare(b))) {
+  for (const [table, e] of [...need].sort(([a], [b]) => a.localeCompare(b))) {
     if (OWNER_ONLY_TABLES.includes(table)) {
-      // Readable for scope checks (granted with the table itself); never writable at runtime.
-      if ([...privileges].some((p) => p !== 'SELECT'))
+      if ([...e.privileges].some((p) => p !== 'SELECT') || e.updateColumns.size || e.locked)
         throw new Error('Runtime SQL must not write ' + table);
       continue;
     }
+    const columns = byName.get(table)?.columns ?? [];
+    for (const c of e.updateColumns)
+      if (table !== 'public.schema_migrations' && !columns.includes(c))
+        throw new Error(`UPDATE of unknown column ${table}.${c}`);
     tables.set(table, {
-      privileges,
-      lockOnly: privileges.has('UPDATE') && !realUpdate.has(table),
+      privileges: e.privileges,
+      updateColumns: e.updateColumns,
+      lockOnly: e.locked && e.updateColumns.size === 0,
     });
   }
   const sequences = catalog.sequences
@@ -130,90 +142,118 @@ export async function deriveRuntimePrivileges(catalog) {
   return { tables, sequences, statements: statements.length };
 }
 
+export function lockColumn(columns) {
+  return HARMLESS_LOCK_COLUMNS.find((c) => columns.includes(c)) ?? columns[0];
+}
+
 const q = (name) =>
   name
     .split('.')
     .map((p) => '"' + p + '"')
     .join('.');
 
+/** Inline (planner-friendly, bound-by-OID) scope expression for an organization column. */
+export function scopeExpression(column) {
+  return (
+    `${column} IN (SELECT i.organization_id FROM identity_private.instance_organizations i WHERE i.runtime_role = CURRENT_USER)` +
+    ` AND (NULLIF(pg_catalog.current_setting('app.organization_id', true), '') IS NULL` +
+    ` OR ${column} = NULLIF(pg_catalog.current_setting('app.organization_id', true), '')::pg_catalog.uuid)`
+  );
+}
+const REGISTERED_LOGIN =
+  'EXISTS (SELECT 1 FROM identity_private.instance_organizations i WHERE i.runtime_role = CURRENT_USER)';
+
 /** Renders the reviewed migration body. Kept deterministic for code review diffs. */
 export function renderMigration(catalog, derived) {
   const lines = [];
-  const scope = (expr) => `identity_private.instance_scope_allows(${expr})`;
   lines.push(
     '-- 022: least-privilege API runtime role. Generated by scripts/runtime-privileges.mjs from',
     '-- the API SQL inventory and trigger bodies, then reviewed. Do not edit after release; add a',
     '-- new migration when code needs a different privilege (tests fail until it exists).',
     '',
-    "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='noxh_app') THEN",
-    '  CREATE ROLE noxh_app NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;',
-    'END IF; END $$;',
-    'ALTER ROLE noxh_app NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;',
+    '-- Group role only; logins are created per database by scripts/runtime-role.mjs. Attributes',
+    '-- are defaults (no superuser-only ALTER), and a pre-existing elevated role stops the migration.',
+    'DO $$ BEGIN',
+    "  IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'noxh_app') THEN",
+    '    CREATE ROLE noxh_app NOLOGIN NOINHERIT;',
+    "  ELSIF EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'noxh_app' AND (rolcanlogin OR rolsuper OR rolbypassrls OR rolcreatedb OR rolcreaterole OR rolreplication OR rolinherit)) THEN",
+    "    RAISE EXCEPTION 'existing role noxh_app has elevated or login attributes; review manually';",
+    '  END IF;',
+    'END $$;',
     'REVOKE CREATE ON SCHEMA public FROM PUBLIC;',
+    "DO $$ BEGIN EXECUTE pg_catalog.format('REVOKE TEMPORARY ON DATABASE %I FROM PUBLIC', pg_catalog.current_database()); END $$;",
     'GRANT USAGE ON SCHEMA public, identity_private TO noxh_app;',
     '',
-    '-- Organizations this instance serves. Only the migration owner/operator writes it.',
+    '-- Organizations each runtime login serves in this database. Only the migration owner writes it.',
     'CREATE TABLE identity_private.instance_organizations (',
-    '  organization_id uuid PRIMARY KEY REFERENCES organizations(id),',
+    '  runtime_role name NOT NULL,',
+    '  organization_id uuid NOT NULL REFERENCES organizations(id),',
     '  registered_by text NOT NULL CHECK (length(registered_by) BETWEEN 1 AND 120),',
-    '  registered_at timestamptz NOT NULL DEFAULT now()',
+    '  registered_at timestamptz NOT NULL DEFAULT now(),',
+    '  PRIMARY KEY (runtime_role, organization_id)',
     ');',
     'REVOKE ALL ON identity_private.instance_organizations FROM PUBLIC;',
     'GRANT SELECT ON identity_private.instance_organizations TO noxh_app;',
-    '',
-    '-- Row allowed when its organization is served by this instance and, if the transaction pinned',
-    '-- app.organization_id, equals that pin. SECURITY INVOKER and schema-qualified on purpose.',
-    'CREATE FUNCTION identity_private.instance_scope_allows(org uuid) RETURNS boolean',
-    'LANGUAGE sql STABLE PARALLEL SAFE AS $$',
-    '  SELECT EXISTS (SELECT 1 FROM identity_private.instance_organizations i WHERE i.organization_id = org)',
-    "     AND (nullif(current_setting('app.organization_id', true), '') IS NULL",
-    "          OR org = nullif(current_setting('app.organization_id', true), '')::uuid)",
-    '$$;',
-    'REVOKE ALL ON FUNCTION identity_private.instance_scope_allows(uuid) FROM PUBLIC;',
-    'GRANT EXECUTE ON FUNCTION identity_private.instance_scope_allows(uuid) TO noxh_app;',
+    'ALTER TABLE identity_private.instance_organizations ENABLE ROW LEVEL SECURITY;',
+    'CREATE POLICY noxh_app_own_rows ON identity_private.instance_organizations FOR SELECT TO noxh_app USING (runtime_role = CURRENT_USER);',
     '',
     '-- Lock-only tables: SELECT ... FOR UPDATE needs an UPDATE privilege, but the runtime never',
     '-- updates them. A one-column grant plus this trigger keeps the lock and rejects the write.',
-    'CREATE FUNCTION identity_private.reject_runtime_update() RETURNS trigger LANGUAGE plpgsql AS $$',
+    'CREATE FUNCTION identity_private.reject_runtime_update() RETURNS trigger LANGUAGE plpgsql',
+    `SET search_path = ${FUNCTION_SEARCH_PATH} AS $$`,
     'BEGIN',
-    '  IF NOT (SELECT r.rolsuper FROM pg_roles r WHERE r.rolname = current_user)',
-    "     AND pg_has_role(current_user, 'noxh_app', 'MEMBER') THEN",
+    '  IF NOT (SELECT r.rolsuper FROM pg_catalog.pg_roles r WHERE r.rolname = CURRENT_USER)',
+    "     AND pg_catalog.pg_has_role(CURRENT_USER, 'noxh_app', 'USAGE') THEN",
     "    RAISE EXCEPTION 'runtime role may lock but not update %', TG_TABLE_NAME USING ERRCODE = '42501';",
     '  END IF;',
     '  RETURN NEW;',
     'END $$;',
     '',
-    '-- Table privileges (no TRUNCATE, REFERENCES, TRIGGER or ownership).',
+    '-- Trigger functions run as the invoker; pin their name resolution (pg_temp last).',
+    'DO $$ DECLARE f regprocedure; BEGIN',
+    '  FOR f IN SELECT p.oid::regprocedure FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace',
+    "    WHERE n.nspname IN ('public', 'identity_private') AND p.prorettype = 'pg_catalog.trigger'::pg_catalog.regtype ORDER BY 1",
+    '  LOOP',
+    `    EXECUTE pg_catalog.format('ALTER FUNCTION %s SET search_path = ${FUNCTION_SEARCH_PATH}', f);`,
+    '  END LOOP;',
+    'END $$;',
+    '',
+    '-- Table privileges (no TRUNCATE, REFERENCES, TRIGGER or ownership); UPDATE is per column.',
   );
   const byName = new Map(catalog.tables.map((t) => [t.table_name, t]));
-  for (const [table, { privileges, lockOnly }] of derived.tables) {
-    const list = [...privileges].filter((p) => !(lockOnly && p === 'UPDATE')).sort();
+  for (const [table, { privileges, updateColumns, lockOnly }] of derived.tables) {
+    const list = [...privileges].sort();
     if (table === 'public.schema_migrations') {
       // Created by scripts/migrate.mjs, absent when tests apply migration files directly.
       lines.push(
-        `DO $$ BEGIN IF to_regclass('public.schema_migrations') IS NOT NULL THEN GRANT ${list.join(', ')} ON "public"."schema_migrations" TO noxh_app; END IF; END $$;`,
+        `DO $$ BEGIN IF pg_catalog.to_regclass('public.schema_migrations') IS NOT NULL THEN GRANT ${list.join(', ')} ON "public"."schema_migrations" TO noxh_app; END IF; END $$;`,
       );
       continue;
     }
     if (list.length) lines.push(`GRANT ${list.join(', ')} ON ${q(table)} TO noxh_app;`);
-    if (lockOnly) {
-      const column = byName.get(table)?.first_column;
-      if (!column) throw new Error('No column for lock grant on ' + table);
-      lines.push(`GRANT UPDATE (${q(column)}) ON ${q(table)} TO noxh_app;`);
+    const columns = lockOnly ? [lockColumn(byName.get(table).columns)] : [...updateColumns].sort();
+    if (columns.length)
+      lines.push(
+        `GRANT UPDATE (${columns.map((c) => '"' + c + '"').join(', ')}) ON ${q(table)} TO noxh_app;`,
+      );
+    if (lockOnly)
       lines.push(
         `CREATE TRIGGER runtime_lock_only BEFORE UPDATE ON ${q(table)} FOR EACH ROW EXECUTE FUNCTION identity_private.reject_runtime_update();`,
       );
-    }
   }
   for (const s of derived.sequences) lines.push(`GRANT USAGE ON SEQUENCE ${q(s)} TO noxh_app;`);
-  lines.push('', '-- Row-level security for the runtime role on every table.');
+  lines.push(
+    '',
+    '-- Row-level security for the runtime role on every table: rows of organizations registered',
+    '-- for the current login, narrowed to app.organization_id when a transaction pins it.',
+  );
   for (const t of catalog.tables) {
     const name = t.table_name;
     if (OWNER_ONLY_TABLES.includes(name) || name === 'public.schema_migrations') continue;
     let expr;
-    if (name === 'public.organizations') expr = scope('id');
-    else if (t.has_org) expr = scope('organization_id');
-    else if (GLOBAL_TABLES.includes(name)) expr = 'true';
+    if (name === 'public.organizations') expr = scopeExpression('id');
+    else if (t.has_org) expr = scopeExpression('organization_id');
+    else if (GLOBAL_TABLES.includes(name)) expr = REGISTERED_LOGIN;
     else if (PARENT_SCOPED_TABLES[name]) expr = PARENT_SCOPED_TABLES[name];
     else throw new Error('Table has no runtime RLS rule: ' + name);
     lines.push(
@@ -243,7 +283,11 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
             tables: Object.fromEntries(
               [...derived.tables].map(([k, v]) => [
                 k,
-                { privileges: [...v.privileges].sort(), lockOnly: v.lockOnly },
+                {
+                  privileges: [...v.privileges].sort(),
+                  updateColumns: [...v.updateColumns].sort(),
+                  lockOnly: v.lockOnly,
+                },
               ]),
             ),
             sequences: derived.sequences,
