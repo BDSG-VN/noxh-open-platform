@@ -456,9 +456,9 @@ export default function InventoryAdmin({
                           <table>
                             <thead>
                               <tr>
-                                <th>Căn</th>
-                                <th>Hệ số (xấp xỉ)</th>
-                                <th>Tổng giá dự kiến</th>
+                                <th scope="col">Căn</th>
+                                <th scope="col">Hệ số (xấp xỉ)</th>
+                                <th scope="col">Tổng giá dự kiến</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -508,10 +508,10 @@ export default function InventoryAdmin({
                     <table>
                       <thead>
                         <tr>
-                          <th>Căn</th>
-                          <th>Diện tích</th>
-                          <th>Hệ số chính xác</th>
-                          <th>Tổng giá</th>
+                          <th scope="col">Căn</th>
+                          <th scope="col">Diện tích</th>
+                          <th scope="col">Hệ số chính xác</th>
+                          <th scope="col">Tổng giá</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -815,11 +815,11 @@ export default function InventoryAdmin({
                     <table>
                       <thead>
                         <tr>
-                          <th>Mã hồ sơ</th>
-                          <th>Thứ tự</th>
-                          <th>Căn</th>
-                          <th>Trạng thái</th>
-                          <th>Rà soát lượt</th>
+                          <th scope="col">Mã hồ sơ</th>
+                          <th scope="col">Thứ tự</th>
+                          <th scope="col">Căn</th>
+                          <th scope="col">Trạng thái</th>
+                          <th scope="col">Rà soát lượt</th>
                         </tr>
                       </thead>
                       <tbody>

@@ -29,6 +29,19 @@ Màu chính xanh đậm, điểm nhấn xanh ngọc; nền trung tính sáng, đ
 
 Điều hướng quản trị dài có cuộn riêng; trên điện thoại chuyển sang thanh cuộn ngang. Bảng được cuộn trong khung, tránh kéo rộng toàn trang. Thử tối thiểu390px và1280px, bàn phím, diacritics và nhãn dài. Ảnh chụp là ứng dụng thực dùng dữ liệu giả lập, không dùng ảnh dựng để che trạng thái chưa có dữ liệu.
 
+## Quy tắc khả năng truy cập được kiểm tự động
+
+Bộ kiểm `pnpm test:a11y` (Playwright + axe-core, thẻ WCAG 2.0/2.1 A và AA) chạy trên bản build thật của 5 giao diện với API giả lập; mọi trang trong `tests/a11y/pages.ts` phải không còn vi phạm. Các quy tắc sau là bắt buộc cho màn hình mới:
+
+- **Ngôn ngữ và cấu trúc**: `<html lang="vi">`; đúng một `<h1>` mỗi trang, cấp tiêu đề không nhảy bậc (`h1 → h2 → h3`); đúng một `<main id="noi-dung" tabIndex={-1}>`; nội dung nằm trong landmark (`header/nav/main/aside/footer`); `nav`/`aside` lặp lại phải có `aria-label` khác nhau. Trạng thái trống dùng `EmptyState` (không tạo tiêu đề), tiêu đề khối dùng `h2.section-title`/`h3` theo đúng cấp.
+- **Liên kết bỏ qua**: `SkipLink` từ `@noxh/ui` đứng đầu `<body>` của mọi layout (Mini App: thẻ tĩnh trong `index.html`); phím Tab đầu tiên phải tới liên kết này và Enter đưa tiêu điểm vào `<main>`.
+- **Bàn phím**: chỉ dùng `button`/`a`/`input`/`select`/`textarea`/`summary` cho thao tác; không gắn `onClick` lên `div`/`span`. Mọi phần tử nhận tiêu điểm phải hiện vòng focus (quy tắc `:focus-visible` dùng chung, màu `--focus-ring`). Nút chỉ có biểu tượng phải có `aria-label`; biểu tượng trang trí dùng `aria-hidden`.
+- **Biểu mẫu**: nhãn thật (`<label>` bao ngoài hoặc `htmlFor`/`id`); trường bắt buộc có `required` + `aria-required`; khi lỗi, trường liên quan đặt `aria-invalid` và `aria-describedby` trỏ tới thông báo `role="alert"`; tiến trình dài (tải tệp, xử lý) thông báo bằng `role="status"` và có nút hủy. Bảng dữ liệu có `th scope="col"`, ô thao tác không để trống (dùng `sr-only`).
+- **Màu chữ**: chỉ dùng token trong `packages/ui/platform.css` (`--ink`, `--ink-muted`, `--accent-ink`, `--amber-ink`, `--blue-ink`, `--badge-ink`, `--sidebar-ink-muted`…), tất cả ≥ 4,5:1 trên nền sáng tương ứng. Không đặt màu xám nhạt inline; màu nhạt chỉ dành cho viền và biểu tượng trang trí. Trên nền tối của sidebar/auth-story dùng `--sidebar-ink-muted` thay vì `opacity`.
+- **Thu phóng và chuyển động**: không tràn ngang ở 390px và ở 200% (640px CSS); bảng rộng cuộn trong `.table-scroll`. `prefers-reduced-motion: reduce` tắt animation/transition dùng chung.
+
+Chưa kiểm tự động được: đọc màn hình thật (VoiceOver/TalkBack) trên thiết bị, thứ tự đọc trong Zalo thật, và nội dung PDF sinh ra; các mục này nằm trong nghiệm thu thủ công.
+
 ## Cổng nghiệm thu
 
-Chạy check:fonts, lint/typecheck/tests/build; kiểm trực tiếp các vai trò trên bản demo; kiểm font thực được tải từ cùng host và không mất dấu; chụp lại ảnh sau thay đổi trình bày. Cấu hình bản demo và credential ở ngoài kho công khai.
+Chạy check:fonts, lint/typecheck/tests/build và `pnpm test:a11y` sau build; kiểm trực tiếp các vai trò trên bản demo; kiểm font thực được tải từ cùng host và không mất dấu; chụp lại ảnh sau thay đổi trình bày. Cấu hình bản demo và credential ở ngoài kho công khai.

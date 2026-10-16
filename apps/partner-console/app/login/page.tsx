@@ -2,18 +2,18 @@ import { Brand, Icon } from '@noxh/ui';
 import LoginForm from './login-form';
 export default function Login() {
   return (
-    <main className="auth-page">
+    <main id="noi-dung" tabIndex={-1} className="auth-page">
       <section className="auth-story">
         <Brand />
         <div>
           <span className="kicker" style={{ color: '#72cdb1' }}>
             KHÔNG GIAN ĐỐI TÁC
           </span>
-          <h1>
+          <p className="auth-story-title">
             Kết nối đúng người.
             <br />
             Tư vấn đúng phạm vi.
-          </h1>
+          </p>
           <p>
             Đơn vị truyền thông, quản lý chiến dịch và chuyên viên tư vấn cùng làm việc theo dự án
             được chủ đầu tư giao.
@@ -33,7 +33,7 @@ export default function Login() {
             </p>
           </div>
         </div>
-        <small style={{ color: '#769aad' }}>BDSG Foundation · Mã nguồn mở MIT</small>
+        <small style={{ color: '#a9c3d1' }}>BDSG Foundation · Mã nguồn mở MIT</small>
       </section>
       <section className="auth-form-wrap">
         <div className="auth-inner">

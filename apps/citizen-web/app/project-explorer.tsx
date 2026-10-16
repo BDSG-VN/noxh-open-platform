@@ -36,7 +36,7 @@ export default function ProjectExplorer({ projects }: { projects: Project[] }) {
                 {p.locality}
               </p>
               <div className="card-bottom">
-                <small style={{ fontSize: 10, color: '#8598a2' }}>Chuẩn bị hồ sơ</small>
+                <small style={{ fontSize: 11 }}>Chuẩn bị hồ sơ</small>
                 <a className="text-link" href={'/projects/' + p.id}>
                   Xem dự án <Icon name="arrow" size={14} />
                 </a>

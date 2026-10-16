@@ -455,10 +455,10 @@ function RequestQueue() {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Yêu cầu</th>
-                  <th>Dự án</th>
-                  <th>Trạng thái</th>
-                  <th>Thao tác</th>
+                  <th scope="col">Yêu cầu</th>
+                  <th scope="col">Dự án</th>
+                  <th scope="col">Trạng thái</th>
+                  <th scope="col">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -633,10 +633,10 @@ function AuditPanel() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>Thời điểm Việt Nam</th>
-                <th>Thao tác</th>
-                <th>Tài nguyên</th>
-                <th>Mã kiểm tra</th>
+                <th scope="col">Thời điểm Việt Nam</th>
+                <th scope="col">Thao tác</th>
+                <th scope="col">Tài nguyên</th>
+                <th scope="col">Mã kiểm tra</th>
               </tr>
             </thead>
             <tbody>
@@ -760,7 +760,7 @@ export default function AdminWorkbench({
   };
   return (
     <div className="workspace">
-      <aside className="workspace-sidebar">
+      <aside className="workspace-sidebar" aria-label="Thanh bên không gian">
         <Brand compact />
         <div className="workspace-label">QUẢN TRỊ CHỦ ĐẦU TƯ</div>
         <nav aria-label="Phân hệ quản trị">
@@ -794,7 +794,7 @@ export default function AdminWorkbench({
             <StaffLogout />
           </div>
         </header>
-        <main className="workspace-content">
+        <main id="noi-dung" tabIndex={-1} className="workspace-content">
           <PageHeading
             eyebrow="BDSG FOUNDATION / NOXH OPEN PLATFORM"
             title={current[1]!}
@@ -956,10 +956,10 @@ export default function AdminWorkbench({
                     <table className="data-table">
                       <thead>
                         <tr>
-                          <th>Đợt tiếp nhận / dự án</th>
-                          <th>Thời gian Việt Nam</th>
-                          <th>Trạng thái</th>
-                          <th>Thao tác</th>
+                          <th scope="col">Đợt tiếp nhận / dự án</th>
+                          <th scope="col">Thời gian Việt Nam</th>
+                          <th scope="col">Trạng thái</th>
+                          <th scope="col">Thao tác</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1056,10 +1056,10 @@ function ProjectTable({
       <table className="data-table">
         <thead>
           <tr>
-            <th>Tên dự án</th>
-            <th>Địa bàn</th>
-            <th>Công bố</th>
-            <th>Thao tác</th>
+            <th scope="col">Tên dự án</th>
+            <th scope="col">Địa bàn</th>
+            <th scope="col">Công bố</th>
+            <th scope="col">Thao tác</th>
           </tr>
         </thead>
         <tbody>

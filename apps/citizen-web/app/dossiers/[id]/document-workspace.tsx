@@ -1,12 +1,13 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button, EmptyState } from '@noxh/ui';
 import type { ExtractionField, MappingField } from '@noxh/contracts';
-async function request(path: string, body?: unknown, method = 'GET') {
+async function request(path: string, body?: unknown, method = 'GET', signal?: AbortSignal) {
   const r = await fetch('/api/workflow/' + path, {
     method,
     headers: { 'Content-Type': 'application/json' },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    signal,
   });
   const v = await r.json();
   if (!r.ok) throw new Error(v.detail ?? 'Không thực hiện được');
@@ -70,7 +71,9 @@ export function DocumentWorkspace({
     [mapping, setMapping] = useState(''),
     [values, setValues] = useState<Record<string, string>>({}),
     [selected, setSelected] = useState<Generated>(),
-    [checked, setChecked] = useState<string[]>([]);
+    [checked, setChecked] = useState<string[]>([]),
+    [uploading, setUploading] = useState(false);
+  const upload = useRef<AbortController | null>(null);
   const base = 'dossiers/' + id;
   async function load() {
     const [d, f] = await Promise.all([
@@ -173,11 +176,24 @@ export function DocumentWorkspace({
                 reader.onload = () => resolve(String(reader.result).split(',')[1]!);
                 reader.readAsDataURL(file);
               });
-              await request(
-                base + '/documents',
-                { name: file.name, mime: file.type, type: fd.get('type'), base64 },
-                'POST',
-              );
+              const controller = new AbortController();
+              upload.current = controller;
+              setUploading(true);
+              try {
+                await request(
+                  base + '/documents',
+                  { name: file.name, mime: file.type, type: fd.get('type'), base64 },
+                  'POST',
+                  controller.signal,
+                );
+              } catch (e) {
+                if (controller.signal.aborted)
+                  throw new Error('Đã hủy tải lên. Tệp chưa được lưu.');
+                throw e;
+              } finally {
+                upload.current = null;
+                setUploading(false);
+              }
             });
           }}
         >
@@ -202,7 +218,15 @@ export function DocumentWorkspace({
               required
             />
           </label>
-          <Button disabled={busy}>Tải vào kho riêng</Button>
+          <Button disabled={busy}>{uploading ? 'Đang tải lên…' : 'Tải vào kho riêng'}</Button>
+          {uploading && (
+            <p className="feedback" role="status" aria-live="polite">
+              Đang tải giấy tờ vào kho riêng, vui lòng đợi.{' '}
+              <button type="button" className="text-button" onClick={() => upload.current?.abort()}>
+                Hủy tải lên
+              </button>
+            </p>
+          )}
         </form>
         {docs && !docs.items.length && (
           <EmptyState

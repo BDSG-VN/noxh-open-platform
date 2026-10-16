@@ -71,3 +71,7 @@ Live Zalo delivery requires investor-owned approved template and credentials. No
 # Cầu nối SaaS (15/10/2026)
 
 Workforce có audience tùy chọn và cổng kiểm tra membership HTTPS cho instance riêng theo tổ chức. JWT/MFA vẫn bắt buộc; cổng phân quyền ràng buộc tổ chức/subject, không cache, không dùng quyền realm khi cổng lỗi. Quyền dự án nội bộ rộng hơn phạm vi provider bị từ chối toàn phiên. Kiểm thử ký JWT thật, thu hồi membership, sai phạm vi, sự cố và cấu hình thiếu nằm trong `workforce-gateway.test.ts`. Đây là tích hợp lõi MIT; website kinh doanh, dữ liệu dự án demo và cấu hình vận hành BDSG Housing được giữ riêng.
+
+# Khả năng truy cập giao diện (17/10/2026)
+
+Năm giao diện (công dân, chủ đầu tư, đối tác, minh bạch, Mini App) có cổng kiểm `pnpm test:a11y`: Playwright chạy axe-core theo WCAG 2.0/2.1 A/AA, kiểm bàn phím (liên kết bỏ qua, vòng focus, không dùng `div` làm nút), tràn ngang ở 390px/200% và tắt chuyển động trên bản build thật với API giả lập, chạy trong CI sau `pnpm build`. 41 trang theo vai trò không còn vi phạm axe (trước đó 24/26 trang lỗi, chủ yếu tương phản màu); sửa bằng token màu chữ dùng chung, một `main`/`h1` mỗi trang, `scope` cho bảng, nhãn lỗi biểu mẫu và thông báo/hủy khi tải tệp, không thay đổi nghiệp vụ. Đọc màn hình thật, thứ tự đọc trong Zalo và nội dung PDF vẫn nghiệm thu thủ công; chi tiết trong `docs/VALIDATION.md` và `docs/DESIGN-SYSTEM.md`.

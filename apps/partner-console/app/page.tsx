@@ -10,7 +10,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
   if (r?.status === 401 || r?.status === 403) redirect('/login');
   if (!r?.ok)
     return (
-      <main className="page-container">
+      <main id="noi-dung" tabIndex={-1} className="page-container">
         <h1>Chưa tải được không gian đối tác</h1>
         <p>Máy chủ chưa phản hồi. Thử tải lại sau.</p>
       </main>

@@ -18,7 +18,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
     if (me.status === 401 || me.status === 403) redirect('/login');
     if (!me.ok)
       return (
-        <main className="container section">
+        <main id="noi-dung" tabIndex={-1} className="container section">
           <h1>Chưa kết nối quản trị</h1>
           <p>Kiểm tra Keycloak, cơ sở dữ liệu và cấu hình tổ chức.</p>
         </main>
@@ -35,7 +35,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
     ]);
     if (!d.ok || !p.ok || !r.ok || (s && !s.ok))
       return (
-        <main className="container section">
+        <main id="noi-dung" tabIndex={-1} className="container section">
           <h1>Chưa tải được dữ liệu</h1>
           <p>Hãy kiểm tra các migration và tải lại.</p>
         </main>
@@ -59,7 +59,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
   } catch (e) {
     if (e instanceof Error && e.message === 'NEXT_REDIRECT') throw e;
     return (
-      <main className="container section">
+      <main id="noi-dung" tabIndex={-1} className="container section">
         <h1>Máy chủ chưa sẵn sàng</h1>
         <p>Hãy kiểm tra cấu hình và thử lại.</p>
       </main>

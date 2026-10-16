@@ -104,9 +104,9 @@ export default async function Dashboard() {
                 <table className="data-table">
                   <thead>
                     <tr>
-                      <th>Dự án / hồ sơ</th>
-                      <th>Giai đoạn</th>
-                      <th>Thao tác</th>
+                      <th scope="col">Dự án / hồ sơ</th>
+                      <th scope="col">Giai đoạn</th>
+                      <th scope="col">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody>
