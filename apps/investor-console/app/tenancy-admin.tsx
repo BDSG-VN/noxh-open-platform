@@ -190,8 +190,8 @@ export default function TenancyAdmin({
       <div className="surface-body">
         {error && <p role="alert">{error}</p>}
         <p>
-          {list.length} dự thảo · {list.filter((x) => x.status === 'draft').length} chờ duyệt ·{' '}
-          {list.filter((x) => x.status === 'handed_over_demo').length} đã bàn giao diễn tập
+          {list.length} hợp đồng diễn tập · {list.filter((x) => x.status === 'draft').length} chờ
+          duyệt · {list.filter((x) => x.status === 'handed_over_demo').length} đã bàn giao diễn tập
         </p>
         <div className="table-scroll">
           <table className="data-table">

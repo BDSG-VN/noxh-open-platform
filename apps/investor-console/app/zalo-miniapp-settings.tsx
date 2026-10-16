@@ -22,7 +22,7 @@ export default function ZaloMiniAppSettings() {
     load().catch((e) => setError(e.message));
   }, []);
   return (
-    <section className="surface dossier-process stack">
+    <section className="surface surface-body stack completion-panel">
       <header>
         <span className="kicker">ĐỊNH DANH / ZALO MINI APP</span>
         <h2>Đăng nhập và liên kết tài khoản</h2>

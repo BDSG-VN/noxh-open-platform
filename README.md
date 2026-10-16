@@ -167,7 +167,7 @@ Bảng hàng có tọa độ mặt bằng, diện tích, hệ số tầng/vị t
 
 ### Bốc thăm và ưu tiên
 
-Bảng tính ưu tiên hiển thị tử số/mẫu số chính xác, hợp nhất người thuộc nhiều nhóm theo xác nhận được kiểm tra và phân bổ theo thứ tự nhóm. Không tự suy diễn cách làm tròn nếu quy định đã kiểm chứng chưa nêu; cần căn cứ được rà soát. Nhóm vượt số suất phải có quy trình bốc thăm và xử lý người không trúng theo quy chế áp dụng, không cho AI tự quyết định ưu tiên.
+Bảng tính ưu tiên chỉ mô phỏng năm nhóm theo nguồn ngày 18/5/2026, hiển thị tử số/mẫu số chính xác từ số đếm do người dùng cung cấp và xác nhận đã loại trùng. Công cụ chưa tự đối chiếu từng người, luôn yêu cầu rà soát thay đổi pháp luật từ 1/7/2026 và nhánh vốn của dự án; không xác nhận số suất ưu tiên hợp pháp. Không tự suy diễn cách làm tròn. Nhóm vượt số suất cần quy trình bốc thăm và xử lý người không trúng theo quy chế đã được duyệt.
 
 Phiên diễn tập: chốt tập hồ sơ của đợt/hình thức → duyệt độc lập → khóa snapshot và commitment → ghi entropy theo quy chế → chạy thuật toán xác định bằng Rust → tái lập bằng Rust và chứng nhận độc lập → công bố. Không chạy lại cùng phiên để chọn kết quả; hủy giữ chứng cứ và tạo tập thay thế có lý do. Node/Python/Rust dùng cùng bộ dữ liệu chuẩn; Node và Python là bộ tham chiếu/kiểm chứng, không thay bộ máy Rust runtime. Entropy diễn tập nhập thủ công, chưa phải nguồn ngẫu nhiên công cộng được tin cậy hay chứng thư ký số.
 
@@ -206,5 +206,13 @@ Xem [ma trận nghiệm thu](docs/IMPLEMENTATION-MATRIX.md) và [bằng chứng 
 ![Bảng điều khiển khách hàng](docs/screenshots/citizen-dashboard-v05.jpg)
 ![Chuyên viên đối tác chỉ thấy liên hệ được giao](docs/screenshots/partner-consultant.png)
 ![Phòng bốc thăm diễn tập](docs/screenshots/lottery-room-v05.jpg)
+
+### Hồ sơ AI và quản trị hợp đồng
+
+Ảnh bản hoàn thiện 16/10/2026 dùng tài khoản và dữ liệu tổng hợp. AI chỉ đề xuất; khách xác nhận trước khi tạo tài liệu.
+
+![Đề xuất tạo bộ mẫu từ trợ lý AI](docs/screenshots/completion-citizen-ai-form-proposal-desktop.png)
+![Quản trị hợp đồng mua, thuê và thuê mua](docs/screenshots/completion-admin-tenancy-desktop.png)
+![Quản trị nguồn kiến thức của dự án](docs/screenshots/completion-admin-knowledge-desktop.png)
 
 Xem [danh mục ảnh và phạm vi kiểm tra](docs/screenshots/README.md).
