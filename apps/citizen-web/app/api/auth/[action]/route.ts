@@ -28,6 +28,7 @@ export async function POST(
         challengeId: value.challengeId,
         expiresIn: value.expiresIn,
         retryAfter: value.retryAfter,
+        ...(value.demoCode ? { demoCode: value.demoCode } : {}),
       });
       result.cookies.set('noxh_challenge', value.challengeId + '.' + value.challengeProof, {
         ...cookieOptions,

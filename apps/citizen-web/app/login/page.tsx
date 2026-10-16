@@ -41,6 +41,12 @@ export default async function Login({
           </a>
           <h1>Đăng nhập tài khoản</h1>
           <p>Nhận mã xác thực qua Zalo bằng số điện thoại của bạn.</p>
+          {process.env.DEMO_OPEN_ACCESS === 'true' && (
+            <p className="help-note">
+              Bản trải nghiệm mở: dùng số <code>0900000000</code> (hoặc bất kỳ số 0900000xxx), mã
+              được điền sẵn. <a href="/trai-nghiem">Xem mọi tài khoản demo</a>.
+            </p>
+          )}
           <LoginForm returnTo={returnTo} />
           <p style={{ fontSize: 11, marginTop: 25 }}>
             Xác thực số điện thoại chưa thay thế xác minh danh tính pháp lý. Bản phát triển chỉ dùng

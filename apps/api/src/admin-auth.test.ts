@@ -242,3 +242,35 @@ it('validates actual signed JWT claims, MFA and roles, rejects forgery and revok
   await auth.logout('Bearer ' + token);
   await expect(auth.authenticate('Bearer ' + token)).rejects.toMatchObject({ status: 401 });
 });
+it('open demo access: synthetic numbers get the fixed public code, real numbers and production stay strict', async () => {
+  process.env.DEMO_OPEN_ACCESS = 'true';
+  process.env.DEMO_OPEN_OTP = '246810';
+  delete process.env.DEMO_OPEN_PHONE_PREFIX;
+  try {
+    fail = true; // provider would reject: demo numbers must not call it
+    const r = await phone.request({ phone: '0900000007', accepted: true }, '203.0.113.9');
+    expect(r.demoCode).toBe('246810');
+    const session = await phone.verify({
+      challengeId: r.challengeId,
+      challengeProof: r.challengeProof,
+      code: '246810',
+    });
+    expect(typeof session.sessionToken).toBe('string');
+    now += 61000;
+    await expect(
+      phone.request({ phone: '0912345678', accepted: true }, '203.0.113.9'),
+    ).rejects.toMatchObject({ status: 503 });
+    process.env.NODE_ENV = 'production';
+    delete process.env.ALLOW_SYNTHETIC_FIXTURES;
+    now += 61000;
+    await expect(
+      phone.request({ phone: '0900000007', accepted: true }, '203.0.113.9'),
+    ).rejects.toMatchObject({ status: 503 });
+  } finally {
+    fail = false;
+    delete process.env.DEMO_OPEN_ACCESS;
+    delete process.env.DEMO_OPEN_OTP;
+    process.env.NODE_ENV = prior.NODE_ENV;
+    process.env.ALLOW_SYNTHETIC_FIXTURES = prior.ALLOW_SYNTHETIC_FIXTURES;
+  }
+});

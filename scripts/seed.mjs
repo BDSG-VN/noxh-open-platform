@@ -8,6 +8,10 @@ const c = await p.connect();
 try {
   await c.query('BEGIN');
   await c.query(await readFile('db/fixtures/seed.sql', 'utf8'));
+  if (process.env.DEMO_OPEN_ACCESS === 'true') {
+    await c.query(await readFile('db/fixtures/demo-open.sql', 'utf8'));
+    console.log('Open demo fixture installed (fictional project, synthetic notice)');
+  }
   await c.query('COMMIT');
   console.log('Synthetic fixtures installed');
 } catch {

@@ -43,6 +43,10 @@ Không dùng `down -v` nếu cần giữ dữ liệu. Migration chạy trước 
 
 Thông báo nghiệp vụ tự động chỉ chạy khi bật `NOTIFICATIONS_AUTOMATION_ENABLED=true`, cấu hình rõ `AUTH_ORGANIZATION_ID` và có quy tắc/mẫu được duyệt cùng đồng ý hiện hành của khách. API và worker dùng cùng khóa mã hóa. Chỉ dữ liệu giả lập, kênh trong ứng dụng; xem [phạm vi và cách kiểm tra lát cắt021](docs/COMPLETION-NOTIFICATION-AUTOMATION.md).
 
+## Bản trải nghiệm mở
+
+`DEMO_OPEN_ACCESS=true` bật dự án hư cấu **Mây Trắng** với tài khoản công khai: số `0900000xxx` đăng nhập bằng mã cố định điền sẵn, quản trị `demo.admin` có mật khẩu và mã hai bước hiển thị tại `/trai-nghiem`. Chỉ cho dữ liệu giả lập; xem [OPEN-DEMO.md](docs/OPEN-DEMO.md).
+
 ## Đăng nhập và quản trị
 
 Xem [hướng dẫn thiết lập Keycloak, admin và Zalo OTP](docs/ADMIN-AND-ZALO.md). Không có tài khoản nhân sự mặc định; chủ đầu tư tạo nhân sự trong realm `noxh`, gán `org_admin` và đăng ký TOTP. Trang quản trị có quản lý dự án, lịch tiếp nhận, thống kê và cấu hình OA/template/token đã mã hóa. Khách đăng nhập tại `/login`, xem `/dashboard`, tạo hồ sơ chuẩn bị riêng và tiếp tục khai báo tại `/dossiers/:id`. Quản trị có hàng đợi hỗ trợ và nhật ký hoạt động. Xem [bảng đối chiếu toàn bộ yêu cầu](docs/IMPLEMENTATION-MATRIX.md).

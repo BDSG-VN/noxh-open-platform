@@ -3025,6 +3025,8 @@ export interface components {
             challengeProof: string;
             expiresIn: number;
             retryAfter: number;
+            /** @description Only when DEMO_OPEN_ACCESS is enabled for synthetic demo numbers: the fixed code to enter. Never present for real numbers or production. */
+            demoCode?: string;
         };
         PhoneVerify: {
             /** Format: uuid */

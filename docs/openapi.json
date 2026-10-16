@@ -23545,6 +23545,10 @@
           },
           "retryAfter": {
             "type": "integer"
+          },
+          "demoCode": {
+            "type": "string",
+            "description": "Only when DEMO_OPEN_ACCESS is enabled for synthetic demo numbers: the fixed code to enter. Never present for real numbers or production."
           }
         },
         "required": ["challengeId", "challengeProof", "expiresIn", "retryAfter"]
