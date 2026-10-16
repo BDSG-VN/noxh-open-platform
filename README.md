@@ -217,4 +217,11 @@ Xem [ma trận nghiệm thu](docs/IMPLEMENTATION-MATRIX.md) và [bằng chứng 
 ![Quản trị hợp đồng mua, thuê và thuê mua](docs/screenshots/completion-admin-tenancy-desktop.png)
 ![Quản trị nguồn kiến thức của dự án](docs/screenshots/completion-admin-knowledge-desktop.png)
 
+### Thông báo tự động và hộp thư khách hàng
+
+Bản 021 dùng dự án và tài khoản giả lập. Chính sách có người duyệt độc lập; sự kiện hồ sơ đi qua outbox và worker thực tới hộp thư trong ứng dụng, theo lựa chọn hiện hành của khách. Không gửi email/Zalo hoặc thông báo pháp lý thật.
+
+![Chính sách thông báo tự động, lịch sử phát và lý do bỏ qua — dữ liệu giả lập](docs/screenshots/notification-automation-admin.jpg)
+![Hộp thư khách với thông báo hồ sơ và xác nhận đã đọc — dữ liệu giả lập](docs/screenshots/citizen-inbox.jpg)
+
 Xem [danh mục ảnh và phạm vi kiểm tra](docs/screenshots/README.md).
