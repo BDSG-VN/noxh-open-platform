@@ -332,12 +332,14 @@ export default function Partners({ projects }: { projects: Project[] }) {
                   <table className="data-table">
                     <thead>
                       <tr>
-                        <th>Đơn vị</th>
-                        <th>Phạm vi dự án</th>
-                        <th>Nhân viên</th>
-                        <th>Chiến dịch</th>
-                        <th>Yêu cầu tư vấn</th>
-                        <th />
+                        <th scope="col">Đơn vị</th>
+                        <th scope="col">Phạm vi dự án</th>
+                        <th scope="col">Nhân viên</th>
+                        <th scope="col">Chiến dịch</th>
+                        <th scope="col">Yêu cầu tư vấn</th>
+                        <th scope="col">
+                          <span className="sr-only">Thao tác</span>
+                        </th>
                       </tr>
                     </thead>
                     <tbody>

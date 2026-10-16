@@ -43,6 +43,9 @@ export default function LoginForm() {
             type="tel"
             autoComplete="tel"
             required
+            aria-required="true"
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? 'login-error' : undefined}
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="09xx xxx xxx"
@@ -71,13 +74,16 @@ export default function LoginForm() {
             pattern="[0-9]{6}"
             maxLength={6}
             required
+            aria-required="true"
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? 'login-error' : undefined}
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
           />
         </>
       )}
       {error && (
-        <p className="error" role="alert">
+        <p className="error" role="alert" id="login-error">
           {error}
         </p>
       )}

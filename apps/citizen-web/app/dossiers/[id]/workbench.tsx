@@ -545,6 +545,7 @@ export default function DossierWorkbench({ initial }: { initial: DossierDetail }
         </section>
       </div>
       <aside
+        aria-label="Mức độ chuẩn bị và hỗ trợ"
         className={
           'stack' +
           (['documents', 'submission', 'inventory'].includes(tab) ? ' dossier-secondary' : '')

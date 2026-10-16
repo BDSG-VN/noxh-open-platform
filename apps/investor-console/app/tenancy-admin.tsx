@@ -197,12 +197,12 @@ export default function TenancyAdmin({
           <table className="data-table">
             <thead>
               <tr>
-                <th>Mã hồ sơ</th>
-                <th>Căn</th>
-                <th>Hình thức</th>
-                <th>Trạng thái</th>
-                <th>Tổng lịch thu</th>
-                <th>Chi tiết</th>
+                <th scope="col">Mã hồ sơ</th>
+                <th scope="col">Căn</th>
+                <th scope="col">Hình thức</th>
+                <th scope="col">Trạng thái</th>
+                <th scope="col">Tổng lịch thu</th>
+                <th scope="col">Chi tiết</th>
               </tr>
             </thead>
             <tbody>
@@ -382,11 +382,11 @@ export default function TenancyAdmin({
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Kỳ</th>
-                    <th>Đến hạn</th>
-                    <th>Nghĩa vụ</th>
-                    <th>Đã đối soát diễn tập</th>
-                    <th>Đang chờ</th>
+                    <th scope="col">Kỳ</th>
+                    <th scope="col">Đến hạn</th>
+                    <th scope="col">Nghĩa vụ</th>
+                    <th scope="col">Đã đối soát diễn tập</th>
+                    <th scope="col">Đang chờ</th>
                   </tr>
                 </thead>
                 <tbody>

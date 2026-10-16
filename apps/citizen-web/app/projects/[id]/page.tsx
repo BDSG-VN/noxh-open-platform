@@ -9,7 +9,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   const { items, error } = await loadProjects();
   if (error)
     return (
-      <main className="container section">
+      <main id="noi-dung" tabIndex={-1} className="container section">
         <a href="/">← Danh mục dự án</a>
         <div className="error">{error}</div>
       </main>
@@ -37,7 +37,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
           </Button>
         </div>
       </header>
-      <main className="container section">
+      <main id="noi-dung" tabIndex={-1} className="container section">
         <a className="auth-back" href="/#du-an">
           ← Tất cả dự án
         </a>

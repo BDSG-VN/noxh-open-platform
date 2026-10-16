@@ -12,7 +12,7 @@ export default async function Consultation({ params }: { params: Promise<{ id: s
     response = await api('/api/v1/campaigns/' + id);
   } catch {
     return (
-      <main className="page-container">
+      <main id="noi-dung" tabIndex={-1} className="page-container">
         <h1>Chưa tải được thông tin tư vấn</h1>
         <p>Vui lòng tải lại sau.</p>
       </main>
@@ -21,7 +21,7 @@ export default async function Consultation({ params }: { params: Promise<{ id: s
   if (response.status === 404) notFound();
   if (!response.ok)
     return (
-      <main className="page-container">
+      <main id="noi-dung" tabIndex={-1} className="page-container">
         <p>Chiến dịch hiện chưa sẵn sàng.</p>
       </main>
     );
@@ -39,7 +39,7 @@ export default async function Consultation({ params }: { params: Promise<{ id: s
           </nav>
         </div>
       </header>
-      <main className="container consultation-page">
+      <main id="noi-dung" tabIndex={-1} className="container consultation-page">
         <div className="consultation-layout">
           <section className="stack">
             <span className="kicker">TƯ VẤN DỰ ÁN / ĐỐI TÁC ĐƯỢC CHỦ ĐẦU TƯ DUYỆT</span>

@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 export default function OpenDemoPage() {
   if (process.env.DEMO_OPEN_ACCESS !== 'true')
     return (
-      <main className="container section">
+      <main id="noi-dung" tabIndex={-1} className="container section">
         <Brand />
         <h1>Bản trải nghiệm mở chưa bật</h1>
         <p>Triển khai này không ở chế độ trải nghiệm; không có tài khoản công khai.</p>
@@ -15,7 +15,7 @@ export default function OpenDemoPage() {
   const admin = process.env.INVESTOR_PUBLIC_ORIGIN ?? 'http://localhost:3001';
   const partner = process.env.PARTNER_PUBLIC_ORIGIN ?? 'http://localhost:3004';
   return (
-    <main className="container section">
+    <main id="noi-dung" tabIndex={-1} className="container section">
       <Brand />
       <h1>Bản trải nghiệm mở · dữ liệu giả lập</h1>
       <p>

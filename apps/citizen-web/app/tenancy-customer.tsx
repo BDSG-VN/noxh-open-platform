@@ -95,10 +95,10 @@ export default function TenancyCustomer() {
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Nội dung</th>
-                    <th>Đến hạn</th>
-                    <th>Phải thu theo dự thảo</th>
-                    <th>Đã đối soát diễn tập</th>
+                    <th scope="col">Nội dung</th>
+                    <th scope="col">Đến hạn</th>
+                    <th scope="col">Phải thu theo dự thảo</th>
+                    <th scope="col">Đã đối soát diễn tập</th>
                   </tr>
                 </thead>
                 <tbody>

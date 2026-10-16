@@ -38,7 +38,7 @@
 }
 .workspace-state-group > small,
 .workspace-board-caption {
-  color: #667985;
+  color: var(--ink-muted);
   font-size: 13px;
 }
 .workspace-board-caption {
@@ -72,14 +72,14 @@
 .workspace-disclosure > summary small {
   display: block;
   margin-top: 5px;
-  color: #71818c;
+  color: var(--ink-muted);
   font-size: 12px;
   font-weight: 400;
 }
 .workspace-disclosure > summary::after {
   content: '+';
   flex-shrink: 0;
-  color: #607887;
+  color: var(--ink-muted);
   font-size: 22px;
   font-weight: 400;
 }
@@ -141,7 +141,7 @@
 }
 .workspace-step-strip small {
   display: block;
-  color: #74838d;
+  color: var(--ink-muted);
   font-size: 12px;
   margin-top: 3px;
 }
@@ -172,7 +172,7 @@
 .inventory-floor-row > strong {
   padding-top: 15px;
   font-size: 13px;
-  color: #607582;
+  color: var(--ink-muted);
 }
 .inventory-unit-grid {
   display: grid;
@@ -198,7 +198,7 @@
   line-height: 1.6;
 }
 .inventory-unit small {
-  color: #71828d;
+  color: var(--ink-muted);
   line-height: 1.6;
 }
 .inventory-unit[data-state='allocated'] {
@@ -226,7 +226,7 @@
   background: #f8fafb;
 }
 .workspace-facts strong {
-  color: #70818c;
+  color: var(--ink-muted);
   font-size: 12px;
   font-weight: 500;
 }
@@ -235,7 +235,7 @@
   color: #273f4d;
 }
 .workspace-empty {
-  color: #6d808c;
+  color: var(--ink-muted);
   font-size: 13px;
   line-height: 1.65;
 }

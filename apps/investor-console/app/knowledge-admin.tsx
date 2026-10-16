@@ -132,7 +132,7 @@ export default function KnowledgeAdmin({ projects }: { projects: { id: string; n
                 ? 'Đã thu hồi'
                 : 'Chờ rà soát'}
           </span>
-          <h3>{r.title}</h3>
+          <h2 className="section-title">{r.title}</h2>
           <p>
             {r.legalBasis} ·{' '}
             {r.mode === 'all'
@@ -211,7 +211,9 @@ export default function KnowledgeAdmin({ projects }: { projects: { id: string; n
           }
         }}
       >
-        <h3>{form.recordId ? 'Soạn phiên bản mới' : 'Thêm tài liệu hướng dẫn'}</h3>
+        <h2 className="section-title">
+          {form.recordId ? 'Soạn phiên bản mới' : 'Thêm tài liệu hướng dẫn'}
+        </h2>
         <label>
           Tiêu đề
           <input

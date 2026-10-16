@@ -16,7 +16,7 @@ export default async function Transparency() {
     failed = true;
   }
   return (
-    <main className="container section">
+    <main id="noi-dung" tabIndex={-1} className="container section">
       <a className="brand" href="/">
         NOXH Open Platform<small>BDSG Foundation · Minh bạch</small>
       </a>

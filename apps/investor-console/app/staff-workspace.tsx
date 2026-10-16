@@ -82,8 +82,9 @@ export default function StaffWorkspace({ staff }: { staff: OperationsStaff }) {
     let alive = true;
     void fetch('/api/admin/operations/projects')
       .then(async (r) => {
-        if (!r.ok) throw new Error('Chưa tải được danh sách dự án. Hãy tải lại trang.');
-        const b = await r.json();
+        // Always consume the body so the connection closes even on an error status.
+        const b = await r.json().catch(() => undefined);
+        if (!r.ok || !b) throw new Error('Chưa tải được danh sách dự án. Hãy tải lại trang.');
         if (alive) setProjects(b.items);
       })
       .catch((e) => {
@@ -97,7 +98,11 @@ export default function StaffWorkspace({ staff }: { staff: OperationsStaff }) {
     };
   }, []);
   return (
-    <main className="container section stack investor-workspace iw-staff-workspace">
+    <main
+      id="noi-dung"
+      tabIndex={-1}
+      className="container section stack investor-workspace iw-staff-workspace"
+    >
       <header className="surface iw-staff-header">
         <div className="surface-body iw-page-heading">
           <div>

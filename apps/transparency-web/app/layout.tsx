@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { SkipLink } from '@noxh/ui';
 import '@noxh/ui/styles.css';
 import './lottery.css';
 export const metadata: Metadata = {
@@ -9,7 +10,10 @@ export const metadata: Metadata = {
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="vi">
-      <body>{children}</body>
+      <body>
+        <SkipLink />
+        {children}
+      </body>
     </html>
   );
 }

@@ -92,7 +92,7 @@ export default function LotteryRoom({ initial }: { initial: Evidence }) {
     URL.revokeObjectURL(url);
   }
   return (
-    <main className="container section">
+    <main id="noi-dung" tabIndex={-1} className="container section">
       <div className="lottery-top">
         <Brand />
         <a href="/">← Các phiên công khai</a>
@@ -228,10 +228,10 @@ export default function LotteryRoom({ initial }: { initial: Evidence }) {
           <table className="data-table">
             <thead>
               <tr>
-                <th>Mã hồ sơ</th>
-                <th>Thứ tự</th>
-                <th>Kết quả</th>
-                <th>Căn hộ</th>
+                <th scope="col">Mã hồ sơ</th>
+                <th scope="col">Thứ tự</th>
+                <th scope="col">Kết quả</th>
+                <th scope="col">Căn hộ</th>
               </tr>
             </thead>
             <tbody>

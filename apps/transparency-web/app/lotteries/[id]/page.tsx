@@ -9,7 +9,7 @@ export default async function Room({ params }: { params: Promise<{ id: string }>
   if (r.status === 404) notFound();
   if (!r.ok)
     return (
-      <main className="container section">
+      <main id="noi-dung" tabIndex={-1} className="container section">
         <p role="alert">Chưa tải được phòng bốc thăm.</p>
       </main>
     );

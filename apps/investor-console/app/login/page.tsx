@@ -6,18 +6,18 @@ export default async function Login({
 }) {
   const { error } = await searchParams;
   return (
-    <main className="auth-page">
+    <main id="noi-dung" tabIndex={-1} className="auth-page">
       <section className="auth-story">
         <Brand />
         <div>
           <span className="kicker" style={{ color: '#71d5b4' }}>
             KHÔNG GIAN CHỦ ĐẦU TƯ
           </span>
-          <h1>
+          <p className="auth-story-title">
             Quản lý tập trung.
             <br />
             Đồng hành rõ ràng.
-          </h1>
+          </p>
           <p>
             Dự án, lịch tiếp nhận, cấu hình xác thực và yêu cầu hỗ trợ khách hàng trên một nền dữ
             liệu.
@@ -30,7 +30,7 @@ export default async function Login({
             <p>Xác thực đa yếu tố. Phân quyền máy chủ. Nhật ký có kiểm tra toàn vẹn.</p>
           </div>
         </div>
-        <small style={{ color: '#769aad' }}>BDSG Foundation · Giải pháp mã nguồn mở MIT</small>
+        <small style={{ color: '#a9c3d1' }}>BDSG Foundation · Giải pháp mã nguồn mở MIT</small>
       </section>
       <section className="auth-form-wrap">
         <div className="auth-inner">

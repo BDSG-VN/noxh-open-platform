@@ -49,6 +49,9 @@ jobs:
           NOXH_TEST_RUNTIME_ROLE: '1'
       - run: pnpm audit --prod --audit-level high
       - run: pnpm build
+      # Accessibility gate: axe WCAG 2.1 A/AA, keyboard and reflow checks on production builds.
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:a11y
       - run: pnpm db:migrate && pnpm db:migrate && pnpm db:seed && pnpm test:db
       - run: pnpm exec openapi-typescript docs/openapi.json -o packages/contracts/src/generated.ts && git diff --exit-code -- packages/contracts/src/generated.ts
   python:

@@ -83,7 +83,7 @@ function App() {
   }
   const web = import.meta.env.VITE_CITIZEN_WEB_URL ?? 'http://localhost:3000';
   return (
-    <main>
+    <main id="noi-dung" tabIndex={-1}>
       <small>BDSG FOUNDATION · KÊNH ZALO</small>
       <h1>
         Tiếp tục hồ sơ
