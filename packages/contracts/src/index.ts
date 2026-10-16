@@ -12,6 +12,7 @@ export * from './documents';
 export * from './tenancy';
 export * from './knowledge';
 export * from './notifications';
+export * from './notification-automation';
 export * from './channel-identity';
 export const ProjectSchema = z.object({
   id: z.uuid(),

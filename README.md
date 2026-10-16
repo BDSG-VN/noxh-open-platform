@@ -11,7 +11,7 @@ Giải pháp mã nguồn mở của **BDSG Foundation** cho nhà ở xã hội: 
 - Chủ đầu tư soạn và duyệt độc lập checklist giấy tờ/mẫu; khách thấy phần còn thiếu dựa trên chứng cứ sạch và PDF đã xác nhận đúng phiên bản.
 - Tri thức AI có nguồn, phạm vi và revision; trợ lý đề xuất điền PDF từ dữ liệu khách đã kiểm tra, chờ xác nhận riêng và không tự nộp hồ sơ.
 - Mua/thuê/thuê mua có hợp đồng diễn tập, kỳ thu, chứng từ, đối soát, bàn giao và kết thúc với phân quyền, duyệt độc lập và kiểm tra phiên bản.
-- Thông báo trong ứng dụng có mẫu được duyệt, lựa chọn mục đích/kênh, hàng đợi và lịch sử gửi; adapter email/Zalo thật cần được đơn vị triển khai cung cấp.
+- Thông báo trong ứng dụng có mẫu được duyệt, lựa chọn mục đích/kênh, hàng đợi và lịch sử gửi. Ba sự kiện yêu cầu bổ sung/chấp thuận/từ chối hồ sơ có thể tự tạo thông báo diễn tập theo quy tắc được duyệt độc lập, chống trùng và kiểm lại đồng ý; mặc định tắt. Adapter email/Zalo thật cần được đơn vị triển khai cung cấp.
 - Mini App tiếp tục cùng hồ sơ sau liên kết danh tính; gói khôi phục mã hóa có manifest, kiểm tra hash và diễn tập PostgreSQL/kho tệp/audit cô lập.
 
 Các tài liệu [hồ sơ](docs/COMPLETION-DOSSIERS.md), [AI](docs/COMPLETION-AI.md), [hợp đồng](docs/COMPLETION-TENANCY.md), [thông báo](docs/COMPLETION-NOTIFICATIONS.md), [danh tính](docs/COMPLETION-IDENTITY.md) và [khôi phục](docs/RECOVERY-BUNDLE.md) mô tả API, quyền và phần chưa nghiệm thu. Các chức năng diễn tập không tự mở tiếp nhận, ký, thanh toán hoặc bốc thăm thật.
@@ -39,7 +39,9 @@ docker compose --profile ai up --build --wait --wait-timeout 600
 docker compose down
 ```
 
-Không dùng `down -v` nếu cần giữ dữ liệu. Migration chạy trước API; seed chỉ chứa dữ liệu giả lập. `/health/ready` kiểm tra Postgres, Redis, migration 001–020 và khả năng truy cập/thực thi ba binary Rust; không chứng minh thuật toán đã được kiểm toán hay đăng nhập/storage/legal readiness. API danh mục đọc dự án đã công bố từ Postgres, có nhãn riêng cho dữ liệu giả lập.
+Không dùng `down -v` nếu cần giữ dữ liệu. Migration chạy trước API; seed chỉ chứa dữ liệu giả lập. `/health/ready` kiểm tra Postgres, Redis, migration 001–021 và khả năng truy cập/thực thi ba binary Rust; không chứng minh thuật toán đã được kiểm toán hay đăng nhập/storage/legal readiness. API danh mục đọc dự án đã công bố từ Postgres, có nhãn riêng cho dữ liệu giả lập.
+
+Thông báo nghiệp vụ tự động chỉ chạy khi bật `NOTIFICATIONS_AUTOMATION_ENABLED=true`, cấu hình rõ `AUTH_ORGANIZATION_ID` và có quy tắc/mẫu được duyệt cùng đồng ý hiện hành của khách. API và worker dùng cùng khóa mã hóa. Chỉ dữ liệu giả lập, kênh trong ứng dụng; xem [phạm vi và cách kiểm tra lát cắt021](docs/COMPLETION-NOTIFICATION-AUTOMATION.md).
 
 ## Đăng nhập và quản trị
 

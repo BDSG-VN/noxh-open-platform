@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "NOXH Open Platform",
-    "version": "0.5.0",
+    "version": "0.6.0",
     "description": "BDSG Foundation MIT development API. Private preparation, evidence scanning and consented AI extraction, reviewed deterministic PDFs, immutable submissions and separated human review, scoped investor/partner workspaces, internal project workflows/records/bookkeeping, exact coefficient pricing and synthetic published-lottery allocation. DVC is official handoff with manually reported receipts; authorized automatic exchange is unavailable. Real lotteries and real sales remain disabled pending legal and independent audit gates.",
     "license": {
       "name": "MIT",
@@ -84,7 +84,7 @@
             }
           }
         },
-        "description": "Checks PostgreSQL, Redis, migrations 001–020 and executable Rust kernels. Does not certify legal approval, provider connectivity or production readiness."
+        "description": "Checks PostgreSQL, Redis, migrations 001–021 and executable Rust kernels. Does not certify legal approval, provider connectivity or production readiness."
       }
     },
     "/api/v1/projects": {
@@ -23040,6 +23040,201 @@
           }
         }
       }
+    },
+    "/api/v1/admin/notifications/projects/{project}/automation": {
+      "get": {
+        "operationId": "getNotificationAutomation",
+        "description": "Scoped synthetic in-app policies and bounded event history. Automation is explicitly opt-in; no external send.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/notifications/projects/{project}/automation/policies": {
+      "post": {
+        "operationId": "draftNotificationAutomationPolicy",
+        "description": "Idempotent policy draft mapping one supported application event to an independently approved in-app transactional template.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationAutomationPolicySchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/notifications/projects/{project}/automation/policies/{id}/review": {
+      "post": {
+        "operationId": "reviewNotificationAutomationPolicy",
+        "description": "Author-independent active project legal reviewer approves, rejects or revokes a version-bound policy. Event-time consent pins prevent retrospective delivery.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            },
+            "description": "Current version of the target resource; 0 for an absent initial configuration."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationAutomationReviewSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -29943,6 +30138,51 @@
           }
         },
         "required": ["proposal", "signature"],
+        "additionalProperties": false
+      },
+      "NotificationAutomationPolicySchema": {
+        "type": "object",
+        "properties": {
+          "eventType": {
+            "type": "string",
+            "enum": [
+              "application.supplement-requested",
+              "application.approved",
+              "application.rejected"
+            ]
+          },
+          "templateId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "idempotencyKey": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        },
+        "required": ["eventType", "templateId", "idempotencyKey"],
+        "additionalProperties": false
+      },
+      "NotificationAutomationReviewSchema": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": ["approve", "reject", "revoke"]
+          },
+          "accepted": {
+            "type": "boolean",
+            "const": true
+          },
+          "note": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 1000
+          }
+        },
+        "required": ["decision", "accepted", "note"],
         "additionalProperties": false
       }
     },

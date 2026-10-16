@@ -2,15 +2,32 @@ import 'reflect-metadata';
 import { createServer } from 'node:http';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app';
+import { NotificationAutomationService } from './notification-automation-service';
+import { NotificationAutomationLifecycle } from './notification-automation-lifecycle';
 async function main() {
   const app = await NestFactory.createApplicationContext(AppModule, { logger: ['error', 'warn'] });
   app.enableShutdownHooks();
+  if (process.argv.includes('--notifications-once')) {
+    const service = app.get(NotificationAutomationService);
+    const result = await service.runConfiguredBatch();
+    console.log(
+      JSON.stringify({
+        scope: 'synthetic-in-app-application-notifications',
+        enabled: Boolean(service.configuredOrganization()),
+        ...result,
+      }),
+    );
+    await app.close();
+    if (result.failed > 0) process.exitCode = 1;
+    return;
+  }
+  const automation = app.get(NotificationAutomationLifecycle);
   const server = createServer((request, response) => {
     const live = request.method === 'GET' && request.url === '/health/live';
     response.writeHead(live ? 200 : 404, { 'Content-Type': 'application/json' });
     response.end(
       JSON.stringify(
-        live ? { status: 'alive', release: 'sprint-0', jobsProcessed: false } : { status: 404 },
+        live ? { status: 'alive', release: '0.6.0', ...automation.status() } : { status: 404 },
       ),
     );
   });

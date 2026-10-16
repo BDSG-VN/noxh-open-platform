@@ -17,6 +17,7 @@ import {
 import { Database, type Sql, type Row } from './database';
 import { DossierService } from './dossier-service';
 import { PrivacyService } from './privacy-service';
+import { recordApplicationNotificationEvent } from './notification-automation-producer';
 import { event, record, text, uuid } from './admin-service';
 import { seal, unseal } from './identity-crypto';
 import type { Citizen } from './phone-service';
@@ -561,6 +562,13 @@ export class ApplicationService {
         "UPDATE applications SET status='supplement',decision_reason_cipher=$2,version=version+1,updated_at=now() WHERE id=$1",
         [r.id, seal(JSON.stringify(message), scope(s.organizationId, String(r.id)))],
       );
+      await recordApplicationNotificationEvent(q, {
+        organizationId: s.organizationId,
+        applicationId: String(r.id),
+        applicationVersion: Number(r.version) + 1,
+        eventType: 'application.supplement-requested',
+        sourceRef: String(r.id),
+      });
       await event(q, s, 'application.supplement-requested', String(r.id));
       return { saved: true };
     });
@@ -687,6 +695,13 @@ export class ApplicationService {
         'UPDATE applications SET status=$2,decision_reason_cipher=$3,decision_reference_cipher=$4,decided_by=$5,version=version+1,updated_at=now() WHERE id=$1',
         [r.id, v.eligible ? 'approved' : 'rejected', reason, reference, s.subject],
       );
+      await recordApplicationNotificationEvent(q, {
+        organizationId: s.organizationId,
+        applicationId: String(r.id),
+        applicationVersion: Number(r.version) + 1,
+        eventType: v.eligible ? 'application.approved' : 'application.rejected',
+        sourceRef: ref,
+      });
       await event(q, s, v.eligible ? 'application.approved' : 'application.rejected', String(r.id));
       return { saved: true, decisionId: ref };
     });

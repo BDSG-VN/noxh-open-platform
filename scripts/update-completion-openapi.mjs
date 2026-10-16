@@ -4,6 +4,7 @@ import * as contracts from '../packages/contracts/dist/index.js';
 const require = createRequire(new URL('../packages/contracts/package.json', import.meta.url));
 const { z } = require('zod');
 const doc = JSON.parse(await readFile('docs/openapi.json', 'utf8'));
+doc.info.version = '0.6.0';
 const uuid = { type: 'string', format: 'uuid' };
 function schema(name) {
   const s = z.toJSONSchema(contracts[name], { unrepresentable: 'any' });
@@ -31,6 +32,8 @@ for (const n of [
   'NotificationPreferenceSchema',
   'NotificationTransportSchema',
   'NotificationAcceptedSchema',
+  'NotificationAutomationPolicySchema',
+  'NotificationAutomationReviewSchema',
 ])
   schema(n);
 function path(url, method, id, description, body, version = false) {
@@ -279,12 +282,33 @@ path(
   },
 );
 doc.paths['/health/ready'].get.description =
-  'Checks PostgreSQL, Redis, migrations 001–020 and executable Rust kernels. Does not certify legal approval, provider connectivity or production readiness.';
+  'Checks PostgreSQL, Redis, migrations 001–021 and executable Rust kernels. Does not certify legal approval, provider connectivity or production readiness.';
 const assistant = doc.paths['/api/v1/dossiers/{id}/assistant'].post;
 assistant.description =
   (assistant.description ?? '').split(' Project-approved lexical retrieval')[0] +
   ' Project-approved lexical retrieval returns revision/hash citations; reference ID validation does not verify semantic claims. Form proposal values are derived locally from saved declaration/current accepted clean extraction; conflicts and external attestations remain blank. Explicit single-use confirmation generates a draft PDF atomically with proposal consumption.';
 const notifications = '/api/v1/admin/notifications/projects/{project}';
+path(
+  notifications + '/automation',
+  'get',
+  'getNotificationAutomation',
+  'Scoped synthetic in-app policies and bounded event history. Automation is explicitly opt-in; no external send.',
+);
+path(
+  notifications + '/automation/policies',
+  'post',
+  'draftNotificationAutomationPolicy',
+  'Idempotent policy draft mapping one supported application event to an independently approved in-app transactional template.',
+  'NotificationAutomationPolicySchema',
+);
+path(
+  notifications + '/automation/policies/{id}/review',
+  'post',
+  'reviewNotificationAutomationPolicy',
+  'Author-independent active project legal reviewer approves, rejects or revokes a version-bound policy. Event-time consent pins prevent retrospective delivery.',
+  'NotificationAutomationReviewSchema',
+  true,
+);
 path(
   notifications + '/workspace',
   'get',

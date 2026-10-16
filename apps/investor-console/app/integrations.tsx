@@ -203,7 +203,12 @@ export function LegalTemplates({ projects }: { projects: Project[] }) {
         if (live) {
           setForms(v.forms);
           setFormId(v.forms[0]?.id ?? '');
-          setScope(v.scope);
+          setScope(
+            v.scope ===
+              'National base sources; local project applicability requires separate review. Not a legal eligibility engine.'
+              ? 'Danh mục nguồn cấp quốc gia; việc áp dụng cho từng địa phương và dự án cần được rà soát riêng. Danh mục không tự xác định điều kiện hưởng chính sách.'
+              : v.scope,
+          );
         }
       })
       .catch((e) => {
@@ -251,7 +256,9 @@ export function LegalTemplates({ projects }: { projects: Project[] }) {
       <section className="surface">
         <div className="surface-head">
           <h2 className="section-title">Soạn hướng dẫn theo mẫu nguồn</h2>
-          <span className="status-badge">15 mẫu trích nguyên trang</span>
+          <span className="status-badge">
+            {forms.length ? `${forms.length} mẫu trong danh mục nguồn` : 'Danh mục mẫu nguồn'}
+          </span>
         </div>
         <form
           className="surface-body stack"

@@ -47,7 +47,7 @@ API gốc là `/api/v1`:
 
 Quyền thường dùng `records_read` / `records_write` và phân công dự án hiện hành. Quản trị tổ chức có thể quản lý thông thường; các bước pháp chế/quyền riêng tư vẫn cần quyền chuyên trách hiện hành. Customer chỉ thấy quan hệ hồ sơ của chính mình. Migration có khóa ngoại tổ chức/dự án/người sở hữu, RLS bắt buộc và thu hồi toàn bộ quyền trực tiếp của `noxh_runtime`; tách vai trò runtime đúng quyền vẫn là chốt phát hành hạ tầng.
 
-UI mới: `NotificationsAdmin({projects,staff?})` và `NotificationsCustomer()`. Root tích hợp module Nest, guard/BFF, điều hướng và OpenAPI. Không sửa hợp đồng legacy `ChannelNotificationProvider` hay bảng nền `outbox_events` đang chưa có worker thực tế. Không tự nối sự kiện thay đổi hồ sơ/hợp đồng vào phát hàng loạt; liên kết tự động từng sự kiện nghiệp vụ là bước tích hợp riêng cần chính sách mẫu/đối tượng và thứ tự khóa được duyệt.
+UI: `NotificationsAdmin({projects,staff?})` và `NotificationsCustomer()`, tích hợp module Nest, guard/BFF, điều hướng và OpenAPI. [Lát cắt021](COMPLETION-NOTIFICATION-AUTOMATION.md) bổ sung quy tắc được duyệt độc lập và outbox riêng cho đúng ba sự kiện yêu cầu bổ sung/chấp thuận/từ chối hồ sơ diễn tập. Consumer có giới hạn, kiểm lại đồng ý và chống trùng; mặc định tắt. Hợp đồng legacy `ChannelNotificationProvider` và bảng nền `outbox_events` giữ nguyên; không tự phát mọi sự kiện, hợp đồng hoặc tin hàng loạt.
 
 ## Kiểm chứng và giới hạn
 

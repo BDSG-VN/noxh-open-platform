@@ -53,6 +53,9 @@ import { AuditCheckpointController } from './audit-checkpoint-controller';
 import { AuditCheckpointService } from './audit-checkpoint-service';
 import { NotificationService } from './notification-service';
 import { NotificationController } from './notification-controller';
+import { NotificationAutomationController } from './notification-automation-controller';
+import { NotificationAutomationService } from './notification-automation-service';
+import { NotificationAutomationLifecycle } from './notification-automation-lifecycle';
 import { ZaloIdentityService, ZaloIdentityTransport } from './zalo-identity-service';
 import { ZaloIdentityController } from './zalo-identity-controller';
 @Controller()
@@ -62,7 +65,7 @@ export class PlatformController {
     @Inject(Database) private readonly db: Database,
   ) {}
   @Get('health/live') live() {
-    return { status: 'alive', release: '0.5.0', productionReady: false };
+    return { status: 'alive', release: '0.6.0', productionReady: false };
   }
   @Get('health/ready') async ready(@Res({ passthrough: true }) res: Response) {
     const result = await this.health.check();
@@ -73,7 +76,7 @@ export class PlatformController {
         type: 'urn:noxh:problem:not-ready',
         title: 'Dependencies unavailable',
         status: 503,
-        detail: 'Postgres, Redis, migrations 001–020 and the Rust kernels must be ready.',
+        detail: 'Postgres, Redis, migrations 001–021 and the Rust kernels must be ready.',
         checks: result.checks,
       };
     }
@@ -105,7 +108,7 @@ export class PlatformController {
     return {
       items: await this.catalog(),
       mode: this.db.available ? 'database' : 'synthetic',
-      release: '0.5.0',
+      release: '0.6.0',
     };
   }
   @Get('api/v1/projects/:id') async project(@Param('id') id: string) {
@@ -125,7 +128,8 @@ export class PlatformController {
   }
   @Get('api/v1/capabilities') capabilities() {
     return {
-      release: '0.5.0',
+      release: '0.6.0',
+      automaticNotifications: 'opt-in-synthetic-in-app-only',
       externalAi: 'organization-opt-in',
       officialSubmission: false,
       officialForms: 'reviewed-mappings-deterministic-pdf',
@@ -159,6 +163,7 @@ export class PlatformController {
     TenancyController,
     AuditCheckpointController,
     NotificationController,
+    NotificationAutomationController,
     ZaloIdentityController,
   ],
   providers: [
@@ -188,6 +193,8 @@ export class PlatformController {
     TenancyService,
     AuditCheckpointService,
     NotificationService,
+    NotificationAutomationService,
+    NotificationAutomationLifecycle,
     ZaloIdentityService,
     ZaloIdentityTransport,
     { provide: APP_GUARD, useClass: WorkforceAccessGuard },
