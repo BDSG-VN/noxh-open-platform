@@ -77,3 +77,86 @@ export const InternalFileUploadSchema = DocumentUploadSchema.omit({ type: true }
     classification: z.literal('restricted'),
   })
   .strict();
+/** Purpose-specific consent for self-hosted OCR of one clean-scanned document (ADR 020). */
+export const OcrConsentSchema = z
+  .object({ accepted: z.literal(true), noticeVersion: z.literal('document-ocr-v1') })
+  .strict();
+export const OcrAcceptedSchema = z.object({ accepted: z.literal(true) }).strict();
+/** Worker reply contract: text blocks with boxes and confidence; validated before storage. */
+export const OcrBlockSchema = z
+  .object({
+    page: z.number().int().min(1).max(100),
+    text: z.string().max(1000),
+    confidence: z.number().min(0).max(1),
+    bbox: z
+      .object({
+        x: z.number().int().min(0).max(100000),
+        y: z.number().int().min(0).max(100000),
+        width: z.number().int().min(0).max(100000),
+        height: z.number().int().min(0).max(100000),
+      })
+      .strict(),
+  })
+  .strict();
+export const OcrResultSchema = z
+  .object({
+    engine: z.string().regex(/^[a-z][a-z0-9-]{0,39}$/),
+    engine_version: z.string().min(1).max(80),
+    languages: z.array(z.string().regex(/^[a-z_]{3,12}$/)).max(10),
+    pages: z.number().int().min(1).max(100),
+    quality: z.number().min(0).max(1),
+    processing_ms: z.number().int().min(0).max(3_600_000),
+    blocks: z.array(OcrBlockSchema).max(400),
+    warnings: z.array(z.string().max(200)).max(20),
+  })
+  .strict();
+export type OcrBlock = z.infer<typeof OcrBlockSchema>;
+export type OcrResult = z.infer<typeof OcrResultSchema>;
+export type OcrJobStatus = 'pending' | 'running' | 'succeeded' | 'failed' | 'cancelled';
+export type OcrJobReason =
+  | 'worker_unavailable'
+  | 'worker_timeout'
+  | 'worker_rejected'
+  | 'invalid_result'
+  | 'document_unavailable'
+  | 'consent_unavailable'
+  | 'attempts_exhausted'
+  | 'processing_failed'
+  | 'cancelled_by_owner'
+  | 'requeued';
+export interface OcrJobView {
+  id: string;
+  documentId: string;
+  status: OcrJobStatus;
+  reason: OcrJobReason | null;
+  attemptCount: number;
+  attemptBudget: number;
+  requeueCount: number;
+  nextAttemptAt: string | null;
+  qualityScore: number | null;
+  lowQuality: boolean | null;
+  engine: string | null;
+  extractionId: string | null;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface OcrJobDetail extends OcrJobView {
+  result: OcrResult | null;
+  qualityThreshold: number;
+}
+export interface OcrWorkspace {
+  enabled: boolean;
+  items: OcrJobView[];
+  qualityThreshold: number;
+  notice: string;
+}
+export interface OcrQueueHealth {
+  enabled: boolean;
+  workerConfigured: boolean;
+  counts: Record<OcrJobStatus, number>;
+  oldestPendingSeconds: number | null;
+  staleLeases: number;
+  recentFailures: { id: string; reason: OcrJobReason | null; updatedAt: string; version: number }[];
+  notice: string;
+}

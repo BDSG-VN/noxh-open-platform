@@ -84,7 +84,7 @@
             }
           }
         },
-        "description": "Checks PostgreSQL, Redis, migrations 001–024, executable Rust kernels and, when DATABASE_REQUIRE_LEAST_PRIVILEGE=true, that the API connects as a non-elevated noxh_app member. Does not certify legal approval, provider connectivity or production readiness."
+        "description": "Checks PostgreSQL, Redis, migrations 001–025, executable Rust kernels and, when DATABASE_REQUIRE_LEAST_PRIVILEGE=true, that the API connects as a non-elevated noxh_app member. Does not certify legal approval, provider connectivity or production readiness."
       }
     },
     "/api/v1/projects": {
@@ -225,6 +225,10 @@
                     },
                     "zaloVerification": {
                       "const": "server-appsecret-proof-organization-configurable"
+                    },
+                    "localOcr": {
+                      "type": "boolean",
+                      "description": "LOCAL_OCR_ENABLED deployment flag: self-hosted tesseract OCR through the worker queue; no external provider."
                     }
                   }
                 }
@@ -23481,6 +23485,374 @@
           }
         }
       }
+    },
+    "/api/v1/dossiers/{id}/ocr-jobs": {
+      "get": {
+        "operationId": "listMyOcrJobs",
+        "description": "Owner-only OCR jobs for the dossier with status, reason code, attempt budget, quality score and low-quality flag. Text is only in the job detail. Requires LOCAL_OCR_ENABLED on the deployment.",
+        "security": [
+          {
+            "CitizenBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/dossiers/{id}/documents/{document}/ocr": {
+      "post": {
+        "operationId": "requestDocumentOcr",
+        "description": "Owner requests self-hosted OCR of one clean-scanned document with a separate purpose-specific consent (document-ocr-v1). Quarantined or rejected files are refused; one active job per document; at most 20 requests per hour. The worker claims the job later; nothing is written to the declaration.",
+        "security": [
+          {
+            "CitizenBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "document",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OcrConsentSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/dossiers/{id}/ocr-jobs/{job}": {
+      "get": {
+        "operationId": "getMyOcrJob",
+        "description": "Owner-only job detail including the decrypted recognised text blocks (page, bbox, confidence), quality score and the linked local-ocr extraction proposal id. Fields still need explicit acceptance through the existing extraction flow.",
+        "security": [
+          {
+            "CitizenBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "job",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/dossiers/{id}/ocr-jobs/{job}/cancel": {
+      "post": {
+        "operationId": "cancelMyOcrJob",
+        "description": "Owner cancels a pending or running job with If-Match. A running job loses its lease so an in-flight result is discarded; the purpose consent is withdrawn.",
+        "security": [
+          {
+            "CitizenBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "job",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            },
+            "description": "Current version of the target resource; 0 for an absent initial configuration."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/ocr/queue": {
+      "get": {
+        "operationId": "getOcrQueueHealth",
+        "description": "Organization administrator queue health: counts per status, oldest pending age, stale leases and the latest failures with reason codes only. Never document or text content.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/ocr/jobs/{job}/requeue": {
+      "post": {
+        "operationId": "requeueOcrJob",
+        "description": "Operator-confirmed, version-bound requeue of one failed job within the bounded budget (at most 3 attempts and 2 requeues in total). Succeeded and cancelled jobs are final.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            },
+            "description": "Current version of the target resource; 0 for an absent initial configuration."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OcrAcceptedSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -30565,6 +30937,140 @@
             "additionalProperties": false
           }
         ]
+      },
+      "OcrConsentSchema": {
+        "type": "object",
+        "properties": {
+          "accepted": {
+            "type": "boolean",
+            "const": true
+          },
+          "noticeVersion": {
+            "type": "string",
+            "const": "document-ocr-v1"
+          }
+        },
+        "required": ["accepted", "noticeVersion"],
+        "additionalProperties": false
+      },
+      "OcrAcceptedSchema": {
+        "type": "object",
+        "properties": {
+          "accepted": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": ["accepted"],
+        "additionalProperties": false
+      },
+      "OcrResultSchema": {
+        "type": "object",
+        "properties": {
+          "engine": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,39}$"
+          },
+          "engine_version": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "languages": {
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z_]{3,12}$"
+            }
+          },
+          "pages": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "quality": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "processing_ms": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3600000
+          },
+          "blocks": {
+            "maxItems": 400,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "page": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100
+                },
+                "text": {
+                  "type": "string",
+                  "maxLength": 1000
+                },
+                "confidence": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "bbox": {
+                  "type": "object",
+                  "properties": {
+                    "x": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 100000
+                    },
+                    "y": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 100000
+                    },
+                    "width": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 100000
+                    },
+                    "height": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 100000
+                    }
+                  },
+                  "required": ["x", "y", "width", "height"],
+                  "additionalProperties": false
+                }
+              },
+              "required": ["page", "text", "confidence", "bbox"],
+              "additionalProperties": false
+            }
+          },
+          "warnings": {
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 200
+            }
+          }
+        },
+        "required": [
+          "engine",
+          "engine_version",
+          "languages",
+          "pages",
+          "quality",
+          "processing_ms",
+          "blocks",
+          "warnings"
+        ],
+        "additionalProperties": false
       }
     },
     "securitySchemes": {

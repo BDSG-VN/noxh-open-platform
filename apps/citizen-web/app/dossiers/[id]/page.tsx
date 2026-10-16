@@ -6,10 +6,18 @@ import { PageHeading } from '@noxh/ui';
 import CustomerShell from '../../customer-shell';
 import DossierWorkbench from './workbench';
 export const dynamic = 'force-dynamic';
-export default async function DossierPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function DossierPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string | string[] }>;
+}) {
   const token = (await cookies()).get('noxh_citizen')?.value;
   if (!token) redirect('/login');
   const { id } = await params;
+  // Deep link to a workbench step (e.g. ?tab=documents); unknown values fall back to the first step.
+  const { tab } = await searchParams;
   if (!/^[a-f0-9-]{36}$/.test(id)) notFound();
   let response: Response;
   try {
@@ -41,7 +49,7 @@ export default async function DossierPage({ params }: { params: Promise<{ id: st
         description={d.locality + ' · Hồ sơ chuẩn bị riêng tư'}
         action={<span className="status-badge amber">Chưa nộp chính thức</span>}
       />
-      <DossierWorkbench initial={d} />
+      <DossierWorkbench initial={d} initialTab={typeof tab === 'string' ? tab : undefined} />
     </CustomerShell>
   );
 }

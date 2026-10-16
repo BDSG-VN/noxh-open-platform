@@ -4,6 +4,8 @@ import { PhoneService } from './phone-service';
 import { WorkforceAuth } from './workforce';
 import { DocumentService } from './document-service';
 import { FormService } from './form-service';
+import { DocumentOcrService } from './document-ocr-service';
+import { version } from './admin-service';
 @Controller('api/v1')
 export class DocumentController {
   constructor(
@@ -11,7 +13,48 @@ export class DocumentController {
     @Inject(WorkforceAuth) readonly staff: WorkforceAuth,
     @Inject(DocumentService) readonly docs: DocumentService,
     @Inject(FormService) readonly forms: FormService,
+    @Inject(DocumentOcrService) readonly ocr: DocumentOcrService,
   ) {}
+  @Get('dossiers/:id/ocr-jobs') async ocrJobs(
+    @Headers('authorization') h: unknown,
+    @Param('id') id: string,
+  ) {
+    return this.ocr.workspace(await this.citizen.authenticate(h), id);
+  }
+  @Post('dossiers/:id/documents/:document/ocr') async requestOcr(
+    @Headers('authorization') h: unknown,
+    @Param('id') id: string,
+    @Param('document') doc: string,
+    @Body() b: unknown,
+  ) {
+    return this.ocr.request(await this.citizen.authenticate(h), id, doc, b);
+  }
+  @Get('dossiers/:id/ocr-jobs/:job') async ocrJob(
+    @Headers('authorization') h: unknown,
+    @Param('id') id: string,
+    @Param('job') job: string,
+  ) {
+    return this.ocr.detail(await this.citizen.authenticate(h), id, job);
+  }
+  @Post('dossiers/:id/ocr-jobs/:job/cancel') async cancelOcr(
+    @Headers('authorization') h: unknown,
+    @Param('id') id: string,
+    @Param('job') job: string,
+    @Headers('if-match') v: unknown,
+  ) {
+    return this.ocr.cancel(await this.citizen.authenticate(h), id, job, version(v));
+  }
+  @Get('admin/ocr/queue') async ocrQueue(@Headers('authorization') h: unknown) {
+    return this.ocr.health(await this.staff.authenticate(h));
+  }
+  @Post('admin/ocr/jobs/:job/requeue') async requeueOcr(
+    @Headers('authorization') h: unknown,
+    @Param('job') job: string,
+    @Body() b: unknown,
+    @Headers('if-match') v: unknown,
+  ) {
+    return this.ocr.requeue(await this.staff.authenticate(h), job, b, version(v));
+  }
   @Get('dossiers/:id/documents') async list(
     @Headers('authorization') h: unknown,
     @Param('id') id: string,

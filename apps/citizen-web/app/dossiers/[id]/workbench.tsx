@@ -32,8 +32,16 @@ async function call(path: string, body: unknown, method = 'POST', version?: numb
   if (!r.ok) throw new Error(b.detail ?? 'Không thực hiện được. Hãy thử lại.');
   return b;
 }
-export default function DossierWorkbench({ initial }: { initial: DossierDetail }) {
-  const [tab, setTab] = useState('declarations'),
+export default function DossierWorkbench({
+  initial,
+  initialTab,
+}: {
+  initial: DossierDetail;
+  initialTab?: string;
+}) {
+  const [tab, setTab] = useState(
+      steps.some(([id]) => id === initialTab) ? String(initialTab) : 'declarations',
+    ),
     [data, setData] = useState<Declaration>(initial.declaration),
     [version, setVersion] = useState(initial.version),
     [readiness, setReadiness] = useState<Readiness>(initial.readiness),

@@ -9,6 +9,8 @@ import type { Declaration } from '../../packages/contracts/dist/index.js';
 export const ORG = '11111111-1111-4111-8111-111111111111';
 export const PROJECT = '22222222-2222-4222-8222-222222222222';
 export const DOSSIER = '33333333-3333-4333-8333-333333333333';
+const DOCUMENT = '66666666-6666-4666-8666-666666666666';
+const OCR_JOB = '88888888-8888-4888-8888-888888888888';
 export const LOTTERY = '44444444-4444-4444-8444-444444444444';
 export const CAMPAIGN = '55555555-5555-4555-8555-555555555555';
 const NOTICE = '66666666-6666-4666-8666-666666666666';
@@ -135,6 +137,50 @@ const routes: Record<string, unknown> = {
     dossiers: [{ id: DOSSIER, project_name: project.name, version: 2 }],
   },
   [`/api/v1/dossiers/${DOSSIER}`]: dossier,
+  // Document workspace with one clean file, a low-quality self-hosted OCR job and no forms yet.
+  [`/api/v1/dossiers/${DOSSIER}/documents`]: {
+    items: [
+      {
+        id: DOCUMENT,
+        name: 'giay-to-gia-lap.png',
+        type: 'identity',
+        mime: 'image/png',
+        sha256: 'a'.repeat(64),
+        bytes: 20480,
+        scan_status: 'clean',
+        scan_message: 'Đã hoàn tất kiểm tra an toàn.',
+        version: 2,
+        created_at: T0,
+      },
+    ],
+    extractions: [],
+    scannerConfigured: true,
+  },
+  [`/api/v1/dossiers/${DOSSIER}/form-workspace`]: { mappings: [], generated: [], inputVersion: 2 },
+  [`/api/v1/dossiers/${DOSSIER}/ocr-jobs`]: {
+    enabled: true,
+    qualityThreshold: 0.6,
+    notice: 'OCR nội bộ chạy trên máy chủ của tổ chức; kết quả chỉ là gợi ý để đối chiếu.',
+    items: [
+      {
+        id: OCR_JOB,
+        documentId: DOCUMENT,
+        status: 'succeeded',
+        reason: null,
+        attemptCount: 1,
+        attemptBudget: 3,
+        requeueCount: 0,
+        nextAttemptAt: null,
+        qualityScore: 0.42,
+        lowQuality: true,
+        engine: 'tesseract',
+        extractionId: '77777777-7777-4777-8777-777777777777',
+        version: 3,
+        createdAt: T0,
+        updatedAt: T0,
+      },
+    ],
+  },
   '/api/v1/privacy/notice': { notice, accepted: false, restricted: false, requests: [] },
   '/api/v1/citizen/privacy': { notice, accepted: true, restricted: false, requests: [] },
   '/api/v1/citizen/consultations': { items: [] },

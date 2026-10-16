@@ -38,6 +38,12 @@ export const pages: PageCase[] = [
   page('citizen-web', `/tu-van/${CAMPAIGN}`, 'Yêu cầu tư vấn'),
   page('citizen-web', '/dashboard', 'Bảng điều khiển công dân', 'noxh_citizen'),
   page('citizen-web', `/dossiers/${DOSSIER}`, 'Hồ sơ chuẩn bị', 'noxh_citizen'),
+  page(
+    'citizen-web',
+    `/dossiers/${DOSSIER}?tab=documents`,
+    'Hồ sơ chuẩn bị · giấy tờ và OCR nội bộ',
+    'noxh_citizen',
+  ),
   page('citizen-web', '/privacy', 'Trung tâm quyền riêng tư', 'noxh_citizen'),
   page('investor-console', '/login', 'Đăng nhập quản trị'),
   admin('', 'tổng quan'),

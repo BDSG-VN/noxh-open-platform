@@ -1,3 +1,14 @@
+# Bằng chứng OCR nội bộ 024 — 17/10/2026
+
+Nhánh `claude/wave2-ocr` trên bản tích hợp 023; migration 001–024. Môi trường kiểm: 2 nhân CPU, Node 22, Python 3.13, tesseract 5.3.4 chỉ có traineddata `eng`/`osd`, `pdftoppm` 24.x, không có PostgreSQL thật hay ai-worker thật trong container.
+
+- `pnpm lint`, `pnpm typecheck` (13 gói), `pnpm check:openapi`, `pnpm check:secrets` đạt. Vitest API toàn bộ: **254 ca, 235 đạt, 19 bỏ qua** (ca PostgreSQL native); gồm **17 ca mới** `document-ocr.test.ts` và `runtime-privileges.test.ts` tính lại quyền cho `document_ocr_jobs`. Hai tệp trên cùng `documents.test.ts`/`privacy.test.ts` đạt **42/42** với `NOXH_TEST_RUNTIME_ROLE=1`. `node --test tests/sql.test.mjs tests/infrastructure.test.mjs`: 12/12. Một ca CLI checkpoint cần `apps/api/dist` (chạy `pnpm --filter @noxh/api build` trước), không liên quan OCR.
+- Python ai-worker: **25 ca đạt** (3 cũ + 22 `test_ocr.py`), trong đó một ca chạy tesseract thật trong sandbox với `eng` và một ca rasterise PDF 3 trang bằng `pdftoppm`. Chưa có ca tiếng Việt vì ảnh kiểm thử không có `vie`.
+- citizen-web: Vitest 3/3; cổng a11y Playwright (axe WCAG 2.0/2.1 A/AA, bàn phím, tràn ngang 390px/200%) **36/36** trang citizen-web trước khi thêm trang, rồi **8/8** cho `/dossiers/{id}` và trang mới `/dossiers/{id}?tab=documents` có phần OCR hiển thị thật (giấy tờ sạch, tác vụ chất lượng thấp, nút hủy/xem chữ). Bốn giao diện còn lại không thay đổi và không chạy lại trong lượt này.
+- Không chạy: Docker build ảnh ai-worker (cần tải `tesseract-ocr-vie`), compose đầy đủ, PostgreSQL thật, giấy tờ thật. Kết luận chất lượng OCR trên giấy tờ Việt Nam chưa có.
+
+---
+
 # Bằng chứng thông báo tự động 021 — 16/10/2026
 
 Bản 021 đã hợp nhất vào main qua PR #5, merge `d932a9847ca0365c06e8c181afeef3fbfe972404`; mã nguồn được kiểm tra tại `ac3897827f914acdd92a3d5ee78944f620b9f859`, migration 001–021. Chỉ ba thay đổi hồ sơ tổng hợp tới hộp thư trong ứng dụng; cờ triển khai mặc định tắt. Chi tiết ở [hướng dẫn 021](COMPLETION-NOTIFICATION-AUTOMATION.md).
