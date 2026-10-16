@@ -635,7 +635,7 @@ export default function ApplicationsAdmin({ staff }: { staff?: Staff }) {
             {has('reviewer') && assignedToMe && detail.status === 'under_review' && (
               <>
                 <details className="workspace-disclosure">
-                  <summary>Phân công hoặc giao thẩm định lại</summary>
+                  <summary>Yêu cầu khách bổ sung hồ sơ</summary>
                   <div className="workspace-disclosure-body">
                     <form
                       key={'supplement:' + detail.id + ':' + detail.version}
@@ -670,7 +670,7 @@ export default function ApplicationsAdmin({ staff }: { staff?: Staff }) {
                   </div>
                 </details>
                 <details className="workspace-disclosure">
-                  <summary>Yêu cầu khách bổ sung hồ sơ</summary>
+                  <summary>Lập đề xuất kết quả thẩm định</summary>
                   <div className="workspace-disclosure-body">
                     <form
                       key={'recommend:' + detail.id + ':' + detail.version}
@@ -746,7 +746,7 @@ export default function ApplicationsAdmin({ staff }: { staff?: Staff }) {
             )}
             {has('approver') && detail.status === 'recommended' && currentReview && (
               <details className="workspace-disclosure">
-                <summary>Lập đề xuất kết quả thẩm định</summary>
+                <summary>Kiểm tra và ghi quyết định phê duyệt</summary>
                 <div className="workspace-disclosure-body">
                   <form
                     key={'decision:' + detail.id + ':' + detail.version}
@@ -818,7 +818,7 @@ export default function ApplicationsAdmin({ staff }: { staff?: Staff }) {
             )}
             {has('approver') && detail.status === 'rejected' && (
               <details className="workspace-disclosure">
-                <summary>Kiểm tra và ghi quyết định phê duyệt</summary>
+                <summary>Xem xét lại quyết định từ chối</summary>
                 <div className="workspace-disclosure-body">
                   <details className="workspace-disclosure">
                     <summary>Mở thẩm định lại hồ sơ đã từ chối</summary>
