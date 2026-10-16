@@ -4,7 +4,7 @@ Giải pháp mã nguồn mở của **BDSG Foundation** cho nhà ở xã hội: 
 
 **Bản tích hợp 16/10/2026 đang nghiệm thu:** cổng khách hàng, chủ đầu tư, nhân viên và đối tác; giấy tờ riêng tư, tạo PDF theo mẫu đã duyệt, tiếp nhận–xét duyệt hồ sơ, quy trình dự án, bảng hàng và bốc thăm diễn tập có kiểm chứng. Tiếp nhận thật và bốc thăm thật chưa được mở. Xem [phạm vi triển khai và phần còn thiếu](docs/IMPLEMENTATION-MATRIX.md).
 
-[![Sprint 0 validation](https://github.com/BDSG-VN/noxh-open-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/BDSG-VN/noxh-open-platform/actions/workflows/ci.yml) Blueprint v2 được lưu nguyên bản tại [docs/blueprint](docs/blueprint/README.md); lựa chọn MIT thay thế đề xuất AGPL trong tài liệu gốc.
+[![Platform validation](https://github.com/BDSG-VN/noxh-open-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/BDSG-VN/noxh-open-platform/actions/workflows/ci.yml) Blueprint v2 được lưu nguyên bản tại [docs/blueprint](docs/blueprint/README.md); lựa chọn MIT thay thế đề xuất AGPL trong tài liệu gốc.
 
 ## Luồng mới trong bản tích hợp
 
@@ -39,7 +39,7 @@ docker compose --profile ai up --build --wait --wait-timeout 600
 docker compose down
 ```
 
-Không dùng `down -v` nếu cần giữ dữ liệu. Migration chạy trước API; seed chỉ chứa dữ liệu giả lập. `/health/ready` kiểm tra Postgres, Redis, migration 001–024 và khả năng truy cập/thực thi ba binary Rust; Compose chạy API/worker bằng login tối thiểu `noxh_api` (thành viên `noxh_app`, không DDL/BYPASSRLS/superuser) và readiness thất bại nếu kết nối bị nâng quyền, xem [vai trò DB tối thiểu](docs/COMPLETION-OPERATIONS.md#vai-trò-db-tối-thiểu-cho-runtime-022); không chứng minh thuật toán đã được kiểm toán hay đăng nhập/storage/legal readiness. API danh mục đọc dự án đã công bố từ Postgres, có nhãn riêng cho dữ liệu giả lập.
+Không dùng `down -v` nếu cần giữ dữ liệu. Migration chạy trước API; seed chỉ chứa dữ liệu giả lập. `/health/ready` kiểm tra Postgres, Redis, migration 001–025 và khả năng truy cập/thực thi ba binary Rust; Compose chạy API/worker bằng login tối thiểu `noxh_api` (thành viên `noxh_app`, không DDL/BYPASSRLS/superuser) và readiness thất bại nếu kết nối bị nâng quyền, xem [vai trò DB tối thiểu](docs/COMPLETION-OPERATIONS.md#vai-trò-db-tối-thiểu-cho-runtime-022); không chứng minh thuật toán đã được kiểm toán hay đăng nhập/storage/legal readiness. API danh mục đọc dự án đã công bố từ Postgres, có nhãn riêng cho dữ liệu giả lập.
 
 Thông báo nghiệp vụ tự động chỉ chạy khi bật `NOTIFICATIONS_AUTOMATION_ENABLED=true`, cấu hình rõ `AUTH_ORGANIZATION_ID` và có quy tắc/mẫu được duyệt cùng đồng ý hiện hành của khách. API và worker dùng cùng khóa mã hóa. Chỉ dữ liệu giả lập, kênh trong ứng dụng; xem [phạm vi và cách kiểm tra lát cắt021](docs/COMPLETION-NOTIFICATION-AUTOMATION.md). Gửi email/Zalo thật qua worker chỉ bật với `NOTIFICATIONS_EXTERNAL_ENABLED=true`, `NOTIFICATIONS_SMTP_ALLOWED_HOSTS` (tùy chọn `NOTIFICATIONS_SMTP_CA_FILE`), cấu hình nhà cung cấp mã hóa của tổ chức và kênh dự án được rà soát dữ liệu bật; mặc định tắt và chưa nghiệm thu nhà cung cấp thật, xem [lát cắt 023](docs/COMPLETION-NOTIFICATIONS.md#lát-cắt-023--gửi-thật-qua-worker).
 

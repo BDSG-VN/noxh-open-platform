@@ -1,6 +1,18 @@
+# Bản tích hợp 17/10/2026 — tóm tắt đợt nâng cấp
+
+Nhánh `claude/runtime-least-privilege` gộp năm phần (xem từng mục dưới): vai trò DB tối thiểu cho API/worker (022), gửi email/Zalo qua worker mặc định tắt (023), index hiệu năng và sửa lỗi theo rà soát ECC (024), OCR nội bộ có hàng đợi (025), chế độ trải nghiệm mở với dự án hư cấu Mây Trắng, và cổng kiểm thử truy cập WCAG 2.1 AA cho 5 giao diện. Kết quả kiểm trên bản gộp: 243 test API (chạy lại toàn bộ dưới vai trò `noxh_app`), 3 test PostgreSQL thật, 35 Rust, 25 Python, 24 Node, 168 test truy cập; lint/typecheck/OpenAPI/secret gate đạt. Các điều kiện ngoài phạm vi mã vẫn như [ma trận](IMPLEMENTATION-MATRIX.md): pháp chế duyệt mẫu, provider/Zalo/thiết bị thật, API cơ quan, DR ngoài máy, pentest độc lập, pilot. Triển khai đang chạy chưa được nâng; quy trình vận hành ở [COMPLETION-OPERATIONS.md](COMPLETION-OPERATIONS.md).
+
+---
+
+# Khả năng truy cập giao diện (17/10/2026)
+
+Năm giao diện (công dân, chủ đầu tư, đối tác, minh bạch, Mini App) có cổng kiểm `pnpm test:a11y`: Playwright chạy axe-core theo WCAG 2.0/2.1 A/AA, kiểm bàn phím (liên kết bỏ qua, vòng focus, không dùng `div` làm nút), tràn ngang ở 390px/200% và tắt chuyển động trên bản build thật với API giả lập, chạy trong CI sau `pnpm build`. 41 trang theo vai trò không còn vi phạm axe (trước đó 24/26 trang lỗi, chủ yếu tương phản màu); sửa bằng token màu chữ dùng chung, một `main`/`h1` mỗi trang, `scope` cho bảng, nhãn lỗi biểu mẫu và thông báo/hủy khi tải tệp, không thay đổi nghiệp vụ. Đọc màn hình thật, thứ tự đọc trong Zalo và nội dung PDF vẫn nghiệm thu thủ công; chi tiết trong `docs/VALIDATION.md` và `docs/DESIGN-SYSTEM.md`.
+
+---
+
 # Rà soát ECC và index hiệu năng (024) — 17/10/2026
 
-## Rà soát toàn bộ bản tích hợp theo checklist ECC (bảo mật, lỗi im lặng, CSDL, hiệu năng, TypeScript/React/Rust/Python). Sửa: pool PostgreSQL có listener lỗi, không che lỗi gốc khi rollback, `statement_timeout`/`idle_in_transaction_session_timeout` mặc định; bộ lọc 500 ghi log lớp lỗi và đường dẫn (không body/header); hai vòng worker log lỗi và backoff lũy thừa; danh sách nhân sự một câu SQL; transport OTP Zalo không theo redirect và đọc có giới hạn; CLI checkpoint in mã lý do riêng; `eslint-plugin-react-hooks` gác rules-of-hooks; Mini App giảm chunk chính 792 kB → 348 kB. Migration 024 chỉ thêm 29 index cho các truy vấn danh sách/đếm/giới hạn tần suất đang seq scan (hàng đợi hồ sơ 118 ms → 0,5 ms với 100k đơn giả lập); readiness yêu cầu 001–024. Hoãn có lý do: gửi email/Zalo vẫn trong giao dịch giữ lock, hai lệnh thu hồi hiếm chưa index, cảnh báo exhaustive-deps. Chi tiết, số đo và rủi ro còn lại trong [REVIEW-ECC-20261017.md](REVIEW-ECC-20261017.md). Không phải chứng nhận bảo mật; `cargo audit`/pentest độc lập chưa chạy.
+Rà soát toàn bộ bản tích hợp theo checklist ECC (bảo mật, lỗi im lặng, CSDL, hiệu năng, TypeScript/React/Rust/Python). Sửa: pool PostgreSQL có listener lỗi, không che lỗi gốc khi rollback, `statement_timeout`/`idle_in_transaction_session_timeout` mặc định; bộ lọc 500 ghi log lớp lỗi và đường dẫn (không body/header); hai vòng worker log lỗi và backoff lũy thừa; danh sách nhân sự một câu SQL; transport OTP Zalo không theo redirect và đọc có giới hạn; CLI checkpoint in mã lý do riêng; `eslint-plugin-react-hooks` gác rules-of-hooks; Mini App giảm chunk chính 792 kB → 348 kB. Migration 024 chỉ thêm 29 index cho các truy vấn danh sách/đếm/giới hạn tần suất đang seq scan (hàng đợi hồ sơ 118 ms → 0,5 ms với 100k đơn giả lập); readiness yêu cầu 001–025 sau khi gộp OCR. Hoãn có lý do: gửi email/Zalo vẫn trong giao dịch giữ lock, hai lệnh thu hồi hiếm chưa index, cảnh báo exhaustive-deps. Chi tiết, số đo và rủi ro còn lại trong [REVIEW-ECC-20261017.md](REVIEW-ECC-20261017.md). Không phải chứng nhận bảo mật; `cargo audit`/pentest độc lập chưa chạy.
 
 # OCR nội bộ và hàng đợi xử lý giấy tờ (025) — 17/10/2026
 
@@ -81,7 +93,3 @@ Live Zalo delivery requires investor-owned approved template and credentials. No
 # Cầu nối SaaS (15/10/2026)
 
 Workforce có audience tùy chọn và cổng kiểm tra membership HTTPS cho instance riêng theo tổ chức. JWT/MFA vẫn bắt buộc; cổng phân quyền ràng buộc tổ chức/subject, không cache, không dùng quyền realm khi cổng lỗi. Quyền dự án nội bộ rộng hơn phạm vi provider bị từ chối toàn phiên. Kiểm thử ký JWT thật, thu hồi membership, sai phạm vi, sự cố và cấu hình thiếu nằm trong `workforce-gateway.test.ts`. Đây là tích hợp lõi MIT; website kinh doanh, dữ liệu dự án demo và cấu hình vận hành BDSG Housing được giữ riêng.
-
-# Khả năng truy cập giao diện (17/10/2026)
-
-Năm giao diện (công dân, chủ đầu tư, đối tác, minh bạch, Mini App) có cổng kiểm `pnpm test:a11y`: Playwright chạy axe-core theo WCAG 2.0/2.1 A/AA, kiểm bàn phím (liên kết bỏ qua, vòng focus, không dùng `div` làm nút), tràn ngang ở 390px/200% và tắt chuyển động trên bản build thật với API giả lập, chạy trong CI sau `pnpm build`. 41 trang theo vai trò không còn vi phạm axe (trước đó 24/26 trang lỗi, chủ yếu tương phản màu); sửa bằng token màu chữ dùng chung, một `main`/`h1` mỗi trang, `scope` cho bảng, nhãn lỗi biểu mẫu và thông báo/hủy khi tải tệp, không thay đổi nghiệp vụ. Đọc màn hình thật, thứ tự đọc trong Zalo và nội dung PDF vẫn nghiệm thu thủ công; chi tiết trong `docs/VALIDATION.md` và `docs/DESIGN-SYSTEM.md`.
