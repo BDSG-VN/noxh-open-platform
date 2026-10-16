@@ -27,7 +27,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Checks PostgreSQL, Redis, migrations 001–021 and executable Rust kernels. Does not certify legal approval, provider connectivity or production readiness. */
+        /** @description Checks PostgreSQL, Redis, migrations 001–022, executable Rust kernels and, when DATABASE_REQUIRE_LEAST_PRIVILEGE=true, that the API connects as a non-elevated noxh_app member. Does not certify legal approval, provider connectivity or production readiness. */
         get: operations["getReadiness"];
         put?: never;
         post?: never;

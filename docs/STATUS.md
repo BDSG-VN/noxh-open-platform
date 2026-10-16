@@ -1,3 +1,9 @@
+# Vai trò DB tối thiểu cho runtime (022) — 16/10/2026
+
+Migration 022 thêm vai trò nhóm `noxh_app` và công cụ `scripts/runtime-role.mjs` để API/worker chạy bằng login không superuser/BYPASSRLS/DDL. Quyền bảng suy ra từ 592 câu SQL tĩnh của API và trigger được kích hoạt; bảng chỉ thêm không có UPDATE/DELETE; mọi bảng bật FORCE RLS theo tổ chức của instance và ghim `app.organization_id` khi service đặt. Compose phát triển dùng login này và `/health/ready` từ chối kết nối nâng quyền khi bật `DATABASE_REQUIRE_LEAST_PRIVILEGE`. Kết quả kiểm thử ở [VALIDATION.md](VALIDATION.md#vai-trò-db-tối-thiểu-022--16102026); quyết định ở [ADR 018](adr/018-least-privilege-runtime.md). Các triển khai đang chạy chưa được chuyển kết nối; việc đó cần sao lưu và kế hoạch vận hành riêng.
+
+---
+
 # Bản tích hợp hoàn thiện luồng nghiệp vụ — 2026-10-16
 
 Lõi migration 015–021 đã được hợp nhất vào main; bản 021 qua PR #5, merge `d932a9847ca0365c06e8c181afeef3fbfe972404`, từ source `ac3897827f914acdd92a3d5ee78944f620b9f859`. Migration 021 bổ sung ba thay đổi hồ sơ diễn tập tạo thông báo trong ứng dụng qua outbox giao dịch, quy tắc có người duyệt độc lập và lựa chọn nhận tin của khách. Mặc định tắt; không gửi email/Zalo. CI đạt 4/4 job; QA có 18 xác nhận CUA và 8 kiểm tra BFF, được ghi cùng giới hạn trong [VALIDATION.md](VALIDATION.md). Hợp nhất và kiểm thử không tự xác nhận đã nâng cấp dịch vụ đang chạy.

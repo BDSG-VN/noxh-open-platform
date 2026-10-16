@@ -76,7 +76,8 @@ export class PlatformController {
         type: 'urn:noxh:problem:not-ready',
         title: 'Dependencies unavailable',
         status: 503,
-        detail: 'Postgres, Redis, migrations 001–021 and the Rust kernels must be ready.',
+        detail:
+          'Postgres, Redis, migrations 001–022, the Rust kernels and (when required) the least-privilege database role must be ready.',
         checks: result.checks,
       };
     }

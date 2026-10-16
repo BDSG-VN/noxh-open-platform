@@ -123,10 +123,22 @@ services:
     command: ['pnpm', 'db:seed']
     depends_on:
       migrate: { condition: service_completed_successfully }
+  # Owner connection creates/aligns the least-privilege login; API and worker use only that login.
+  runtime-role:
+    <<: *node
+    environment:
+      <<: *node-env
+      RUNTIME_DB_USER: ${RUNTIME_DB_USER:-noxh_api}
+      RUNTIME_DB_PASSWORD: ${RUNTIME_DB_PASSWORD:?Run node scripts/init-dev-env.mjs --add-auth-keys}
+    command: ['node', 'scripts/runtime-role.mjs', 'provision']
+    depends_on:
+      seed: { condition: service_completed_successfully }
   api:
     <<: *node
     environment:
       <<: *node-env
+      DATABASE_URL: postgresql://${RUNTIME_DB_USER:-noxh_api}:${RUNTIME_DB_PASSWORD:?Run node scripts/init-dev-env.mjs --add-auth-keys}@postgres:5432/${POSTGRES_DB:-noxh}
+      DATABASE_REQUIRE_LEAST_PRIVILEGE: 'true'
       AUTH_ENCRYPTION_KEY: ${AUTH_ENCRYPTION_KEY:?Generate auth keys in .env}
       AUTH_HASH_KEY: ${AUTH_HASH_KEY:?Generate auth keys in .env}
       S3_ENDPOINT: http://minio:9000
@@ -146,6 +158,7 @@ services:
     depends_on:
       migrate: { condition: service_completed_successfully }
       seed: { condition: service_completed_successfully }
+      runtime-role: { condition: service_completed_successfully }
       storage-init: { condition: service_completed_successfully }
       redis: { condition: service_healthy }
     healthcheck:
@@ -163,6 +176,7 @@ services:
     <<: *node
     environment:
       <<: *node-env
+      DATABASE_URL: postgresql://${RUNTIME_DB_USER:-noxh_api}:${RUNTIME_DB_PASSWORD:?Run node scripts/init-dev-env.mjs --add-auth-keys}@postgres:5432/${POSTGRES_DB:-noxh}
       AUTH_ENCRYPTION_KEY: ${AUTH_ENCRYPTION_KEY:?Generate auth keys in .env}
       AUTH_HASH_KEY: ${AUTH_HASH_KEY:?Generate auth keys in .env}
     command: ['node', 'apps/api/dist/worker.js']
