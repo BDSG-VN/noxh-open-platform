@@ -20,7 +20,7 @@ function callerIsTestCode(): boolean {
   for (const frame of frames) {
     if (frame.includes('test-runtime-role.ts') || frame.includes('/database.ts')) continue;
     if (frame.includes('node_modules') || frame.includes('node:')) continue;
-    return /\.test\.ts|test-privacy\.ts/.test(frame);
+    return /\.test\.ts|test-privacy\.ts|test-notification\.ts/.test(frame);
   }
   return false;
 }

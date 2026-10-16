@@ -79,7 +79,7 @@ export async function sqlInventory() {
       (n) =>
         n.endsWith('.ts') &&
         !/\.test\.ts$/.test(n) &&
-        !['test-privacy.ts', 'test-runtime-role.ts'].includes(n),
+        !['test-privacy.ts', 'test-runtime-role.ts', 'test-notification.ts'].includes(n),
     )
     .sort();
   const statements = [];

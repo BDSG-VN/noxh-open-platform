@@ -32,6 +32,7 @@ for (const n of [
   'NotificationPreferenceSchema',
   'NotificationTransportSchema',
   'NotificationAcceptedSchema',
+  'NotificationProviderSchema',
   'NotificationAutomationPolicySchema',
   'NotificationAutomationReviewSchema',
 ])
@@ -41,7 +42,7 @@ function path(url, method, id, description, body, version = false) {
     name: m[1],
     in: 'path',
     required: true,
-    schema: uuid,
+    schema: m[1] === 'channel' ? { type: 'string', enum: ['email', 'zalo'] } : uuid,
   }));
   if (version)
     parameters.push({
@@ -282,7 +283,7 @@ path(
   },
 );
 doc.paths['/health/ready'].get.description =
-  'Checks PostgreSQL, Redis, migrations 001–022, executable Rust kernels and, when DATABASE_REQUIRE_LEAST_PRIVILEGE=true, that the API connects as a non-elevated noxh_app member. Does not certify legal approval, provider connectivity or production readiness.';
+  'Checks PostgreSQL, Redis, migrations 001–023, executable Rust kernels and, when DATABASE_REQUIRE_LEAST_PRIVILEGE=true, that the API connects as a non-elevated noxh_app member. Does not certify legal approval, provider connectivity or production readiness.';
 const assistant = doc.paths['/api/v1/dossiers/{id}/assistant'].post;
 assistant.description =
   (assistant.description ?? '').split(' Project-approved lexical retrieval')[0] +
@@ -351,6 +352,34 @@ path(
   'configureNotificationTransport',
   'Operator-installed adapter selection only, no arbitrary endpoints/credentials accepted from browser; outside delivery defaults disabled.',
   'NotificationTransportSchema',
+  true,
+);
+path(
+  notifications + '/deliveries',
+  'get',
+  'getNotificationDeliveries',
+  'Worker delivery jobs for the project: status, reason codes, attempt budget, requeue count, dead-letter count and channel rate-limit/circuit state. Identifiers only; no addresses, receipts or content.',
+);
+path(
+  notifications + '/deliveries/{id}/requeue',
+  'post',
+  'requeueNotificationDelivery',
+  'Operator-confirmed, version-bound requeue of one dead-lettered job while the message keeps attempt budget (at most 3 attempts and 2 requeues in total). Final outcomes are never reopened.',
+  'NotificationAcceptedSchema',
+  true,
+);
+path(
+  '/api/v1/admin/notifications/providers',
+  'get',
+  'getNotificationProviders',
+  'Organization administrator view of encrypted provider settings per channel: adapter, rate limit, non-secret summary and version. Credentials are never returned.',
+);
+path(
+  '/api/v1/admin/notifications/providers/{channel}',
+  'post',
+  'configureNotificationProvider',
+  'Organization administrator enters SMTP or Zalo OA settings for a registered adapter; stored encrypted server-side, validated against operator allowlists. A different privacy officer must still enable the channel per project. Default off.',
+  'NotificationProviderSchema',
   true,
 );
 path(

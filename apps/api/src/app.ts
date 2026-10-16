@@ -56,6 +56,8 @@ import { NotificationController } from './notification-controller';
 import { NotificationAutomationController } from './notification-automation-controller';
 import { NotificationAutomationService } from './notification-automation-service';
 import { NotificationAutomationLifecycle } from './notification-automation-lifecycle';
+import { NotificationDeliveryService } from './notification-delivery-service';
+import { NotificationDeliveryLifecycle } from './notification-delivery-lifecycle';
 import { ZaloIdentityService, ZaloIdentityTransport } from './zalo-identity-service';
 import { ZaloIdentityController } from './zalo-identity-controller';
 @Controller()
@@ -77,7 +79,7 @@ export class PlatformController {
         title: 'Dependencies unavailable',
         status: 503,
         detail:
-          'Postgres, Redis, migrations 001–022, the Rust kernels and (when required) the least-privilege database role must be ready.',
+          'Postgres, Redis, migrations 001–023, the Rust kernels and (when required) the least-privilege database role must be ready.',
         checks: result.checks,
       };
     }
@@ -196,6 +198,8 @@ export class PlatformController {
     NotificationService,
     NotificationAutomationService,
     NotificationAutomationLifecycle,
+    NotificationDeliveryService,
+    NotificationDeliveryLifecycle,
     ZaloIdentityService,
     ZaloIdentityTransport,
     { provide: APP_GUARD, useClass: WorkforceAccessGuard },

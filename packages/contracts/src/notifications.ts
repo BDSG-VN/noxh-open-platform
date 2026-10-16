@@ -104,3 +104,104 @@ export interface NotificationCitizenWorkspace {
   projects: { id: string; name: string }[];
   notice: string;
 }
+/** Provider credentials are entered by an organization administrator and stored encrypted server-side. */
+const hostname =
+  /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i;
+const email =
+  /^[^\s@<>,;"'\\()[\]]{1,64}@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/i;
+const parameter = /^[a-z_][a-z0-9_]{0,40}$/;
+export const NotificationEmailProviderSchema = z
+  .object({
+    channel: z.literal('email'),
+    adapterId: z.string().regex(/^[a-z][a-z0-9-]{2,60}$/),
+    host: z.string().regex(hostname),
+    port: z.number().int().min(1).max(65535),
+    security: z.enum(['starttls', 'tls']),
+    username: z.string().min(1).max(200),
+    password: z.string().min(1).max(500),
+    from: z.string().regex(email),
+    /** Synthetic drill mailbox: this release has no verified customer e-mail address source. */
+    sinkAddress: z.string().regex(email),
+    ratePerMinute: z.number().int().min(1).max(600),
+    accepted: z.literal(true),
+  })
+  .strict();
+export const NotificationZaloProviderSchema = z
+  .object({
+    channel: z.literal('zalo'),
+    adapterId: z.string().regex(/^[a-z][a-z0-9-]{2,60}$/),
+    accessToken: z.string().min(1).max(2000),
+    appSecret: z.string().min(1).max(500),
+    templateId: z.string().regex(/^[A-Za-z0-9_-]{1,100}$/),
+    titleParameter: z.string().regex(parameter),
+    bodyParameter: z.string().regex(parameter),
+    /** Optional synthetic drill number; otherwise the customer's OTP-verified phone is used. */
+    sinkPhone: z
+      .string()
+      .regex(/^84[35789][0-9]{8}$/)
+      .optional(),
+    ratePerMinute: z.number().int().min(1).max(600),
+    accepted: z.literal(true),
+  })
+  .strict();
+export const NotificationProviderSchema = z.discriminatedUnion('channel', [
+  NotificationEmailProviderSchema,
+  NotificationZaloProviderSchema,
+]);
+export type NotificationEmailProvider = z.infer<typeof NotificationEmailProviderSchema>;
+export type NotificationZaloProvider = z.infer<typeof NotificationZaloProviderSchema>;
+export type NotificationDeliveryStatus =
+  | 'queued'
+  | 'processing'
+  | 'delivered'
+  | 'dead_letter'
+  | 'outcome_unknown'
+  | 'cancelled';
+export type NotificationDeliveryReason =
+  | 'provider_rejected'
+  | 'provider_unavailable'
+  | 'rate_limited'
+  | 'circuit_open'
+  | 'timeout'
+  | 'attempts_exhausted'
+  | 'consent_unavailable'
+  | 'transport_disabled'
+  | 'recipient_unavailable'
+  | 'processing_failed'
+  | 'requeued';
+/** Never carries addresses, message content, receipts or provider secrets. */
+export interface NotificationProviderView {
+  channel: 'email' | 'zalo';
+  adapterId: string;
+  ratePerMinute: number;
+  configuredBy: string;
+  hasSecret: true;
+  version: number;
+  summary: { host?: string; port?: number; security?: string; templateId?: string };
+}
+export interface NotificationDeliveryView {
+  messageId: string;
+  projectId: string;
+  channel: 'email' | 'zalo';
+  status: NotificationDeliveryStatus;
+  reason: NotificationDeliveryReason | null;
+  attemptCount: number;
+  attemptBudget: number;
+  requeueCount: number;
+  nextAttemptAt: string | null;
+  messageStatus: NotificationMessageView['status'];
+  messageVersion: number;
+  version: number;
+  updatedAt: string;
+}
+export interface NotificationDeliveryWorkspace {
+  items: NotificationDeliveryView[];
+  deadLetters: number;
+  channels: {
+    channel: 'email' | 'zalo';
+    failureStreak: number;
+    circuitOpenUntil: string | null;
+    tokens: number;
+  }[];
+  notice: string;
+}

@@ -42,34 +42,48 @@ function current(r: Row | undefined, v: number) {
   if (Number(r?.version ?? 0) !== v)
     throw new ConflictException('Phiên bản đã thay đổi; tải lại trước khi thao tác');
 }
+export interface NotificationSendInput {
+  organizationId: string;
+  projectId: string;
+  userId: string;
+  messageId: string;
+  idempotencyKey: string;
+  title: string;
+  body: string;
+  synthetic: true;
+  signal: AbortSignal;
+  /** Resolved by the worker from the approved recipient source; never from browser input. */
+  recipient: string;
+  /** Decrypted organization provider settings; the adapter validates them again before use. */
+  config: Record<string, unknown>;
+}
+export interface NotificationSendResult {
+  accepted: boolean;
+  deliveryRef: string;
+}
 export interface NotificationTransport {
   readonly channel: 'email' | 'zalo';
   readonly supportsIdempotency: true;
-  send(input: {
-    organizationId: string;
-    projectId: string;
-    userId: string;
-    messageId: string;
-    idempotencyKey: string;
-    title: string;
-    body: string;
-    synthetic: true;
-    signal: AbortSignal;
-  }): Promise<{ accepted: boolean; deliveryRef: string }>;
+  /** Validates organization-entered provider settings (shape, operator allowlists); throws 400. */
+  validateConfig?(raw: unknown): Record<string, unknown>;
+  send(input: NotificationSendInput): Promise<NotificationSendResult>;
 }
 @Injectable()
 export class NotificationService {
   /** Operator-installed server adapters only. No URL/credentials accepted from browser. */
   readonly transports = new Map<string, NotificationTransport>();
   constructor(@Inject(Database) readonly db: Database) {}
-  private async context(q: Sql, org: string) {
+  /** @internal shared with the delivery worker service */
+  async context(q: Sql, org: string) {
     await q.query("SELECT set_config('app.organization_id',$1,true)", [uuid(org)]);
   }
-  private async lock(q: Sql, org: string) {
+  /** @internal shared with the delivery worker service */
+  async lock(q: Sql, org: string) {
     await q.query('SELECT id FROM organizations WHERE id=$1 FOR SHARE', [org]);
     await q.query('SELECT pg_advisory_xact_lock(hashtext($1))', ['notifications:' + org]);
   }
-  private async scope(q: Sql, s: Staff, project: string, permission: string) {
+  /** @internal shared with the delivery worker service */
+  async scope(q: Sql, s: Staff, project: string, permission: string) {
     await this.context(q, s.organizationId);
     if (s.projectIds?.length && !s.projectIds.includes(project))
       throw new ForbiddenException('Dự án ngoài phạm vi phiên');
@@ -98,7 +112,8 @@ export class NotificationService {
       throw new ForbiddenException('Tài khoản chưa có quyền hiện hành tại dự án');
     return p;
   }
-  private async choice(q: Sql, c: Citizen) {
+  /** @internal shared with the delivery worker service */
+  async choice(q: Sql, c: Citizen) {
     return (
       await q.query(
         'SELECT id,action,notice_id FROM identity_private.privacy_choices WHERE organization_id=$1 AND user_id=$2 ORDER BY sequence DESC LIMIT 1',
@@ -131,7 +146,8 @@ export class NotificationService {
       version: Number(r.version),
     } as NotificationTemplateView;
   }
-  private async message(q: Sql, r: Row): Promise<NotificationMessageView> {
+  /** @internal shared with the delivery worker service */
+  async message(q: Sql, r: Row): Promise<NotificationMessageView> {
     const p = record(
       JSON.parse(
         unseal(text(r.payload_cipher), 'notification-message:' + r.organization_id + ':' + r.id),
@@ -396,6 +412,19 @@ export class NotificationService {
         throw new ServiceUnavailableException(
           'Vận hành chưa bật hoặc chưa đăng ký adapter có idempotency cho kênh này',
         );
+      if (b.enabled) {
+        // Organization provider settings exist for this adapter and were entered by someone else.
+        const provider = (
+          await q.query(
+            'SELECT adapter_id,configured_by FROM identity_private.notification_provider_settings WHERE organization_id=$1 AND channel=$2 FOR SHARE',
+            [s.organizationId, b.channel],
+          )
+        ).rows[0];
+        if (!provider || provider.adapter_id !== b.adapterId)
+          throw new ConflictException('Tổ chức chưa có cấu hình nhà cung cấp cho adapter này');
+        if (provider.configured_by === s.subject)
+          throw new ForbiddenException('Người nhập cấu hình nhà cung cấp không tự bật kênh');
+      }
       const old = (
         await q.query(
           'SELECT * FROM identity_private.notification_transports WHERE organization_id=$1 AND project_id=$2 AND channel=$3 FOR UPDATE',
@@ -568,16 +597,16 @@ export class NotificationService {
         await event(q, s, 'notification.cancelled', id);
         return this.message(q, saved);
       }
-      let adapter: NotificationTransport | undefined,
-        maxAttempts = 1;
       if (r.channel !== 'in_app') {
+        // External channels never send inside an HTTP request: the worker owns retry, backoff,
+        // rate limiting and dead-lettering. This confirmation only creates or refreshes the job.
         const config = (
           await q.query(
             'SELECT * FROM identity_private.notification_transports WHERE organization_id=$1 AND project_id=$2 AND channel=$3 FOR SHARE',
             [s.organizationId, project, r.channel],
           )
         ).rows[0];
-        adapter = config ? this.transports.get(text(config.adapter_id)) : undefined;
+        const adapter = config ? this.transports.get(text(config.adapter_id)) : undefined;
         if (
           process.env.NOTIFICATIONS_EXTERNAL_ENABLED !== 'true' ||
           config?.enabled !== true ||
@@ -588,53 +617,38 @@ export class NotificationService {
           throw new ServiceUnavailableException(
             'Kênh ngoài chưa được bật và cấu hình adapter hợp lệ',
           );
-        maxAttempts = Number(config.max_attempts);
+        if (Number(r.attempt_count) >= 3)
+          throw new ConflictException('Đã hết số lần thử được phê duyệt');
+        const job = (
+          await q.query(
+            'SELECT status FROM identity_private.notification_deliveries WHERE organization_id=$1 AND message_id=$2 FOR UPDATE',
+            [s.organizationId, id],
+          )
+        ).rows[0];
+        if (job && job.status !== 'queued' && job.status !== 'processing')
+          throw new ConflictException(
+            'Tác vụ gửi đã kết thúc; dùng thao tác gửi lại có kiểm soát nếu còn ngân sách',
+          );
+        if (!job) {
+          await q.query(
+            'INSERT INTO identity_private.notification_deliveries(message_id,organization_id,project_id,channel,attempt_budget,requested_by) VALUES($1,$2,$3,$4,$5,$6)',
+            [
+              id,
+              s.organizationId,
+              project,
+              r.channel,
+              Math.min(3, Number(r.attempt_count) + Number(config.max_attempts)),
+              s.subject,
+            ],
+          );
+          await event(q, s, 'notification.delivery-requested', id);
+        }
+        return this.message(q, r);
       }
       const number = Number(r.attempt_count) + 1;
-      if (number > maxAttempts || number > 3)
-        throw new ConflictException('Đã hết số lần thử được phê duyệt');
-      let outcome = 'delivered',
+      if (number > 3) throw new ConflictException('Đã hết số lần thử được phê duyệt');
+      const outcome = 'delivered',
         receipt = 'in-app:' + r.id;
-      if (adapter) {
-        const p = await this.message(q, r),
-          abort = new AbortController();
-        let timer: ReturnType<typeof setTimeout> | undefined;
-        try {
-          const result = await Promise.race([
-            adapter.send({
-              organizationId: s.organizationId,
-              projectId: project,
-              userId: c.userId,
-              messageId: id,
-              idempotencyKey: id,
-              title: p.title,
-              body: p.body,
-              synthetic: true,
-              signal: abort.signal,
-            }),
-            new Promise<never>((_ok, reject) => {
-              timer = setTimeout(() => {
-                abort.abort();
-                reject(new Error('deadline'));
-              }, 8000);
-            }),
-          ]);
-          if (
-            typeof result?.accepted !== 'boolean' ||
-            typeof result.deliveryRef !== 'string' ||
-            result.deliveryRef.length < 1 ||
-            result.deliveryRef.length > 300
-          )
-            throw new Error('invalid adapter receipt');
-          outcome = result.accepted ? 'delivered' : 'failed';
-          receipt = result.deliveryRef;
-        } catch {
-          outcome = 'outcome_unknown';
-          receipt = 'Kết quả kênh chưa xác định; cần vận hành đối chiếu, không tự gửi lại';
-        } finally {
-          if (timer) clearTimeout(timer);
-        }
-      }
       const attempt = randomUUID();
       await q.query(
         'INSERT INTO identity_private.notification_attempts(id,organization_id,project_id,message_id,number,outcome,receipt_cipher) VALUES($1,$2,$3,$4,$5,$6,$7)',

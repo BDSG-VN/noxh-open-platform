@@ -84,7 +84,7 @@
             }
           }
         },
-        "description": "Checks PostgreSQL, Redis, migrations 001–022, executable Rust kernels and, when DATABASE_REQUIRE_LEAST_PRIVILEGE=true, that the API connects as a non-elevated noxh_app member. Does not certify legal approval, provider connectivity or production readiness."
+        "description": "Checks PostgreSQL, Redis, migrations 001–023, executable Rust kernels and, when DATABASE_REQUIRE_LEAST_PRIVILEGE=true, that the API connects as a non-elevated noxh_app member. Does not certify legal approval, provider connectivity or production readiness."
       }
     },
     "/api/v1/projects": {
@@ -23235,6 +23235,252 @@
           }
         }
       }
+    },
+    "/api/v1/admin/notifications/projects/{project}/deliveries": {
+      "get": {
+        "operationId": "getNotificationDeliveries",
+        "description": "Worker delivery jobs for the project: status, reason codes, attempt budget, requeue count, dead-letter count and channel rate-limit/circuit state. Identifiers only; no addresses, receipts or content.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/notifications/projects/{project}/deliveries/{id}/requeue": {
+      "post": {
+        "operationId": "requeueNotificationDelivery",
+        "description": "Operator-confirmed, version-bound requeue of one dead-lettered job while the message keeps attempt budget (at most 3 attempts and 2 requeues in total). Final outcomes are never reopened.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            },
+            "description": "Current version of the target resource; 0 for an absent initial configuration."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationAcceptedSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/notifications/providers": {
+      "get": {
+        "operationId": "getNotificationProviders",
+        "description": "Organization administrator view of encrypted provider settings per channel: adapter, rate limit, non-secret summary and version. Credentials are never returned.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/notifications/providers/{channel}": {
+      "post": {
+        "operationId": "configureNotificationProvider",
+        "description": "Organization administrator enters SMTP or Zalo OA settings for a registered adapter; stored encrypted server-side, validated against operator allowlists. A different privacy officer must still enable the channel per project. Default off.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "channel",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["email", "zalo"]
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            },
+            "description": "Current version of the target resource; 0 for an absent initial configuration."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationProviderSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -30188,6 +30434,137 @@
         },
         "required": ["decision", "accepted", "note"],
         "additionalProperties": false
+      },
+      "NotificationProviderSchema": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "channel": {
+                "type": "string",
+                "const": "email"
+              },
+              "adapterId": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]{2,60}$"
+              },
+              "host": {
+                "type": "string",
+                "pattern": "^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$"
+              },
+              "port": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 65535
+              },
+              "security": {
+                "type": "string",
+                "enum": ["starttls", "tls"]
+              },
+              "username": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "password": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "from": {
+                "type": "string",
+                "pattern": "^[^\\s@<>,;\"'\\\\()[\\]]{1,64}@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$"
+              },
+              "sinkAddress": {
+                "type": "string",
+                "pattern": "^[^\\s@<>,;\"'\\\\()[\\]]{1,64}@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$"
+              },
+              "ratePerMinute": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 600
+              },
+              "accepted": {
+                "type": "boolean",
+                "const": true
+              }
+            },
+            "required": [
+              "channel",
+              "adapterId",
+              "host",
+              "port",
+              "security",
+              "username",
+              "password",
+              "from",
+              "sinkAddress",
+              "ratePerMinute",
+              "accepted"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "channel": {
+                "type": "string",
+                "const": "zalo"
+              },
+              "adapterId": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]{2,60}$"
+              },
+              "accessToken": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              },
+              "appSecret": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "templateId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{1,100}$"
+              },
+              "titleParameter": {
+                "type": "string",
+                "pattern": "^[a-z_][a-z0-9_]{0,40}$"
+              },
+              "bodyParameter": {
+                "type": "string",
+                "pattern": "^[a-z_][a-z0-9_]{0,40}$"
+              },
+              "sinkPhone": {
+                "type": "string",
+                "pattern": "^84[35789][0-9]{8}$"
+              },
+              "ratePerMinute": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 600
+              },
+              "accepted": {
+                "type": "boolean",
+                "const": true
+              }
+            },
+            "required": [
+              "channel",
+              "adapterId",
+              "accessToken",
+              "appSecret",
+              "templateId",
+              "titleParameter",
+              "bodyParameter",
+              "ratePerMinute",
+              "accepted"
+            ],
+            "additionalProperties": false
+          }
+        ]
       }
     },
     "securitySchemes": {

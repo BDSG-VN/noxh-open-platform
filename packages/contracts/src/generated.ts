@@ -27,7 +27,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Checks PostgreSQL, Redis, migrations 001–022, executable Rust kernels and, when DATABASE_REQUIRE_LEAST_PRIVILEGE=true, that the API connects as a non-elevated noxh_app member. Does not certify legal approval, provider connectivity or production readiness. */
+        /** @description Checks PostgreSQL, Redis, migrations 001–023, executable Rust kernels and, when DATABASE_REQUIRE_LEAST_PRIVILEGE=true, that the API connects as a non-elevated noxh_app member. Does not certify legal approval, provider connectivity or production readiness. */
         get: operations["getReadiness"];
         put?: never;
         post?: never;
@@ -2911,6 +2911,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/notifications/projects/{project}/deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Worker delivery jobs for the project: status, reason codes, attempt budget, requeue count, dead-letter count and channel rate-limit/circuit state. Identifiers only; no addresses, receipts or content. */
+        get: operations["getNotificationDeliveries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/notifications/projects/{project}/deliveries/{id}/requeue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Operator-confirmed, version-bound requeue of one dead-lettered job while the message keeps attempt budget (at most 3 attempts and 2 requeues in total). Final outcomes are never reopened. */
+        post: operations["requeueNotificationDelivery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/notifications/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Organization administrator view of encrypted provider settings per channel: adapter, rate limit, non-secret summary and version. Credentials are never returned. */
+        get: operations["getNotificationProviders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/notifications/providers/{channel}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Organization administrator enters SMTP or Zalo OA settings for a registered adapter; stored encrypted server-side, validated against operator allowlists. A different privacy officer must still enable the channel per project. Default off. */
+        post: operations["configureNotificationProvider"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4780,6 +4848,35 @@ export interface components {
             /** @constant */
             accepted: true;
             note: string;
+        };
+        NotificationProviderSchema: {
+            /** @constant */
+            channel: "email";
+            adapterId: string;
+            host: string;
+            port: number;
+            /** @enum {string} */
+            security: "starttls" | "tls";
+            username: string;
+            password: string;
+            from: string;
+            sinkAddress: string;
+            ratePerMinute: number;
+            /** @constant */
+            accepted: true;
+        } | {
+            /** @constant */
+            channel: "zalo";
+            adapterId: string;
+            accessToken: string;
+            appSecret: string;
+            templateId: string;
+            titleParameter: string;
+            bodyParameter: string;
+            sinkPhone?: string;
+            ratePerMinute: number;
+            /** @constant */
+            accepted: true;
         };
     };
     responses: never;
@@ -23556,6 +23653,275 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["NotificationAutomationReviewSchema"];
+            };
+        };
+        responses: {
+            /** @description Scoped result; development and synthetic gates still apply */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            /** @description Invalid input */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Scope, grant, consent or separation of duties denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Resource absent in caller scope */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Stale, conflicting, inactive or replayed transition */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Required provider, key, dependency or Rust kernel unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getNotificationDeliveries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Scoped result; development and synthetic gates still apply */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            /** @description Invalid input */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Scope, grant, consent or separation of duties denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Resource absent in caller scope */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Stale, conflicting, inactive or replayed transition */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Required provider, key, dependency or Rust kernel unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    requeueNotificationDelivery: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Current version of the target resource; 0 for an absent initial configuration. */
+                "If-Match": string;
+            };
+            path: {
+                project: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotificationAcceptedSchema"];
+            };
+        };
+        responses: {
+            /** @description Scoped result; development and synthetic gates still apply */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            /** @description Invalid input */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Scope, grant, consent or separation of duties denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Resource absent in caller scope */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Stale, conflicting, inactive or replayed transition */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Required provider, key, dependency or Rust kernel unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getNotificationProviders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Scoped result; development and synthetic gates still apply */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            /** @description Invalid input */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Scope, grant, consent or separation of duties denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Resource absent in caller scope */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Stale, conflicting, inactive or replayed transition */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Required provider, key, dependency or Rust kernel unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    configureNotificationProvider: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Current version of the target resource; 0 for an absent initial configuration. */
+                "If-Match": string;
+            };
+            path: {
+                channel: "email" | "zalo";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotificationProviderSchema"];
             };
         };
         responses: {

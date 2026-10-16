@@ -1,3 +1,9 @@
+# Gửi email/Zalo qua worker (023) — 17/10/2026
+
+Migration 023 bổ sung adapter `email-smtp` (STARTTLS/TLS ngầm bằng `node:tls`, chứng chỉ bắt buộc hợp lệ, máy chủ phải nằm trong danh sách vận hành) và `zalo-oa` (endpoint cố định, `appsecret_proof`, không theo redirect); cấu hình nhà cung cấp mã hóa theo tổ chức do quản trị nhập, kênh dự án do `privacy_officer` khác người nhập bật. Xác nhận phát không còn gửi trong HTTP: worker nhận tác vụ bằng lease có fencing, thử lại lũy thừa có jitter trong ngân sách tối đa 3 lần, giới hạn tần suất token bucket và ngắt mạch theo tổ chức/kênh, hàng chờ lỗi với gửi lại có xác nhận và giới hạn; `outcome_unknown` vẫn là trạng thái cuối. Bộ đếm hiện trên `/health/live` của worker, log chỉ có định danh. Kiểm thử dùng máy chủ SMTP/Zalo giả trên `127.0.0.1` và chạy được dưới `noxh_app`. Mặc định tắt; chưa nghiệm thu nhà cung cấp thật, chưa có email xác minh của khách (email chỉ tới hộp thư diễn tập). Xem [thông báo](COMPLETION-NOTIFICATIONS.md#lát-cắt-023--gửi-thật-qua-worker) và [ADR 019](adr/019-worker-external-delivery.md).
+
+---
+
 # Vai trò DB tối thiểu cho runtime (022) — 16/10/2026
 
 Migration 022 thêm vai trò nhóm `noxh_app` và công cụ `scripts/runtime-role.mjs` để API/worker chạy bằng login không superuser/BYPASSRLS/DDL. Quyền bảng suy ra từ 592 câu SQL tĩnh của API và trigger được kích hoạt; bảng chỉ thêm không có UPDATE/DELETE; mọi bảng bật FORCE RLS theo tổ chức của instance và ghim `app.organization_id` khi service đặt. Compose phát triển dùng login này và `/health/ready` từ chối kết nối nâng quyền khi bật `DATABASE_REQUIRE_LEAST_PRIVILEGE`. Kết quả kiểm thử ở [VALIDATION.md](VALIDATION.md#vai-trò-db-tối-thiểu-022--16102026); quyết định ở [ADR 018](adr/018-least-privilege-runtime.md). Các triển khai đang chạy chưa được chuyển kết nối; việc đó cần sao lưu và kế hoạch vận hành riêng.
