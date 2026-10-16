@@ -83,8 +83,12 @@ async function provision() {
                              AND d.objid = (SELECT oid FROM pg_database WHERE datname = current_database()))) AS footprint,
                 (SELECT count(*)::int FROM pg_db_role_setting s
                   WHERE s.setrole = r.oid AND s.setdatabase NOT IN (0, (SELECT oid FROM pg_database WHERE datname = current_database()))) AS other_databases,
+                (SELECT count(*)::int FROM pg_db_role_setting s
+                  WHERE s.setrole = r.oid AND s.setdatabase = (SELECT oid FROM pg_database WHERE datname = current_database())) AS marker,
                 (SELECT count(*)::int FROM pg_auth_members m JOIN pg_roles g ON g.oid = m.roleid
-                  WHERE m.member = r.oid AND (g.rolname <> 'noxh_app' OR m.admin_option)) AS other_groups,
+                  WHERE m.member = r.oid AND (g.rolname <> 'noxh_app' OR m.admin_option)
+                    -- PostgreSQL 16+ auto-grants the CREATEROLE creator admin membership of the login.
+                    AND NOT (g.rolname = current_user AND m.admin_option)) AS other_groups,
                 (SELECT count(*)::int FROM pg_auth_members m WHERE m.roleid = r.oid) AS members
            FROM pg_roles r WHERE r.rolname = $1`,
         [user],
@@ -102,6 +106,12 @@ async function provision() {
         refuse('Existing role is elevated; choose another RUNTIME_DB_USER or review manually');
       if (existing.other_databases)
         refuse('Login already serves another database; use one login per database');
+      // A login provisioned here carries a per-database marker. Without it the role is either
+      // foreign or had its marker erased; adopting it needs an explicit operator decision.
+      if (!existing.marker && process.env.RUNTIME_DB_ADOPT !== '1')
+        refuse(
+          'Existing role was not provisioned for this database; set RUNTIME_DB_ADOPT=1 to adopt it',
+        );
       if (existing.footprint)
         refuse(
           'Existing role owns objects or holds direct privileges (any database); review manually',
@@ -173,7 +183,10 @@ SELECT NOT r.rolsuper AS "notSuperuser",
        NOT has_database_privilege(current_database(), 'TEMPORARY') AS "noTemporaryObjects",
        current_setting('session_replication_role') = 'origin' AS "triggersEnforced",
        NOT EXISTS (SELECT 1 FROM pg_db_role_setting s WHERE s.setrole = r.oid AND (s.setdatabase <> (SELECT oid FROM pg_database WHERE datname = current_database())
-                    OR s.setconfig <> ARRAY['search_path=public'])) AS "roleSettingsPinned",
+                    OR s.setconfig <> ARRAY['search_path=public']))
+         AND EXISTS (SELECT 1 FROM pg_db_role_setting s WHERE s.setrole = r.oid AND s.setdatabase = (SELECT oid FROM pg_database WHERE datname = current_database())) AS "roleSettingsPinned",
+       NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.relkind = 'S' AND n.nspname IN ('public','identity_private')
+                    AND (has_sequence_privilege(c.oid,'UPDATE') OR (has_sequence_privilege(c.oid,'USAGE') AND NOT has_sequence_privilege('noxh_app',c.oid,'USAGE')))) AS "sequencesOnlyFromNoxhApp",
        EXISTS (SELECT 1 FROM identity_private.instance_organizations i WHERE i.runtime_role = current_user) AS "organizationRegistered"
   FROM pg_roles r WHERE r.rolname = current_user`;
 

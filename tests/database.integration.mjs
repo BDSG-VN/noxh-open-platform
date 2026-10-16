@@ -175,7 +175,13 @@ await test('runtime provisioning refuses repurposed logins and one login cannot 
       'provision',
     ]);
     assert.notEqual(adopted.status, 0);
-    assert.match(adopted.stdout, /direct privileges/);
+    assert.match(adopted.stdout, /not provisioned for this database/);
+    const forced = roleTool(
+      { RUNTIME_DB_USER: elevated, RUNTIME_DB_PASSWORD: password, RUNTIME_DB_ADOPT: '1' },
+      ['provision'],
+    );
+    assert.notEqual(forced.status, 0);
+    assert.match(forced.stdout, /direct privileges/);
     // Provision a login for this database, then try to reuse it for a second database.
     const env = { RUNTIME_DB_USER: shared, RUNTIME_DB_PASSWORD: password };
     assert.equal(roleTool(env, ['provision']).status, 0);
