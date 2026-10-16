@@ -11,6 +11,12 @@ import InventoryAdmin from './inventory-admin';
 import { FormMappingAdmin } from './form-mapping-admin';
 import ApplicationsAdmin from './applications-admin';
 import Partners from './partners';
+import KnowledgeAdmin from './knowledge-admin';
+import TenancyAdmin from './tenancy-admin';
+import { PreparationChecklistAdmin } from './preparation-checklist-admin';
+import AuditCheckpointAdmin from './audit-checkpoint-admin';
+import NotificationsAdmin from './notifications-admin';
+import ZaloMiniAppSettings from './zalo-miniapp-settings';
 export interface ProjectRow {
   id: string;
   name: string;
@@ -691,9 +697,13 @@ export default function AdminWorkbench({
     ['rounds', 'Đợt tiếp nhận', 'calendar'],
     ['applications', 'Tiếp nhận & xét duyệt', 'file'],
     ['requests', 'Hỗ trợ khách hàng', 'chat'],
+    ['notifications', 'Thông báo khách hàng', 'chat'],
     ['forms', 'Biểu mẫu & pháp lý', 'file'],
     ['form-mappings', 'Thiết kế mẫu điền', 'file'],
+    ['checklists', 'Danh mục chuẩn bị hồ sơ', 'file'],
+    ['knowledge', 'Tri thức hướng dẫn AI', 'chat'],
     ['inventory', 'Bảng hàng & giá căn', 'grid'],
+    ['tenancy', 'Hợp đồng & công nợ', 'file'],
     ['lotteries', 'Bốc thăm & ưu tiên', 'grid'],
     ['partners', 'Đối tác & marketing', 'user'],
     ['operations', 'Điều hành & nhân sự', 'building'],
@@ -701,6 +711,7 @@ export default function AdminWorkbench({
     ['privacy', 'Bảo vệ dữ liệu', 'shield'],
     ['openai', 'Cấu hình trợ lý AI', 'settings'],
     ['audit', 'Nhật ký hoạt động', 'shield'],
+    ['zalo-miniapp', 'Đăng nhập Mini App', 'settings'],
     ...(settings ? [['zalo', 'Cấu hình Zalo OTP', 'settings']] : []),
   ];
   const navGroups: Record<string, string> = {
@@ -726,6 +737,12 @@ export default function AdminWorkbench({
   const descriptions: Record<string, string> = {
     operations: 'Quy trình dự án, nhân viên, tài liệu và sổ theo dõi kế toán.',
     applications: 'Phân công thẩm định, bổ sung, quyết định độc lập và đề nghị xem xét lại.',
+    notifications: 'Soạn, duyệt và phát thông báo trong phạm vi khách đã đồng ý nhận.',
+    'zalo-miniapp':
+      'Cấu hình Zalo App riêng, xác minh token ở máy chủ và liên kết tài khoản điện thoại.',
+    checklists: 'Danh mục giấy tờ và biểu mẫu chuẩn bị, có phiên bản và người duyệt độc lập.',
+    knowledge: 'Nguồn hướng dẫn được duyệt theo hình thức, nhóm đối tượng và ngày hiệu lực.',
+    tenancy: 'Diễn tập hợp đồng mua, thuê, thuê mua; đối soát khoản thu và vòng đời căn hộ.',
     inventory: 'Mặt bằng căn, hệ số giá và lựa chọn căn theo hồ sơ được phê duyệt.',
     'form-mappings': 'Ánh xạ trường bản khai vào mẫu được phê duyệt và kiểm tra bản xem trước.',
     overview: 'Theo dõi dự án, lịch tiếp nhận và hoạt động chuẩn bị hồ sơ.',
@@ -994,7 +1011,12 @@ export default function AdminWorkbench({
           {tab === 'applications' && <ApplicationsAdmin staff={staff} />}
           {tab === 'inventory' && <InventoryAdmin projects={projects} />}
           {tab === 'form-mappings' && <FormMappingAdmin projects={projects} />}
+          {tab === 'checklists' && <PreparationChecklistAdmin projects={projects} staff={staff} />}
+          {tab === 'knowledge' && <KnowledgeAdmin projects={projects} />}
+          {tab === 'tenancy' && <TenancyAdmin projects={projects} staff={staff} />}
           {tab === 'requests' && <RequestQueue />}
+          {tab === 'notifications' && <NotificationsAdmin projects={projects} staff={staff} />}
+          {tab === 'zalo-miniapp' && <ZaloMiniAppSettings />}
           {tab === 'forms' && <LegalTemplates projects={projects} />}
           {tab === 'privacy' && <PrivacyAdmin citizenOrigin={citizenOrigin} />}
           {tab === 'lotteries' && (
@@ -1003,7 +1025,12 @@ export default function AdminWorkbench({
           {tab === 'government' && <GovernmentPortals />}
           {tab === 'partners' && <Partners projects={projects} />}
           {tab === 'openai' && <OpenAiSettings />}
-          {tab === 'audit' && <AuditPanel />}
+          {tab === 'audit' && (
+            <>
+              <AuditPanel />
+              <AuditCheckpointAdmin />
+            </>
+          )}
           {tab === 'zalo' && settings && (
             <section className="surface">
               <ZaloSettings settings={settings} />

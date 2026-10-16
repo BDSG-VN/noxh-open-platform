@@ -52,5 +52,61 @@
     "bytes": 2129191,
     "retrievedOn": "2026-10-15",
     "status": "source-verified-pending-legal-review"
+  },
+  {
+    "id": "94-tt-bqp-2024",
+    "file": "94-tt-bqp-2024.pdf",
+    "url": "https://datafiles.chinhphu.vn/cpp/files/vbpq/2024/11/94-bqp.signed.pdf",
+    "documentUrl": "https://vanban.chinhphu.vn/?classid=1&docid=211678&pageid=27160",
+    "issuedOn": "2024-11-11",
+    "effectiveFrom": "2024-12-26",
+    "status": "source-verified-pending-legal-review",
+    "applicabilityNote": "Nguồn chuyên ngành Bộ Quốc phòng; chưa phải quyết định áp dụng của dự án. Phụ lục trang 5 được trích nguyên trang vào catalog.",
+    "sha256": "60c44aedb4d09ff52d044274c152f216f9bd7a27ea65057f10424f87727f9cc3",
+    "bytes": 289530,
+    "pages": 5,
+    "retrievedOn": "2026-10-16"
+  },
+  {
+    "id": "136-nd-cp-2026",
+    "file": "136-nd-cp-2026.pdf",
+    "url": "https://datafiles.chinhphu.vn/cpp/files/vbpq/2026/4/136-ndcp.signed.pdf",
+    "documentUrl": "https://vanban.chinhphu.vn/?docid=217605&orggroupid=2&pageid=27160",
+    "issuedOn": "2026-04-07",
+    "effectiveFrom": "2026-04-07",
+    "status": "source-verified-pending-legal-review",
+    "applicabilityNote": "Giữ bản gốc để đối chiếu sửa đổi Điều 30, Điều 67 và chuyển tiếp xác nhận thu nhập. Mẫu 01 trang 4–6 đã có trong nguồn hợp nhất 24/VBHN-BXD; không nhân bản mẫu.",
+    "sha256": "a9032aa0cddeeb0b0ddabc65511cea9de8bc0b01315bc47ab1958de1ee0f037c",
+    "bytes": 341503,
+    "pages": 6,
+    "retrievedOn": "2026-10-16"
+  },
+  {
+    "id": "56-tt-bca-2024",
+    "file": "56-tt-bca-2024.pdf",
+    "url": "https://datafiles.chinhphu.vn/cpp/files/vbpq/2024/11/56-bca.signed.pdf",
+    "documentUrl": "https://vanban.chinhphu.vn/?classid=1&docid=211755&orggroupid=4&pageid=27160",
+    "issuedOn": "2024-11-05",
+    "effectiveFrom": "2024-11-05",
+    "status": "historical-source-currentness-unconfirmed",
+    "applicabilityNote": "Không dùng để phát hành bộ mẫu Công an hiện hành. Trang chính thức Công an Đắk Lắk ngày 12/6/2026 thông báo TT 89/2026/TT-BCA hiệu lực 26/7/2026; chưa lấy được bản gốc và điều khoản thay thế để đối chiếu toàn văn.",
+    "sha256": "1d5a7572559c814b328559f0d828c05fad12cb85705cf4ef6457bae21879edfb",
+    "bytes": 259383,
+    "pages": 5,
+    "retrievedOn": "2026-10-16"
+  },
+  {
+    "id": "113-luat-dan-so-2025",
+    "file": "113-luat-dan-so-2025.pdf",
+    "url": "https://datafiles.chinhphu.vn/cpp/files/vbpq/2026/01/luat113-2025.pdf",
+    "documentUrl": "https://vanban.chinhphu.vn/?docid=216497&pageid=27160",
+    "issuedOn": "2025-12-10",
+    "effectiveFrom": "2026-07-01",
+    "status": "source-verified-pending-legal-review",
+    "applicabilityNote": "Điều 29 khoản 3 sửa Luật Nhà ở về nhóm 13 và ưu tiên. Hiệu lực chung theo Điều 30; một số hỗ trợ dân số khác có mốc riêng. Không tự suy diễn điều kiện/mẫu nhóm 13 khi chưa có hướng dẫn thống nhất.",
+    "sha256": "792cc0e350fd37e05e38fed76341bab9479b239313af3e6e57926d18d6b085af",
+    "bytes": 858166,
+    "pages": 15,
+    "retrievedOn": "2026-10-16"
   }
 ]

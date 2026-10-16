@@ -1,4 +1,14 @@
 import { z } from 'zod';
+export const priorityReferencePolicy = {
+  id: 'article-38-five-group-reference-2026-05-18',
+  label: 'Phép tính tham khảo 5 nhóm trong nguồn hợp nhất ngày 18/5/2026',
+  sourceUrl: 'https://datafiles.chinhphu.vn/cpp/files/vbpq/2026/5/24-vbhn-bxd.pdf',
+  sourceCutoff: '2026-05-18',
+  legalChangeReviewFrom: '2026-07-01',
+  groupCount: 5,
+  scope:
+    'Tham khảo Điều 38; không áp chung cho vốn đầu tư công, tài chính công đoàn hoặc nhà ở chuyên ngành.',
+} as const;
 export const priorityGroups = [
   'Người có công với cách mạng',
   'Thân nhân liệt sĩ',
@@ -51,6 +61,9 @@ export function calculatePriority(b: PriorityInput) {
     };
   });
   return {
+    referencePolicy: priorityReferencePolicy,
+    policyReviewRequired: true as const,
+    currentLawConformityVerified: false as const,
     formula: `${priority} × ${n.homes} / ${n.totalEligible}`,
     priorityEligible: priority,
     numerator,
@@ -63,7 +76,7 @@ export function calculatePriority(b: PriorityInput) {
     generalSeats: seats === null ? null : n.homes - seats,
     requiresSelection: n.totalEligible > n.homes,
     notice:
-      'Chỉ tính số học theo Điều 38 cho phạm vi đã rà soát. Nhóm phải loại trùng theo thứ tự ưu tiên; điều kiện ưu tiên do người có thẩm quyền xác minh. Không xác định quyền được mua từ phép tính.',
+      'Chỉ mô phỏng số học 5 nhóm từ nguồn hợp nhất ngày 18/5/2026. Luật Dân số sửa nhóm và thứ tự ưu tiên từ 1/7/2026; phải rà soát quy định hiện hành và nguồn vốn trước áp dụng. Chưa xác minh phù hợp pháp luật hiện hành; việc chọn làm tròn không thay thế rà soát này và phép tính không xác định quyền được mua.',
   };
 }
 const code = z.string().regex(/^DEMO-[A-Z0-9-]{4,32}$/);

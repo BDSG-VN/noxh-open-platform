@@ -12,7 +12,7 @@
     "build": "pnpm native:build && pnpm build:node",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
-    "typecheck": "turbo run typecheck",
+    "typecheck": "turbo run typecheck --concurrency=2",
     "test": "turbo run test --concurrency=1 && node --test tests/*.test.mjs",
     "db:migrate": "node scripts/migrate.mjs",
     "db:seed": "node scripts/seed.mjs",
@@ -23,7 +23,7 @@
     "check:fonts": "node scripts/check-fonts.mjs",
     "native:build": "cargo build --workspace --release --locked",
     "native:test": "cargo test --workspace --locked",
-    "build:node": "turbo run build"
+    "build:node": "turbo run build --concurrency=2"
   },
   "devDependencies": {
     "@apidevtools/swagger-parser": "12.1.0",

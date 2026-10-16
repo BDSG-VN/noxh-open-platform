@@ -1,5 +1,5 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from 'node:crypto';
-import { createReadStream, createWriteStream } from 'node:fs';
+import { constants, createReadStream, createWriteStream } from 'node:fs';
 import { appendFile, chmod, link, mkdtemp, open, stat, unlink, rm } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -134,11 +134,25 @@ export async function encryptPayload(input, out, key, metadata = {}) {
     await unlink(temporary).catch(() => {});
   }
 }
-export async function decryptToFile(input, out, key) {
-  const h = await open(input, 'r');
-  let metadata, aad, offset, size, tag;
+export async function decryptToFile(
+  input,
+  out,
+  key,
+  { maxEncryptedBytes = Number.MAX_SAFE_INTEGER } = {},
+) {
+  if (!Number.isSafeInteger(maxEncryptedBytes) || maxEncryptedBytes < 38)
+    throw new SafeError('Invalid encrypted input size limit');
+  // Keep this exact descriptor open for both metadata and ciphertext. NOFOLLOW
+  // prevents symlink substitution; NONBLOCK also makes a raced FIFO harmless.
+  const h = await open(input, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  let made = false;
   try {
-    size = (await h.stat()).size;
+    const info = await h.stat(),
+      size = info.size;
+    if (!info.isFile() || !Number.isSafeInteger(size))
+      throw new SafeError('Encrypted input must be a regular file');
+    if (size > maxEncryptedBytes)
+      throw new SafeError('Encrypted input exceeds size limit; no plaintext was created');
     const prefix = Buffer.alloc(12);
     await h.read(prefix, 0, 12, 0);
     if (!prefix.subarray(0, 8).equals(MAGIC)) throw new SafeError('Unsupported backup format');
@@ -146,6 +160,7 @@ export async function decryptToFile(input, out, key) {
     if (n < 10 || n > 4096 || size < 12 + n + 16) throw new SafeError('Invalid backup length');
     const body = Buffer.alloc(n);
     await h.read(body, 0, n, 12);
+    let metadata;
     try {
       metadata = JSON.parse(body.toString('utf8'));
     } catch {
@@ -153,34 +168,36 @@ export async function decryptToFile(input, out, key) {
     }
     if (metadata.format !== 'noxh-pg-aesgcm-v1' || !/^[a-f0-9]{24}$/.test(metadata.iv))
       throw new SafeError('Invalid backup metadata');
-    aad = Buffer.concat([prefix, body]);
-    offset = aad.length;
-    tag = Buffer.alloc(16);
+    const aad = Buffer.concat([prefix, body]),
+      tag = Buffer.alloc(16);
     await h.read(tag, 0, 16, size - 16);
-  } finally {
-    await h.close();
-  }
-  const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(metadata.iv, 'hex'));
-  decipher.setAAD(aad);
-  decipher.setAuthTag(tag);
-  let made = false;
-  try {
+    const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(metadata.iv, 'hex'));
+    decipher.setAAD(aad);
+    decipher.setAuthTag(tag);
     const handle = await open(out, 'wx', 0o600);
     made = true;
     const output = createWriteStream(out, { fd: handle.fd, autoClose: false });
     try {
-      await pipeline(createReadStream(input, { start: offset, end: size - 17 }), decipher, output);
+      await pipeline(
+        h.createReadStream({ start: aad.length, end: size - 17, autoClose: false }),
+        decipher,
+        output,
+      );
     } finally {
       await handle.close();
     }
     return metadata;
   } catch (e) {
     if (made) await unlink(out).catch(() => {});
+    if (e instanceof SafeError) throw e;
     if (e.code === 'EEXIST')
       throw new SafeError('Plaintext destination exists; refusing to overwrite');
     throw new SafeError('Backup authentication failed; no restore was executed');
+  } finally {
+    await h.close();
   }
 }
+
 function identifier(v) {
   return '"' + v.replaceAll('"', '""') + '"';
 }
@@ -270,7 +287,13 @@ async function manifest(client) {
     audit: { total, heads: [...heads].sort((a, b) => a[0].localeCompare(b[0])) },
   };
 }
-export async function backup({ url, out, key, pgDump = process.env.PG_DUMP_BIN ?? 'pg_dump' }) {
+export async function backup({
+  url,
+  out,
+  key,
+  pgDump = process.env.PG_DUMP_BIN ?? 'pg_dump',
+  snapshotInspect,
+}) {
   const c = new Client({ connectionString: url, connectionTimeoutMillis: 5000 });
   let proc;
   try {
@@ -278,6 +301,7 @@ export async function backup({ url, out, key, pgDump = process.env.PG_DUMP_BIN ?
     await c.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
     const snapshot = (await c.query('SELECT pg_export_snapshot() AS id')).rows[0].id,
       data = await manifest(c),
+      snapshotData = snapshotInspect ? await snapshotInspect(c) : undefined,
       json = Buffer.from(JSON.stringify(data));
     if (json.length > MAX_MANIFEST)
       throw new SafeError('Backup manifest exceeds the configured bound');
@@ -305,6 +329,7 @@ export async function backup({ url, out, key, pgDump = process.env.PG_DUMP_BIN ?
       migrations: data.migrations.length,
       auditEvents: data.audit.total,
       manifestHash: sha(data),
+      ...(snapshotInspect ? { snapshotData } : {}),
     };
   } catch (e) {
     proc?.child.kill();
@@ -356,6 +381,7 @@ export async function restoreDrill({
   key,
   drill = false,
   pgRestore = process.env.PG_RESTORE_BIN ?? 'pg_restore',
+  verifyRestored,
 }) {
   if (drill !== true)
     throw new SafeError(
@@ -398,7 +424,9 @@ export async function restoreDrill({
       throw new SafeError(
         'Restored schema, migration checksums, counts or audit chain do not match the authenticated backup',
       );
+    const additionalVerification = verifyRestored ? await verifyRestored(verify) : undefined;
     result = {
+      ...(verifyRestored ? { additionalVerification } : {}),
       verified: true,
       isolated: true,
       tables: restored.counts.length,

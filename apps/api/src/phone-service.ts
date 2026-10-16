@@ -8,7 +8,7 @@ import {
   HttpException,
 } from '@nestjs/common';
 import { randomInt, randomBytes, randomUUID, createHmac } from 'node:crypto';
-import { Database } from './database';
+import { Database, type Sql } from './database';
 import { digest, normalizePhone, safeEqual, seal, unseal, sha } from './identity-crypto';
 import { organizationId } from './workforce';
 import { event, uuid, record, text } from './admin-service';
@@ -233,12 +233,43 @@ export class PhoneService {
       throw new UnauthorizedException('Mã đã hết hạn, không đúng hoặc không còn sử dụng được');
     return { sessionToken: token, expiresIn: 3600 };
   }
+  /** Internal caller must hold the matching channel config lock in this transaction. */
+  async issueChannelSession(q: Sql, c: Citizen, appId: string, configVersion: number) {
+    if (!/^[0-9]{1,30}$/.test(appId) || !Number.isSafeInteger(configVersion) || configVersion < 1)
+      throw new UnauthorizedException('Cấu hình kênh không hợp lệ');
+    const active = (
+      await q.query(
+        "SELECT u.id FROM users u JOIN identity_private.phone_accounts a ON a.organization_id=u.organization_id AND a.user_id=u.id WHERE u.id=$1 AND u.organization_id=$2 AND u.status='active' FOR SHARE OF u,a",
+        [c.userId, c.organizationId],
+      )
+    ).rows[0];
+    if (!active)
+      throw new UnauthorizedException('Tài khoản chưa được xác thực hoặc đã bị tạm dừng');
+    const sessionToken = randomBytes(32).toString('base64url');
+    await q.query(
+      "INSERT INTO identity_private.citizen_sessions(token_hash,organization_id,user_id,expires_at,auth_method,channel_app_id,channel_config_version) VALUES($1,$2,$3,$4,'zalo-miniapp',$5,$6)",
+      [
+        sha(sessionToken),
+        c.organizationId,
+        c.userId,
+        new Date(this.clock() + 3600000).toISOString(),
+        appId,
+        configVersion,
+      ],
+    );
+    return { sessionToken, expiresIn: 3600 };
+  }
   async authenticate(header: unknown): Promise<Citizen> {
     if (typeof header !== 'string' || !/^Bearer [A-Za-z0-9_-]{43}$/.test(header))
       throw new UnauthorizedException('Yêu cầu đăng nhập khách hàng');
     const [r] = await this.db.query(
-      "SELECT s.organization_id,s.user_id FROM identity_private.citizen_sessions s JOIN users u ON u.id=s.user_id AND u.organization_id=s.organization_id WHERE s.token_hash=$1 AND s.organization_id=$2 AND s.revoked_at IS NULL AND s.expires_at>$3 AND u.status='active'",
-      [sha(header.slice(7)), organizationId(), new Date(this.clock()).toISOString()],
+      "SELECT s.organization_id,s.user_id FROM identity_private.citizen_sessions s JOIN users u ON u.id=s.user_id AND u.organization_id=s.organization_id WHERE s.token_hash=$1 AND s.organization_id=$2 AND s.revoked_at IS NULL AND s.expires_at>$3 AND u.status='active' AND(s.auth_method='phone-otp' OR(s.auth_method='zalo-miniapp' AND $4::boolean AND EXISTS(SELECT 1 FROM identity_private.zalo_identity_settings z WHERE z.organization_id=s.organization_id AND z.enabled AND z.app_id=s.channel_app_id AND z.version=s.channel_config_version)))",
+      [
+        sha(header.slice(7)),
+        organizationId(),
+        new Date(this.clock()).toISOString(),
+        process.env.ZALO_MINIAPP_ENABLED === 'true',
+      ],
     );
     if (!r) throw new UnauthorizedException('Phiên đã hết hạn hoặc bị thu hồi');
     return { organizationId: String(r.organization_id), userId: String(r.user_id) };

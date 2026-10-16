@@ -45,7 +45,15 @@ interface Generated {
   input_version: number;
   mapping_id: string;
 }
-export function DocumentWorkspace({ id }: { id: string }) {
+export function DocumentWorkspace({
+  id,
+  dirty = false,
+  onEvidenceChanged,
+}: {
+  id: string;
+  dirty?: boolean;
+  onEvidenceChanged?: () => Promise<void>;
+}) {
   const [docs, setDocs] = useState<{
       items: Doc[];
       extractions: Extraction[];
@@ -82,6 +90,7 @@ export function DocumentWorkspace({ id }: { id: string }) {
     try {
       await fn();
       await load();
+      await onEvidenceChanged?.();
       setMessage('Đã lưu.');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Không thực hiện được');
@@ -92,6 +101,12 @@ export function DocumentWorkspace({ id }: { id: string }) {
   const current = forms?.mappings.find((m) => m.id === mapping);
   return (
     <div className="dossier-process stack">
+      {dirty && (
+        <p className="feedback" role="status">
+          Bản khai có thay đổi chưa lưu. Hãy lưu trước khi tạo hoặc xác nhận PDF; giấy tờ vẫn có thể
+          tải và quét an toàn.
+        </p>
+      )}
       <header>
         <span className="kicker">HỒ SƠ CỦA BẠN</span>
         <h2>Chuẩn bị giấy tờ và biểu mẫu</h2>
@@ -350,6 +365,7 @@ export function DocumentWorkspace({ id }: { id: string }) {
             className="stack"
             onSubmit={(e) => {
               e.preventDefault();
+              if (dirty) return;
               run(() =>
                 request(
                   base + '/generated-forms',
@@ -382,7 +398,7 @@ export function DocumentWorkspace({ id }: { id: string }) {
                 />
               </label>
             ))}
-            <Button disabled={busy}>Tạo PDF nháp để kiểm tra</Button>
+            <Button disabled={busy || dirty}>Tạo PDF nháp để kiểm tra</Button>
           </form>
         )}
       </section>
@@ -458,6 +474,7 @@ export function DocumentWorkspace({ id }: { id: string }) {
             className="status-panel stack"
             onSubmit={(e) => {
               e.preventDefault();
+              if (dirty) return;
               run(async () => {
                 await request(
                   base + '/generated-forms/' + selected.id + '/confirm',
@@ -490,7 +507,7 @@ export function DocumentWorkspace({ id }: { id: string }) {
               Tôi đã đọc bản PDF nháp và kiểm tra toàn bộ thông tin. Việc xác nhận này không thay
               chữ ký hoặc xác nhận của cơ quan.
             </label>
-            <Button disabled={busy}>Xác nhận để tạo bản in</Button>
+            <Button disabled={busy || dirty}>Xác nhận để tạo bản in</Button>
           </form>
         )}
       </section>

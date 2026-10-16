@@ -5,6 +5,9 @@ async function handler(request: NextRequest, context: { params: Promise<{ path: 
   try {
     const path = (await context.params).path.join('/');
     const routes = [
+      /^citizen\/notifications\/(?:workspace|projects\/[a-f0-9-]{36}\/preferences|messages\/[a-f0-9-]{36}\/read)$/,
+      /^dossiers\/[a-f0-9-]{36}\/knowledge\/search$/,
+      /^citizen\/tenancy\/(?:contracts(?:\/[a-f0-9-]{36}(?:\/confirm)?)?|actions\/[a-f0-9-]{36}\/confirm)$/,
       /^dossiers\/[a-f0-9-]{36}(?:\/(?:declarations|checklist|readiness|support|services|submission|applications|online-cases(?:\/[a-f0-9-]{36})?|assistant(?:\/[a-f0-9-]{36}\/confirm)?|documents(?:\/[a-f0-9-]{36}(?:\/(?:scan|extract|download))?)?|extractions\/[a-f0-9-]{36}\/accept|form-workspace|form-packet|generated-forms(?:\/[a-f0-9-]{36}(?:\/(?:confirm|download))?)?))?$/,
       /^citizen\/privacy(?:\/(?:consent|withdraw|restriction|requests))?$/,
       /^citizen\/(?:consultations(?:\/[a-f0-9-]{36})?|requests\/[a-f0-9-]{36}\/close|inventory\/[a-f0-9-]{36}(?:\/allocate)?|applications(?:\/[a-f0-9-]{36}(?:\/(?:supplements|appeals))?)?)$/,

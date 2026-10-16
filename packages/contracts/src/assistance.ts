@@ -38,6 +38,8 @@ export const AiMessageSchema = z
     message: z.string().trim().min(1).max(2000),
     accepted: z.literal(true),
     shareDeclaration: z.boolean(),
+    mode: z.enum(['buy', 'rent-buy', 'rent']).nullable().default(null),
+    group: z.number().int().min(1).max(13).nullable().default(null),
   })
   .strict();
 export const AiPatchSchema = z
@@ -52,10 +54,23 @@ export const AiPatchSchema = z
   })
   .strict();
 export type AiPatch = z.infer<typeof AiPatchSchema>;
+export const AiFormProposalSchema = z
+  .object({
+    mappingId: z.uuid(),
+    title: z.string().min(1).max(200),
+    values: z.record(z.string(), z.string().max(1000)),
+    evidenceIds: z.array(z.uuid()).max(30),
+    warnings: z.array(z.string().max(300)).max(100),
+    scope: z
+      .object({ mode: z.enum(['buy', 'rent-buy', 'rent']), group: z.number().int().min(1).max(13) })
+      .strict(),
+    preparationHash: z.string().regex(/^[a-f0-9]{64}$/),
+  })
+  .strict();
 export interface AiProposal {
   id: string;
-  kind: 'declaration' | 'support';
-  payload: AiPatch | { message: string };
+  kind: 'declaration' | 'support' | 'form';
+  payload: AiPatch | { message: string } | z.infer<typeof AiFormProposalSchema>;
   inputVersion: number;
   expiresAt: string;
 }

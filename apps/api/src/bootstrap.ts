@@ -8,6 +8,8 @@ import {
 import helmet from 'helmet';
 import type { Request, Response } from 'express';
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import { channelCors, channelCorsOrigins } from './channel-cors';
+import { trustedProxyCidrs } from './client-peer';
 @Catch()
 class ProblemFilter implements ExceptionFilter {
   catch(error: unknown, host: ArgumentsHost) {
@@ -28,6 +30,16 @@ class ProblemFilter implements ExceptionFilter {
   }
 }
 export function configure(app: INestApplication) {
+  const proxies = trustedProxyCidrs(process.env.TRUSTED_PROXY_CIDRS ?? '');
+  app
+    .getHttpAdapter()
+    .getInstance()
+    .set('trust proxy', proxies.length ? proxies : false);
+  const origins = channelCorsOrigins(
+    process.env.ZALO_MINIAPP_ALLOWED_ORIGINS ?? '',
+    process.env.NODE_ENV === 'production',
+  );
+  app.use(channelCors(origins));
   (app as NestExpressApplication).useBodyParser('json', { limit: '8mb' });
   app.use(helmet());
   app.useGlobalFilters(new ProblemFilter());

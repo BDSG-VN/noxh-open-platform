@@ -1,6 +1,6 @@
 {
-  "version": "vn-noxh-2026-10-15",
-  "researchedOn": "2026-10-15",
+  "version": "vn-noxh-2026-10-16",
+  "researchedOn": "2026-10-16",
   "forms": [
     {
       "id": "nd100-application-01",
@@ -256,6 +256,25 @@
       "sourceUrl": "https://datafiles.chinhphu.vn/cpp/files/vbpq/2026/5/24-vbhn-bxd-pl.pdf",
       "sourceSha256": "540dd1a4c94f32bdeef3cbc2e555fdf1de87594b07ab3ae75218e3cfa3aed6d9",
       "reviewStatus": "source-extracted-pending-project-approval"
+    },
+    {
+      "id": "tt94-bqp-subject",
+      "title": "Giấy xác nhận về đối tượng thuộc phạm vi quản lý của Bộ Quốc phòng",
+      "sourceId": "94-tt-bqp-2024",
+      "sourcePages": [5],
+      "category": "subject",
+      "legalBasis": "Phụ lục và Điều 4 Thông tư 94/2024/TT-BQP; chỉ áp dụng đối tượng thuộc phạm vi quản lý của Bộ Quốc phòng",
+      "modes": ["buy", "rent-buy", "rent"],
+      "groups": [7],
+      "externalConfirmation": "Cơ quan, đơn vị từ cấp Trung đoàn và tương đương trở lên thuộc Bộ Quốc phòng hoặc Ban Cơ yếu Chính phủ theo phạm vi tại Điều 4 và chú thích mẫu; phải kiểm tra đúng thẩm quyền từng trường hợp",
+      "file": "tt94-bqp-subject.pdf",
+      "sha256": "0e23010f9fe10c4c60a0c8731a5bffd2e63c0155b80b30a653b5081de455af99",
+      "pages": 1,
+      "sourceUrl": "https://datafiles.chinhphu.vn/cpp/files/vbpq/2024/11/94-bqp.signed.pdf",
+      "sourceSha256": "60c44aedb4d09ff52d044274c152f216f9bd7a27ea65057f10424f87727f9cc3",
+      "reviewStatus": "source-extracted-pending-project-approval",
+      "effectiveFrom": "2024-12-26",
+      "applicability": "Bộ Quốc phòng; không thay thế mẫu Công an nhân dân. Chỉ bổ sung nguồn tham khảo, chưa tích hợp tự động vào bộ hồ sơ cá nhân."
     }
   ],
   "scope": "National base sources; local project applicability requires separate review. Not a legal eligibility engine."

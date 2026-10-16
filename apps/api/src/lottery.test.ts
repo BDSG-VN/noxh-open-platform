@@ -172,6 +172,13 @@ it('counts distinct priority groups, exposes fractions and never chooses a round
   expect(r.denominator).toBe(101);
   expect(r.quota).toBe(null);
   expect(r.requiresRoundingReview).toBe(true);
+  expect(r.policyReviewRequired).toBe(true);
+  expect(r.currentLawConformityVerified).toBe(false);
+  expect(r.referencePolicy).toMatchObject({
+    sourceCutoff: '2026-05-18',
+    legalChangeReviewFrom: '2026-07-01',
+    groupCount: 5,
+  });
   expect(() => calculatePriority({ ...b, counts: [...b.counts], rounding: 'ceil' })).toThrow(
     'căn cứ',
   );
@@ -183,6 +190,8 @@ it('counts distinct priority groups, exposes fractions and never chooses a round
   });
   expect(chosen.quota).toBe(3);
   expect(chosen.groups[2]?.allocate).toBe(0);
+  expect(chosen.policyReviewRequired).toBe(true);
+  expect(chosen.currentLawConformityVerified).toBe(false);
   expect(() => calculatePriority({ ...b, counts: [100, 100, 0, 0, 0] })).toThrow('một lần');
 });
 it('uses rejection sampling, deterministic permutations, exact units and seed-bound commitments', () => {

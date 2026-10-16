@@ -5,10 +5,8 @@ import {
   Inject,
   Module,
   Param,
-  Post,
   Res,
   ServiceUnavailableException,
-  NotImplementedException,
   NotFoundException,
 } from '@nestjs/common';
 import type { Response } from 'express';
@@ -47,6 +45,16 @@ import { ApplicationService } from './application-service';
 import { InternalFileController } from './internal-file-controller';
 import { InternalFileService } from './internal-file-service';
 import { ApplicationController } from './application-controller';
+import { KnowledgeService } from './knowledge-service';
+import { KnowledgeController } from './knowledge-controller';
+import { TenancyController } from './tenancy-controller';
+import { TenancyService } from './tenancy-service';
+import { AuditCheckpointController } from './audit-checkpoint-controller';
+import { AuditCheckpointService } from './audit-checkpoint-service';
+import { NotificationService } from './notification-service';
+import { NotificationController } from './notification-controller';
+import { ZaloIdentityService, ZaloIdentityTransport } from './zalo-identity-service';
+import { ZaloIdentityController } from './zalo-identity-controller';
 @Controller()
 export class PlatformController {
   constructor(
@@ -65,7 +73,7 @@ export class PlatformController {
         type: 'urn:noxh:problem:not-ready',
         title: 'Dependencies unavailable',
         status: 503,
-        detail: 'Postgres, Redis, migrations 001–014 and the Rust kernels must be ready.',
+        detail: 'Postgres, Redis, migrations 001–020 and the Rust kernels must be ready.',
         checks: result.checks,
       };
     }
@@ -123,13 +131,9 @@ export class PlatformController {
       officialForms: 'reviewed-mappings-deterministic-pdf',
       dvc: 'manual-handoff',
       lottery: 'synthetic-reviewed-cohorts',
-      zaloTokenExchange: false,
+      zaloTokenExchange: process.env.ZALO_MINIAPP_ENABLED === 'true',
+      zaloVerification: 'server-appsecret-proof-organization-configurable',
     };
-  }
-  @Post('api/v1/auth/zalo/exchange') zalo(): never {
-    throw new NotImplementedException(
-      'Zalo server verification is not integrated; no session issued',
-    );
   }
   private assertFixtures() {
     if (process.env.NODE_ENV === 'production' || process.env.ALLOW_SYNTHETIC_FIXTURES !== 'true')
@@ -151,6 +155,11 @@ export class PlatformController {
     DocumentController,
     ApplicationController,
     InternalFileController,
+    KnowledgeController,
+    TenancyController,
+    AuditCheckpointController,
+    NotificationController,
+    ZaloIdentityController,
   ],
   providers: [
     HealthService,
@@ -172,8 +181,15 @@ export class PlatformController {
     DocumentStorage,
     DocumentScanner,
     FormService,
+    { provide: 'NOXH_FORM_SERVICE', useExisting: FormService },
     ApplicationService,
     InternalFileService,
+    KnowledgeService,
+    TenancyService,
+    AuditCheckpointService,
+    NotificationService,
+    ZaloIdentityService,
+    ZaloIdentityTransport,
     { provide: APP_GUARD, useClass: WorkforceAccessGuard },
     { provide: APP_GUARD, useClass: PrivacyGuard },
   ],

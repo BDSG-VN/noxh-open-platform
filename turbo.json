@@ -20,6 +20,10 @@
     },
     "@noxh/ui#build": {
       "outputs": []
+    },
+    "@noxh/api#test": {
+      "dependsOn": ["build"],
+      "outputs": []
     }
   },
   "globalDependencies": ["Cargo.toml", "Cargo.lock", "crates/**", "tests/fixtures/**"]

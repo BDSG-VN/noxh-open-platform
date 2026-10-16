@@ -2,9 +2,19 @@
 
 Giải pháp mã nguồn mở của **BDSG Foundation** cho nhà ở xã hội: một chủ đầu tư, nhiều dự án, cổng công dân và kênh Zalo dùng chung backend. Giấy phép **MIT**.
 
-**v0.5 đang phát triển:** cổng khách hàng, chủ đầu tư, nhân viên và đối tác; giấy tờ riêng tư, tạo PDF theo mẫu đã duyệt, tiếp nhận–xét duyệt hồ sơ, quy trình dự án, bảng hàng và bốc thăm diễn tập có kiểm chứng. Tiếp nhận thật và bốc thăm thật chưa được mở. Xem [phạm vi triển khai và phần còn thiếu](docs/IMPLEMENTATION-MATRIX.md).
+**Bản tích hợp 16/10/2026 đang nghiệm thu:** cổng khách hàng, chủ đầu tư, nhân viên và đối tác; giấy tờ riêng tư, tạo PDF theo mẫu đã duyệt, tiếp nhận–xét duyệt hồ sơ, quy trình dự án, bảng hàng và bốc thăm diễn tập có kiểm chứng. Tiếp nhận thật và bốc thăm thật chưa được mở. Xem [phạm vi triển khai và phần còn thiếu](docs/IMPLEMENTATION-MATRIX.md).
 
 [![Sprint 0 validation](https://github.com/BDSG-VN/noxh-open-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/BDSG-VN/noxh-open-platform/actions/workflows/ci.yml) Blueprint v2 được lưu nguyên bản tại [docs/blueprint](docs/blueprint/README.md); lựa chọn MIT thay thế đề xuất AGPL trong tài liệu gốc.
+
+## Luồng mới trong bản tích hợp
+
+- Chủ đầu tư soạn và duyệt độc lập checklist giấy tờ/mẫu; khách thấy phần còn thiếu dựa trên chứng cứ sạch và PDF đã xác nhận đúng phiên bản.
+- Tri thức AI có nguồn, phạm vi và revision; trợ lý đề xuất điền PDF từ dữ liệu khách đã kiểm tra, chờ xác nhận riêng và không tự nộp hồ sơ.
+- Mua/thuê/thuê mua có hợp đồng diễn tập, kỳ thu, chứng từ, đối soát, bàn giao và kết thúc với phân quyền, duyệt độc lập và kiểm tra phiên bản.
+- Thông báo trong ứng dụng có mẫu được duyệt, lựa chọn mục đích/kênh, hàng đợi và lịch sử gửi; adapter email/Zalo thật cần được đơn vị triển khai cung cấp.
+- Mini App tiếp tục cùng hồ sơ sau liên kết danh tính; gói khôi phục mã hóa có manifest, kiểm tra hash và diễn tập PostgreSQL/kho tệp/audit cô lập.
+
+Các tài liệu [hồ sơ](docs/COMPLETION-DOSSIERS.md), [AI](docs/COMPLETION-AI.md), [hợp đồng](docs/COMPLETION-TENANCY.md), [thông báo](docs/COMPLETION-NOTIFICATIONS.md), [danh tính](docs/COMPLETION-IDENTITY.md) và [khôi phục](docs/RECOVERY-BUNDLE.md) mô tả API, quyền và phần chưa nghiệm thu. Các chức năng diễn tập không tự mở tiếp nhận, ký, thanh toán hoặc bốc thăm thật.
 
 ## Chạy bằng Docker
 
@@ -29,7 +39,7 @@ docker compose --profile ai up --build --wait --wait-timeout 600
 docker compose down
 ```
 
-Không dùng `down -v` nếu cần giữ dữ liệu. Migration chạy trước API; seed chỉ chứa dữ liệu giả lập. `/health/ready` kiểm tra Postgres, Redis, migration 001–014 và khả năng truy cập/thực thi ba binary Rust; không chứng minh thuật toán đã được kiểm toán hay đăng nhập/storage/legal readiness. API danh mục đọc dự án đã công bố từ Postgres, có nhãn riêng cho dữ liệu giả lập.
+Không dùng `down -v` nếu cần giữ dữ liệu. Migration chạy trước API; seed chỉ chứa dữ liệu giả lập. `/health/ready` kiểm tra Postgres, Redis, migration 001–020 và khả năng truy cập/thực thi ba binary Rust; không chứng minh thuật toán đã được kiểm toán hay đăng nhập/storage/legal readiness. API danh mục đọc dự án đã công bố từ Postgres, có nhãn riêng cho dữ liệu giả lập.
 
 ## Đăng nhập và quản trị
 
@@ -64,7 +74,7 @@ pnpm --filter @noxh/transparency-web dev
 pnpm --filter @noxh/zalo-miniapp dev
 ```
 
-Zalo shell: http://localhost:3003. Token SDK không được coi là chứng minh danh tính; backend trao đổi token trả 501 đến khi có tích hợp xác minh phía máy chủ. `/health/ready` trả 503 khi chưa chạy các dịch vụ; `/health/live` vẫn kiểm tra tiến trình API.
+Zalo Mini App: http://localhost:3003. Backend có xác minh token máy chủ, challenge một lần và liên kết sau OTP điện thoại mới; mặc định tắt. Chủ đầu tư cấu hình App ID/App Secret riêng và origin Mini App, không dùng cấu hình OA OTP thay cho App Secret. Mini App có bản khai, giấy tờ/quét/trích xuất, PDF và gói ZIP; phiên chỉ lưu trong bộ nhớ. Xem [cấu hình và giới hạn nghiệm thu Zalo](docs/COMPLETION-IDENTITY.md). `/health/ready` trả 503 khi chưa chạy các dịch vụ; `/health/live` vẫn kiểm tra tiến trình API.
 
 ## Cơ sở dữ liệu và kiểm tra
 
@@ -92,7 +102,7 @@ Python worker: `python -m venv .venv`, `.venv/bin/pip install -r services/ai-wor
 | `pricing-engine` | Tính hệ số chuẩn hóa và giá bằng số nguyên có kiểm tra tràn; API kiểm tra chứng cứ trước khi lưu | Không tạo bảng giá, trả 503 nếu bộ xử lý không sẵn sàng/đầu ra sai                                      |
 | `audit-verifier` | Kiểm tra nội dung, liên kết hash và phạm vi tổ chức của chuỗi nhật ký `audit-v1`                 | Vẫn đọc được nhật ký; hiển thị chưa kiểm chứng (`valid: null`, `engine: unavailable`), không báo hợp lệ |
 
-NestJS tiếp tục kiểm soát đăng nhập, phân quyền, phiên bản, giao dịch và lưu trữ. Cầu nối chỉ gọi các binary cố định, không qua shell; bí mật truyền qua stdin, không nằm trong tham số lệnh hoặc log. Cầu nối giới hạn đầu vào/đầu ra 2.000.000 byte, thời gian chờ và số tiến trình đồng thời. Không có fallback Node cho các kết quả runtime này. Kiểm chứng audit bằng Rust không tạo chữ ký hay checkpoint tin cậy ngoài máy, và không phát hiện được mọi trường hợp cắt đuôi nếu chỉ nhận một tiền tố hợp lệ. Xem [ADR 015 — Rust trong runtime](docs/adr/015-mandatory-rust-kernels.md).
+NestJS tiếp tục kiểm soát đăng nhập, phân quyền, phiên bản, giao dịch và lưu trữ. Cầu nối chỉ gọi các binary cố định, không qua shell; bí mật truyền qua stdin, không nằm trong tham số lệnh hoặc log. Cầu nối giới hạn đầu vào/đầu ra 2.000.000 byte, thời gian chờ và số tiến trình đồng thời. Không có fallback Node cho các kết quả runtime này. CLI hỗ trợ ký checkpoint Ed25519 ngoại tuyến và nhập bằng khóa công khai đã ghim, có người soạn/người nhập riêng. Rust kiểm tra các trang audit theo checkpoint và đầu/cuối mong đợi. Việc giữ checkpoint mới nhất ngoài máy cần quy trình vận hành riêng; một tiền tố hợp lệ hoặc checkpoint cũ không chứng minh chuỗi đầy đủ. Xem [checkpoint và kiểm chứng](docs/COMPLETION-OPERATIONS.md). Xem [ADR 015 — Rust trong runtime](docs/adr/015-mandatory-rust-kernels.md).
 
 ## Cấu trúc
 
@@ -157,7 +167,7 @@ Bảng hàng có tọa độ mặt bằng, diện tích, hệ số tầng/vị t
 
 ### Bốc thăm và ưu tiên
 
-Bảng tính ưu tiên hiển thị tử số/mẫu số chính xác, hợp nhất người thuộc nhiều nhóm theo xác nhận được kiểm tra và phân bổ theo thứ tự nhóm. Không tự suy diễn cách làm tròn nếu quy định đã kiểm chứng chưa nêu; cần căn cứ được rà soát. Nhóm vượt số suất phải có quy trình bốc thăm và xử lý người không trúng theo quy chế áp dụng, không cho AI tự quyết định ưu tiên.
+Bảng tính ưu tiên chỉ mô phỏng năm nhóm theo nguồn ngày 18/5/2026, hiển thị tử số/mẫu số chính xác từ số đếm do người dùng cung cấp và xác nhận đã loại trùng. Công cụ chưa tự đối chiếu từng người, luôn yêu cầu rà soát thay đổi pháp luật từ 1/7/2026 và nhánh vốn của dự án; không xác nhận số suất ưu tiên hợp pháp. Không tự suy diễn cách làm tròn. Nhóm vượt số suất cần quy trình bốc thăm và xử lý người không trúng theo quy chế đã được duyệt.
 
 Phiên diễn tập: chốt tập hồ sơ của đợt/hình thức → duyệt độc lập → khóa snapshot và commitment → ghi entropy theo quy chế → chạy thuật toán xác định bằng Rust → tái lập bằng Rust và chứng nhận độc lập → công bố. Không chạy lại cùng phiên để chọn kết quả; hủy giữ chứng cứ và tạo tập thay thế có lý do. Node/Python/Rust dùng cùng bộ dữ liệu chuẩn; Node và Python là bộ tham chiếu/kiểm chứng, không thay bộ máy Rust runtime. Entropy diễn tập nhập thủ công, chưa phải nguồn ngẫu nhiên công cộng được tin cậy hay chứng thư ký số.
 
@@ -196,5 +206,13 @@ Xem [ma trận nghiệm thu](docs/IMPLEMENTATION-MATRIX.md) và [bằng chứng 
 ![Bảng điều khiển khách hàng](docs/screenshots/citizen-dashboard-v05.jpg)
 ![Chuyên viên đối tác chỉ thấy liên hệ được giao](docs/screenshots/partner-consultant.png)
 ![Phòng bốc thăm diễn tập](docs/screenshots/lottery-room-v05.jpg)
+
+### Hồ sơ AI và quản trị hợp đồng
+
+Ảnh bản hoàn thiện 16/10/2026 dùng tài khoản và dữ liệu tổng hợp. AI chỉ đề xuất; khách xác nhận trước khi tạo tài liệu.
+
+![Đề xuất tạo bộ mẫu từ trợ lý AI](docs/screenshots/completion-citizen-ai-form-proposal-desktop.png)
+![Quản trị hợp đồng mua, thuê và thuê mua](docs/screenshots/completion-admin-tenancy-desktop.png)
+![Quản trị nguồn kiến thức của dự án](docs/screenshots/completion-admin-knowledge-desktop.png)
 
 Xem [danh mục ảnh và phạm vi kiểm tra](docs/screenshots/README.md).

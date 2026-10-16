@@ -13,7 +13,7 @@ export class PrivacyGuard implements CanActivate {
     const path = r.path.replace(/\/$/, '');
     const isWrite = !['GET', 'HEAD', 'OPTIONS', 'DELETE'].includes(r.method);
     const protectedPath =
-      /^\/api\/v1\/(?:dossiers\/|citizen\/dossiers$|citizen\/consultations\/|citizen\/inventory\/|citizen\/applications\/[a-f0-9-]+\/supplements$)/.test(
+      /^\/api\/v1\/(?:dossiers\/|citizen\/dossiers$|citizen\/consultations\/|citizen\/inventory\/|citizen\/tenancy\/|citizen\/applications\/[a-f0-9-]+\/supplements$)/.test(
         path,
       );
     if (isWrite && protectedPath)

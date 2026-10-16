@@ -63,7 +63,11 @@ afterAll(async () => {
 });
 it('serves byte-verified forms and rejects unlisted paths', async () => {
   const catalog = await service.catalog();
-  expect(catalog.forms).toHaveLength(15);
+  expect(catalog.forms).toHaveLength(16);
+  expect(catalog.forms.find((f) => f.id === 'tt94-bqp-subject')).toMatchObject({
+    groups: [7],
+    reviewStatus: 'source-extracted-pending-project-approval',
+  });
   for (const f of catalog.forms)
     expect((await service.pdf(f.id)).bytes.subarray(0, 4).toString()).toBe('%PDF');
   await expect(service.pdf('../../sources')).rejects.toMatchObject({ status: 404 });
@@ -319,7 +323,13 @@ it('bounds approved-guidance context sent to the provider', async () => {
   const before = transport.requests.length;
   transport.responses.push(tool('read_project_forms', {}));
   try {
-    await ai.ask(c, id, { message: 'Xem mẫu', accepted: true, shareDeclaration: false });
+    await ai.ask(c, id, {
+      message: 'Xem mẫu',
+      accepted: true,
+      shareDeclaration: false,
+      mode: 'buy',
+      group: 5,
+    });
   } finally {
     spy.mockRestore();
   }

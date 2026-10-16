@@ -1,4 +1,17 @@
-# v0.5 — Bản tích hợp đang nghiệm thu
+# Bản tích hợp hoàn thiện luồng nghiệp vụ — 2026-10-16
+
+Đợt này bổ sung migration 015–020 và các luồng dưới đây. Đây là mã đang nghiệm thu trên nhánh `codex/housing-completion`; trạng thái triển khai và kết quả chạy được ghi trong [VALIDATION.md](VALIDATION.md), không suy ra từ danh sách tính năng.
+
+- Checklist preparation-v2 tính chứng cứ sạch và PDF đã xác nhận đúng phiên bản; checklist dự án có revision và pháp chế duyệt độc lập.
+- Tri thức hướng dẫn có nguồn/phạm vi/hiệu lực; AI đề xuất PDF từ chứng cứ hiện hành, kiểm lại lúc xác nhận và tạo bản nháp trong giao dịch.
+- Hợp đồng mua/thuê/thuê mua diễn tập; kỳ thu, đối soát, bàn giao, gia hạn/kết thúc/hoàn trả có quyền và người duyệt độc lập.
+- Thông báo trong ứng dụng, mẫu được duyệt, lựa chọn mục đích/kênh, hàng đợi/lịch sử; adapter gửi ngoài chưa cài đặt.
+- Xác minh Zalo phía máy chủ, challenge một lần, liên kết sau OTP mới; Mini App có bản khai, giấy tờ và bộ PDF dùng chung hồ sơ. Chưa nghiệm thu thiết bị/provider thật.
+- Checkpoint Ed25519 ký ngoại tuyến, nhập khóa công khai ghim và Rust kiểm nhiều trang; gói khôi phục mã hóa có manifest/hash, kiểm tra PostgreSQL và kho tệp cô lập. Chưa thay quy trình giữ checkpoint/backup mới nhất ngoài máy.
+
+Chi tiết và các giới hạn nằm trong [ADR 016](adr/016-governed-completion.md), các tài liệu `COMPLETION-*.md` và [ma trận hiện hành](IMPLEMENTATION-MATRIX.md). Các điều kiện pháp lý, chữ ký, cơ quan liên thông, provider thật, quyền DB production, bảo mật độc lập và pilot chưa được chứng nhận hoàn tất.
+
+## Phạm vi nền tảng v0.5
 
 BDSG Foundation · MIT · cập nhật 2026-10-15. Mã nguồn đang được mở rộng theo yêu cầu chủ dự án; không công bố tỷ lệ hoàn thành 100% hoặc chứng nhận pháp lý/bảo mật.
 

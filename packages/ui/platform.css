@@ -1453,3 +1453,90 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+.completion-panel {
+  min-width: 0;
+}
+.completion-panel .surface-body > .table-scroll {
+  margin: 16px 0;
+}
+.completion-panel .data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.completion-panel .data-table th,
+.completion-panel .data-table td {
+  padding: 14px 16px;
+  text-align: left;
+  vertical-align: top;
+}
+.completion-panel .data-table th {
+  font-size: 12px;
+  font-weight: 600;
+  color: #53677d;
+  background: #f6f8fb;
+  white-space: nowrap;
+}
+.completion-panel .data-table td {
+  border-top: 1px solid #e5ebf2;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.completion-panel fieldset {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid #dbe4ee;
+  border-radius: 12px;
+}
+.completion-panel legend {
+  padding: 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.completion-panel label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.completion-panel label:has(input[type='checkbox']) {
+  flex-direction: row;
+  align-items: flex-start;
+  line-height: 1.7;
+}
+.completion-panel :is(input, select, textarea):not([type='checkbox']):not([type='file']) {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid #ccd8e5;
+  border-radius: 8px;
+  background: #fff;
+  color: #18324e;
+  font: inherit;
+}
+.completion-panel :is(input, select, textarea):focus-visible {
+  outline: 3px solid #9de0ce;
+  outline-offset: 2px;
+}
+.completion-panel details > summary {
+  cursor: pointer;
+  padding: 12px 0;
+  font-weight: 600;
+}
+.completion-panel .form-grid {
+  gap: 16px;
+  margin: 12px 0;
+}
+@media (max-width: 640px) {
+  .completion-panel fieldset {
+    padding: 14px;
+  }
+  .completion-panel .surface-head {
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .completion-panel .data-table {
+    min-width: 660px;
+  }
+}
