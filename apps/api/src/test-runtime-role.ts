@@ -85,7 +85,10 @@ function wrap(raw: Sql): Wrapped {
 if (process.env.NOXH_TEST_RUNTIME_ROLE === '1') {
   const ensure = (db: Database) => {
     const current = db.testExecutor as Wrapped | undefined;
-    if (current && !current[WRAPPED]) db.testExecutor = wrap(current);
+    // Only PGlite executors (which expose `.query` bound to a PGlite instance via a closure over
+    // `pg`) get wrapped; hand-written fakes in unit tests are not databases.
+    if (current && !current[WRAPPED] && /pg\.query|PGlite/.test(String(current.query)))
+      db.testExecutor = wrap(current);
   };
   const query = Database.prototype.query;
   const tx = Database.prototype.tx;
