@@ -141,21 +141,15 @@ export class OperationsService {
   }
   async employees(s: Staff) {
     this.admin(s);
+    // Grants are aggregated in the same statement: one consistent snapshot, no per-row lookups.
     const rows = await this.db.query(
-      'SELECT id,subject,name,department,status,permissions,version FROM identity_private.investor_employees WHERE organization_id=$1 ORDER BY name LIMIT 200',
+      "SELECT e.id,e.subject,e.name,e.department,e.status,e.permissions,e.version,COALESCE((SELECT array_agg(g.project_id ORDER BY g.project_id) FROM investor_employee_projects g WHERE g.organization_id=e.organization_id AND g.employee_id=e.id),'{}') AS project_ids FROM identity_private.investor_employees e WHERE e.organization_id=$1 ORDER BY e.name LIMIT 200",
       [s.organizationId],
     );
-    return Promise.all(
-      rows.map(async (r) => ({
-        ...r,
-        projectIds: (
-          await this.db.query(
-            'SELECT project_id FROM investor_employee_projects WHERE organization_id=$1 AND employee_id=$2',
-            [s.organizationId, r.id],
-          )
-        ).map((g) => g.project_id),
-      })),
-    );
+    return rows.map(({ project_ids, ...r }): Row & { projectIds: string[] } => ({
+      ...r,
+      projectIds: Array.isArray(project_ids) ? project_ids.map(String) : [],
+    }));
   }
   async saveEmployee(s: Staff, body: unknown, id?: string, expected?: number) {
     this.admin(s);

@@ -283,7 +283,7 @@ path(
   },
 );
 doc.paths['/health/ready'].get.description =
-  'Checks PostgreSQL, Redis, migrations 001–023, executable Rust kernels and, when DATABASE_REQUIRE_LEAST_PRIVILEGE=true, that the API connects as a non-elevated noxh_app member. Does not certify legal approval, provider connectivity or production readiness.';
+  'Checks PostgreSQL, Redis, migrations 001–024, executable Rust kernels and, when DATABASE_REQUIRE_LEAST_PRIVILEGE=true, that the API connects as a non-elevated noxh_app member. Does not certify legal approval, provider connectivity or production readiness.';
 const assistant = doc.paths['/api/v1/dossiers/{id}/assistant'].post;
 assistant.description =
   (assistant.description ?? '').split(' Project-approved lexical retrieval')[0] +

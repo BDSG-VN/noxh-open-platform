@@ -354,3 +354,22 @@ it('retains the authenticated project boundary if local grants expand after auth
   await expect(svc.journals(employee, otherProject)).rejects.toMatchObject({ status: 403 });
   expect(await svc.projects({ ...employee, projectIds: undefined })).toEqual([]);
 });
+it('lists employees with their project grants in a single consistent read', async () => {
+  await svc.saveEmployee(admin, { ...member, projectIds: [project, otherProject] }, memberId, 5);
+  const queries: string[] = [];
+  const original = db.query.bind(db);
+  db.query = async (text: string, values?: unknown[]) => {
+    queries.push(text);
+    return original(text, values);
+  };
+  try {
+    const rows = await svc.employees(admin);
+    const listed = rows.find((r) => r.id === memberId);
+    expect(listed?.projectIds).toEqual([project, otherProject].sort());
+    expect(rows.every((r) => Array.isArray(r.projectIds))).toBe(true);
+    // One statement for the whole list: no per-employee grant lookups (N+1).
+    expect(queries).toHaveLength(1);
+  } finally {
+    db.query = original;
+  }
+});

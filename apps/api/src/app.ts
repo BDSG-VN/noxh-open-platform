@@ -79,7 +79,7 @@ export class PlatformController {
         title: 'Dependencies unavailable',
         status: 503,
         detail:
-          'Postgres, Redis, migrations 001–023, the Rust kernels and (when required) the least-privilege database role must be ready.',
+          'Postgres, Redis, migrations 001–024, the Rust kernels and (when required) the least-privilege database role must be ready.',
         checks: result.checks,
       };
     }
