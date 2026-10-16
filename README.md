@@ -116,7 +116,7 @@ NestJS tiếp tục kiểm soát đăng nhập, phân quyền, phiên bản, gia
 apps/        api (NestJS), citizen-web, investor-console,
              transparency-web (Next.js), zalo-miniapp (React + SDK)
 packages/    contracts, ui, authz, form-engine
-services/    ai-worker (FastAPI placeholder)
+services/    ai-worker (FastAPI: OCR nội bộ tesseract, mặc định tắt)
 crates/      lottery-engine, lottery-runner, lottery-verifier,
              pricing-engine, audit-verifier
 db/          migrations, synthetic fixtures
@@ -140,7 +140,7 @@ Gửi issue/PR với phạm vi nhỏ, test và cập nhật tài liệu. Không 
 
 Cổng đối tác: `http://localhost:3004`. Chủ đầu tư cấp đơn vị/dự án và tài khoản quản lý; đơn vị thêm nhân viên theo ba vai trò. Chiến dịch phải được chủ đầu tư duyệt trước khi khách mở trang tư vấn và chia sẻ liên hệ. Chuyên viên chỉ đọc/cập nhật các yêu cầu được giao; không có quyền mở hồ sơ riêng. Xem [hướng dẫn và ma trận quyền](docs/PARTNERS.md).
 
-Admin có **Biểu mẫu & pháp lý**, **Cấu hình trợ lý AI** và **Đối tác & marketing**. Khách có **Thủ tục trực tuyến**, **Trợ lý AI** và quản lý yêu cầu tư vấn. OpenAI cần deployment flag `EXTERNAL_AI_ENABLED=true`, sau đó chủ đầu tư tự nhập model/key/hạn mức trong admin; mặc định tắt. Không đưa khóa vào chat hoặc mã nguồn. [Thiết kế và giới hạn tích hợp](docs/adr/013-openai-dvc-legal-sources.md), [nguồn pháp lý và phạm vi chưa xác minh](legal/README.md).
+Admin có **Biểu mẫu & pháp lý**, **Cấu hình trợ lý AI** và **Đối tác & marketing**. Khách có **Thủ tục trực tuyến**, **Trợ lý AI** và quản lý yêu cầu tư vấn. OpenAI cần deployment flag `EXTERNAL_AI_ENABLED=true`, sau đó chủ đầu tư tự nhập model/key/hạn mức trong admin; mặc định tắt. Không đưa khóa vào chat hoặc mã nguồn. [Thiết kế và giới hạn tích hợp](docs/adr/013-openai-dvc-legal-sources.md), [nguồn pháp lý và phạm vi chưa xác minh](legal/README.md). Thay thế không cần nhà cung cấp ngoài: OCR nội bộ (`LOCAL_OCR_ENABLED=true`, `OCR_WORKER_URL`, profile `ai`) đọc chữ giấy tờ đã quét an toàn qua hàng đợi worker và trả về đề xuất cần khách xác nhận; chưa đánh giá chất lượng trên giấy tờ thật, chưa có bộ dữ liệu `vie` ([OCR](docs/COMPLETION-OCR.md)).
 
 DVC hiện mở đúng thủ tục và lưu biên nhận do khách tự cập nhật; chưa có API được cấp quyền để đồng bộ trạng thái chính thức. AI có thể trích xuất giấy tờ đã quét an toàn, đưa đề xuất có nguồn và chờ khách xác nhận; bộ máy PDF điền dữ liệu theo ánh xạ của mẫu đã duyệt, giữ mẫu gốc và xuất gói ZIP có manifest. Chủ đầu tư phải duyệt phạm vi áp dụng và tọa độ ánh xạ từng mẫu; hệ thống không tự chế giấy xác nhận hoặc chữ ký. Phần chưa xong của blueprint được liệt kê trong [ma trận triển khai](docs/IMPLEMENTATION-MATRIX.md).
 

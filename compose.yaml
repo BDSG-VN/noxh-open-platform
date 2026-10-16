@@ -155,6 +155,9 @@ services:
       TRUSTED_PROXY_CIDRS: '${TRUSTED_PROXY_CIDRS:-}'
       NOTIFICATIONS_EXTERNAL_ENABLED: '${NOTIFICATIONS_EXTERNAL_ENABLED:-false}'
       NOTIFICATIONS_SMTP_ALLOWED_HOSTS: '${NOTIFICATIONS_SMTP_ALLOWED_HOSTS:-}'
+      LOCAL_OCR_ENABLED: '${LOCAL_OCR_ENABLED:-false}'
+      OCR_WORKER_URL: '${OCR_WORKER_URL:-http://ai-worker:4100}'
+      OCR_QUALITY_THRESHOLD: '${OCR_QUALITY_THRESHOLD:-0.6}'
       AUDIT_CHECKPOINT_TRUSTED_KEYS: '${AUDIT_CHECKPOINT_TRUSTED_KEYS:-[]}'
     command: ['pnpm', '--filter', '@noxh/api', 'start']
     ports: ['127.0.0.1:4000:4000']
@@ -184,6 +187,15 @@ services:
       AUTH_HASH_KEY: ${AUTH_HASH_KEY:?Generate auth keys in .env}
       NOTIFICATIONS_EXTERNAL_ENABLED: '${NOTIFICATIONS_EXTERNAL_ENABLED:-false}'
       NOTIFICATIONS_SMTP_ALLOWED_HOSTS: '${NOTIFICATIONS_SMTP_ALLOWED_HOSTS:-}'
+      LOCAL_OCR_ENABLED: '${LOCAL_OCR_ENABLED:-false}'
+      OCR_WORKER_URL: '${OCR_WORKER_URL:-http://ai-worker:4100}'
+      OCR_QUALITY_THRESHOLD: '${OCR_QUALITY_THRESHOLD:-0.6}'
+      # OCR worker reads clean objects from the same private store as the API.
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: noxh-private
+      S3_REGION: us-east-1
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-noxh-local}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?Generate local .env}
     command: ['node', 'apps/api/dist/worker.js']
     healthcheck:
       test:
@@ -297,7 +309,12 @@ services:
   ai-worker:
     profiles: ['ai']
     build: { context: services/ai-worker }
-    environment: { EXTERNAL_AI_ENABLED: 'false' }
+    environment:
+      EXTERNAL_AI_ENABLED: 'false'
+      LOCAL_OCR_ENABLED: '${LOCAL_OCR_ENABLED:-false}'
+      OCR_ENGINE: tesseract
+      OCR_LANGUAGES: '${OCR_LANGUAGES:-vie+eng}'
+    expose: ['4100']
     ports: ['127.0.0.1:4100:4100']
     healthcheck:
       test:

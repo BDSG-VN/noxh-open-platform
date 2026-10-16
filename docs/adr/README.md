@@ -1,6 +1,6 @@
 # Architecture decisions
 
-ADRs 001–010 record the initial Sprint 0 design. ADRs 011–019 extend implementation under explicit owner requests; later decisions identify what they supersede. These records do not certify security or legal compliance. See STATUS.md for executable scope.
+ADRs 001–010 record the initial Sprint 0 design. ADRs 011–020 extend implementation under explicit owner requests; later decisions identify what they supersede. These records do not certify security or legal compliance. See STATUS.md for executable scope.
 
 - [011 — Admin and phone authentication](011-admin-phone-auth.md)
 
@@ -19,3 +19,5 @@ ADRs 001–010 record the initial Sprint 0 design. ADRs 011–019 extend impleme
 - [018 — Least-privilege database runtime](018-least-privilege-runtime.md)
 
 - [019 — Worker-driven external delivery](019-worker-external-delivery.md)
+
+- [020 — Self-hosted OCR queue](020-self-hosted-ocr-queue.md)

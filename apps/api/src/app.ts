@@ -40,6 +40,8 @@ import { DocumentController } from './document-controller';
 import { DocumentService } from './document-service';
 import { DocumentStorage } from './document-storage';
 import { DocumentScanner } from './document-scanner';
+import { DocumentOcrService } from './document-ocr-service';
+import { DocumentOcrLifecycle } from './document-ocr-lifecycle';
 import { FormService } from './form-service';
 import { ApplicationService } from './application-service';
 import { InternalFileController } from './internal-file-controller';
@@ -79,7 +81,7 @@ export class PlatformController {
         title: 'Dependencies unavailable',
         status: 503,
         detail:
-          'Postgres, Redis, migrations 001–023, the Rust kernels and (when required) the least-privilege database role must be ready.',
+          'Postgres, Redis, migrations 001–024, the Rust kernels and (when required) the least-privilege database role must be ready.',
         checks: result.checks,
       };
     }
@@ -140,6 +142,7 @@ export class PlatformController {
       lottery: 'synthetic-reviewed-cohorts',
       zaloTokenExchange: process.env.ZALO_MINIAPP_ENABLED === 'true',
       zaloVerification: 'server-appsecret-proof-organization-configurable',
+      localOcr: process.env.LOCAL_OCR_ENABLED === 'true',
     };
   }
   private assertFixtures() {
@@ -188,6 +191,8 @@ export class PlatformController {
     DocumentService,
     DocumentStorage,
     DocumentScanner,
+    DocumentOcrService,
+    DocumentOcrLifecycle,
     FormService,
     { provide: 'NOXH_FORM_SERVICE', useExisting: FormService },
     ApplicationService,

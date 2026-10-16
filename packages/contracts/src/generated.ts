@@ -27,7 +27,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Checks PostgreSQL, Redis, migrations 001–023, executable Rust kernels and, when DATABASE_REQUIRE_LEAST_PRIVILEGE=true, that the API connects as a non-elevated noxh_app member. Does not certify legal approval, provider connectivity or production readiness. */
+        /** @description Checks PostgreSQL, Redis, migrations 001–024, executable Rust kernels and, when DATABASE_REQUIRE_LEAST_PRIVILEGE=true, that the API connects as a non-elevated noxh_app member. Does not certify legal approval, provider connectivity or production readiness. */
         get: operations["getReadiness"];
         put?: never;
         post?: never;
@@ -2979,6 +2979,108 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dossiers/{id}/ocr-jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Owner-only OCR jobs for the dossier with status, reason code, attempt budget, quality score and low-quality flag. Text is only in the job detail. Requires LOCAL_OCR_ENABLED on the deployment. */
+        get: operations["listMyOcrJobs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dossiers/{id}/documents/{document}/ocr": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Owner requests self-hosted OCR of one clean-scanned document with a separate purpose-specific consent (document-ocr-v1). Quarantined or rejected files are refused; one active job per document; at most 20 requests per hour. The worker claims the job later; nothing is written to the declaration. */
+        post: operations["requestDocumentOcr"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dossiers/{id}/ocr-jobs/{job}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Owner-only job detail including the decrypted recognised text blocks (page, bbox, confidence), quality score and the linked local-ocr extraction proposal id. Fields still need explicit acceptance through the existing extraction flow. */
+        get: operations["getMyOcrJob"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dossiers/{id}/ocr-jobs/{job}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Owner cancels a pending or running job with If-Match. A running job loses its lease so an in-flight result is discarded; the purpose consent is withdrawn. */
+        post: operations["cancelMyOcrJob"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/ocr/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Organization administrator queue health: counts per status, oldest pending age, stale leases and the latest failures with reason codes only. Never document or text content. */
+        get: operations["getOcrQueueHealth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/ocr/jobs/{job}/requeue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Operator-confirmed, version-bound requeue of one failed job within the bounded budget (at most 3 attempts and 2 requeues in total). Succeeded and cancelled jobs are final. */
+        post: operations["requeueOcrJob"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4878,6 +4980,36 @@ export interface components {
             /** @constant */
             accepted: true;
         };
+        OcrConsentSchema: {
+            /** @constant */
+            accepted: true;
+            /** @constant */
+            noticeVersion: "document-ocr-v1";
+        };
+        OcrAcceptedSchema: {
+            /** @constant */
+            accepted: true;
+        };
+        OcrResultSchema: {
+            engine: string;
+            engine_version: string;
+            languages: string[];
+            pages: number;
+            quality: number;
+            processing_ms: number;
+            blocks: {
+                page: number;
+                text: string;
+                confidence: number;
+                bbox: {
+                    x: number;
+                    y: number;
+                    width: number;
+                    height: number;
+                };
+            }[];
+            warnings: string[];
+        };
     };
     responses: never;
     parameters: never;
@@ -5056,6 +5188,8 @@ export interface operations {
                         dvc?: "manual-handoff";
                         /** @constant */
                         zaloVerification?: "server-appsecret-proof-organization-configurable";
+                        /** @description LOCAL_OCR_ENABLED deployment flag: self-hosted tesseract OCR through the worker queue; no external provider. */
+                        localOcr?: boolean;
                     };
                 };
             };
@@ -23922,6 +24056,405 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["NotificationProviderSchema"];
+            };
+        };
+        responses: {
+            /** @description Scoped result; development and synthetic gates still apply */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            /** @description Invalid input */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Scope, grant, consent or separation of duties denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Resource absent in caller scope */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Stale, conflicting, inactive or replayed transition */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Required provider, key, dependency or Rust kernel unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listMyOcrJobs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Scoped result; development and synthetic gates still apply */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            /** @description Invalid input */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Scope, grant, consent or separation of duties denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Resource absent in caller scope */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Stale, conflicting, inactive or replayed transition */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Required provider, key, dependency or Rust kernel unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    requestDocumentOcr: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                document: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OcrConsentSchema"];
+            };
+        };
+        responses: {
+            /** @description Scoped result; development and synthetic gates still apply */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            /** @description Invalid input */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Scope, grant, consent or separation of duties denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Resource absent in caller scope */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Stale, conflicting, inactive or replayed transition */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Required provider, key, dependency or Rust kernel unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getMyOcrJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                job: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Scoped result; development and synthetic gates still apply */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            /** @description Invalid input */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Scope, grant, consent or separation of duties denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Resource absent in caller scope */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Stale, conflicting, inactive or replayed transition */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Required provider, key, dependency or Rust kernel unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    cancelMyOcrJob: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Current version of the target resource; 0 for an absent initial configuration. */
+                "If-Match": string;
+            };
+            path: {
+                id: string;
+                job: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Scoped result; development and synthetic gates still apply */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            /** @description Invalid input */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Scope, grant, consent or separation of duties denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Resource absent in caller scope */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Stale, conflicting, inactive or replayed transition */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Required provider, key, dependency or Rust kernel unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getOcrQueueHealth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Scoped result; development and synthetic gates still apply */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            /** @description Invalid input */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Scope, grant, consent or separation of duties denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Resource absent in caller scope */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Stale, conflicting, inactive or replayed transition */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Required provider, key, dependency or Rust kernel unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    requeueOcrJob: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Current version of the target resource; 0 for an absent initial configuration. */
+                "If-Match": string;
+            };
+            path: {
+                job: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OcrAcceptedSchema"];
             };
         };
         responses: {
