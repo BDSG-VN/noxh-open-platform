@@ -7,6 +7,8 @@ import Applications from './applications';
 import { StartDossier } from './actions';
 import Consultations from './consultations';
 import { loadProjects } from '../projects-data';
+import TenancyCustomer from '../tenancy-customer';
+import NotificationsCustomer from '../notifications-customer';
 export const dynamic = 'force-dynamic';
 export default async function Dashboard() {
   const token = (await cookies()).get('noxh_citizen')?.value;
@@ -80,6 +82,8 @@ export default async function Dashboard() {
         ))}
       </div>
       <Consultations />
+      <TenancyCustomer />
+      <NotificationsCustomer />
       <div className="content-columns">
         <div className="stack">
           <section id="ho-so" className="surface">

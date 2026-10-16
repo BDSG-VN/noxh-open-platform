@@ -7,6 +7,7 @@ import type {
   OnlineCase,
   OnlineCaseInput,
   OnlineProcedure,
+  KnowledgeCitation,
 } from '@noxh/contracts';
 async function request(path: string, body?: unknown, method = 'GET', version?: number) {
   const r = await fetch('/api/workflow/' + path, {
@@ -304,6 +305,9 @@ export function AiAssistant({ id, dirty }: { id: string; dirty: boolean }) {
     [busy, setBusy] = useState(false),
     [answer, setAnswer] = useState(''),
     [proposals, setProposals] = useState<AiProposal[]>([]),
+    [citations, setCitations] = useState<KnowledgeCitation[]>([]),
+    [mode, setMode] = useState(''),
+    [group, setGroup] = useState(''),
     [checks, setChecks] = useState<Record<string, boolean>>({});
   useEffect(() => {
     let live = true;
@@ -353,15 +357,23 @@ export function AiAssistant({ id, dirty }: { id: string; dirty: boolean }) {
           setError('');
           setAnswer('');
           setProposals([]);
+          setCitations([]);
           setChecks({});
           try {
             const v = await request(
               'dossiers/' + id + '/assistant',
-              { message, accepted, shareDeclaration: share },
+              {
+                message,
+                accepted,
+                shareDeclaration: share,
+                mode: mode || null,
+                group: group ? Number(group) : null,
+              },
               'POST',
             );
             setAnswer(v.answer);
             setProposals(v.proposals);
+            setCitations(v.citations ?? []);
           } catch (e) {
             setError(e instanceof Error ? e.message : 'AI chưa phản hồi');
           } finally {
@@ -369,6 +381,32 @@ export function AiAssistant({ id, dirty }: { id: string; dirty: boolean }) {
           }
         }}
       >
+        <div className="form-grid">
+          <label>
+            Hình thức cần tìm hiểu
+            <select className="search-input" value={mode} onChange={(e) => setMode(e.target.value)}>
+              <option value="">Chỉ hướng dẫn chung</option>
+              <option value="buy">Mua</option>
+              <option value="rent-buy">Thuê mua</option>
+              <option value="rent">Thuê</option>
+            </select>
+          </label>
+          <label>
+            Nhóm đối tượng đã xác định
+            <select
+              className="search-input"
+              value={group}
+              onChange={(e) => setGroup(e.target.value)}
+            >
+              <option value="">Chưa xác định · hướng dẫn chung</option>
+              {Array.from({ length: 13 }, (_, i) => (
+                <option key={i + 1} value={i + 1}>
+                  Nhóm {i + 1}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
         <label>
           Yêu cầu của bạn
           <textarea
@@ -409,12 +447,59 @@ export function AiAssistant({ id, dirty }: { id: string; dirty: boolean }) {
           <p className="request-message">{answer}</p>
         </div>
       )}
+      {citations.length > 0 && (
+        <section className="stack" aria-label="Tài liệu trợ lý đã tra cứu">
+          <h3>Nguồn để bạn đối chiếu</h3>
+          <p>
+            Mã trích nguồn gắn với phiên bản và đoạn nội dung. Bạn vẫn cần kiểm tra cách AI diễn
+            giải.
+          </p>
+          {citations.map((c) => (
+            <details className="member-card" key={c.id}>
+              <summary>
+                [{c.id}] {c.title} · Bản {c.revision}
+              </summary>
+              <p className="request-message">{c.excerpt}</p>
+              <p>{c.legalBasis}</p>
+              <a href={c.sourceUrl} target="_blank" rel="noopener noreferrer">
+                Đọc nguồn chính thức ↗
+              </a>
+              <p>
+                <small>
+                  Dấu kiểm nguồn {c.sourceHash.slice(0, 16)} · Đoạn {c.chunk}
+                </small>
+              </p>
+            </details>
+          ))}
+        </section>
+      )}
       {proposals.map((p) => (
         <article className="member-card" key={p.id}>
           <span className="status-badge amber">Đề xuất chờ bạn xác nhận</span>
-          <h3>{p.kind === 'declaration' ? 'Cập nhật bản khai' : 'Gửi câu hỏi cho chủ đầu tư'}</h3>
+          <h3>
+            {p.kind === 'declaration'
+              ? 'Cập nhật bản khai'
+              : p.kind === 'form'
+                ? 'Tạo bản PDF để kiểm tra'
+                : 'Gửi câu hỏi cho chủ đầu tư'}
+          </h3>
+          {p.kind === 'form' && 'title' in p.payload && (
+            <p>
+              {p.payload.title} · Giá trị lấy từ bản khai đã lưu. Trường chưa có thông tin hoặc cần
+              cơ quan xác nhận được để trống.
+            </p>
+          )}
+          {p.kind === 'form' && 'warnings' in p.payload && p.payload.warnings.length > 0 && (
+            <ul>
+              {p.payload.warnings.map((w, i) => (
+                <li key={i}>{w}</li>
+              ))}
+            </ul>
+          )}
           <dl className="proposal-fields">
-            {Object.entries(p.payload)
+            {Object.entries(
+              p.kind === 'form' && 'values' in p.payload ? p.payload.values : p.payload,
+            )
               .filter(([, v]) => v !== null)
               .map(([k, v]) => (
                 <div key={k}>
@@ -438,7 +523,9 @@ export function AiAssistant({ id, dirty }: { id: string; dirty: boolean }) {
             {new Date(p.expiresAt).toLocaleTimeString('vi-VN')}.{' '}
             {p.kind === 'support'
               ? 'Nội dung câu hỏi sẽ được chia sẻ với chủ đầu tư.'
-              : 'Thông tin mới vẫn cần bạn xác nhận lại ở bước Kiểm tra.'}
+              : p.kind === 'form'
+                ? 'Sau khi tạo, mở mục Biểu mẫu để đọc PDF và xác nhận từng trường trước khi tải bộ hồ sơ.'
+                : 'Thông tin mới vẫn cần bạn xác nhận lại ở bước Kiểm tra.'}
           </p>
           <label className="checkbox-label">
             <input
@@ -450,7 +537,9 @@ export function AiAssistant({ id, dirty }: { id: string; dirty: boolean }) {
               Tôi đã xem nội dung và đồng ý{' '}
               {p.kind === 'support'
                 ? 'gửi câu hỏi này tới chủ đầu tư'
-                : 'áp dụng các trường hiển thị vào bản khai'}
+                : p.kind === 'form'
+                  ? 'tạo PDF nháp theo các giá trị hiển thị để tôi kiểm tra bản in'
+                  : 'áp dụng các trường hiển thị vào bản khai'}
               .
             </span>
           </label>
@@ -472,15 +561,20 @@ export function AiAssistant({ id, dirty }: { id: string; dirty: boolean }) {
               }
             }}
           >
-            {p.kind === 'support' ? 'Xác nhận gửi câu hỏi' : 'Xác nhận cập nhật bản khai'}
+            {p.kind === 'support'
+              ? 'Xác nhận gửi câu hỏi'
+              : p.kind === 'form'
+                ? 'Đã kiểm tra các giá trị · tạo PDF nháp'
+                : 'Xác nhận cập nhật bản khai'}
           </Button>
         </article>
       ))}
       <div className="help-note">
         <Icon name="shield" />
         <p>
-          AI hiện đọc checklist, mẫu và chuẩn bị đề xuất. AI chưa đọc tệp giấy tờ, ký xác nhận,
-          quyết định điều kiện hay nộp hồ sơ trên Cổng Dịch vụ công.
+          Trợ lý tra cứu hướng dẫn đã duyệt và tạo đề xuất để bạn xác nhận. Để trích xuất giấy tờ,
+          mở mục Giấy tờ và đồng ý gửi từng tệp. Ký xác nhận cơ quan, quyết định điều kiện và nộp
+          Cổng Dịch vụ công vẫn do đúng người hoặc cơ quan có thẩm quyền thực hiện.
         </p>
       </div>
     </>

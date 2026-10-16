@@ -6,6 +6,12 @@ async function handler(request: NextRequest, context: { params: Promise<{ path: 
     const segments = (await context.params).path;
     const path = segments.join('/');
     const allowed = [
+      /^settings\/zalo-miniapp$/,
+      /^notifications\/projects\/[a-f0-9-]{36}\/(?:workspace|templates(?:\/[a-f0-9-]{36}\/review)?|queue|messages\/[a-f0-9-]{36}\/deliver|transports)$/,
+      /^knowledge\/projects\/[a-f0-9-]{36}(?:\/[a-f0-9-]{36}\/review)?$/,
+      /^projects\/[a-f0-9-]{36}\/preparation-checklists(?:\/[a-f0-9-]{36}\/review)?$/,
+      /^tenancy\/projects\/[a-f0-9-]{36}\/(?:options|contracts(?:\/[a-f0-9-]{36}(?:\/(?:review|payments|actions))?)?|(?:payments|actions)\/[a-f0-9-]{36}\/review)$/,
+      /^audit\/checkpoints(?:\/(?:proposals(?:\/[a-f0-9-]{36}\/evidence)?|imports|verify))?$/,
       /^(lotteries(?:\/(?:priority-calculation|eligibility-evidence|[a-f0-9-]{36}\/(?:review|freeze|entropy|execute|certify|publish|void)))?|privacy\/(?:notices(?:\/[a-f0-9-]{36}\/review)?|requests(?:\/[a-f0-9-]{36})?)|dashboard|me|projects|rounds|partners(?:\/[a-f0-9-]{36}(?:\/members(?:\/[a-f0-9-]{36})?)?)?|partner-campaigns(?:\/[a-f0-9-]{36}\/review)?|requests|audit(?:\/export)?|requests\/[a-f0-9-]{36}\/reply|settings\/(?:zalo|openai)|legal\/catalog|projects\/[a-f0-9-]{36}\/forms(?:\/[a-f0-9-]{36}\/review)?|logout|(?:projects|rounds)\/[a-f0-9-]{36})$/,
       /^projects\/[a-f0-9-]{36}\/form-mappings(?:\/[a-f0-9-]{36}\/(?:review|preview))?$/,
       /^operations\/(?:projects|employees(?:\/[a-f0-9-]{36})?|projects\/[a-f0-9-]{36}\/(?:workflow(?:\/(?:activate|tasks\/[a-z0-9-]+(?:\/review)?))?|records(?:\/[a-f0-9-]{36}\/review)?|journals(?:\/[a-f0-9-]{36}\/post)?))$/,
@@ -16,6 +22,16 @@ async function handler(request: NextRequest, context: { params: Promise<{ path: 
       /^applications(?:\/[a-f0-9-]{36}(?:\/(?:assign|supplement-request|recommend|decide|reopen|appeals\/[a-f0-9-]{36}\/respond|(?:documents|forms)\/[a-f0-9-]{36}\/download))?)?$/,
     ].some((r) => r.test(path));
     if (!allowed) throw new BffError(404, 'Đường dẫn không được hỗ trợ');
+    let query = '';
+    if (/^audit\/checkpoints\/proposals\/[a-f0-9-]{36}\/evidence$/.test(path)) {
+      const after = request.nextUrl.searchParams.get('afterSequence') ?? '0';
+      if (
+        !/^(0|[1-9][0-9]{0,18})$/.test(after) ||
+        [...request.nextUrl.searchParams.keys()].some((k) => k !== 'afterSequence')
+      )
+        throw new BffError(400, 'Con trỏ nhật ký không hợp lệ');
+      query = '?afterSequence=' + after;
+    }
     const token = (await cookies()).get('noxh_staff')?.value;
     if (!token) throw new BffError(401, 'Cần đăng nhập quản trị');
     let body: unknown;
@@ -28,7 +44,7 @@ async function handler(request: NextRequest, context: { params: Promise<{ path: 
         );
     }
     const response = await api(
-      '/api/v1/admin/' + path,
+      '/api/v1/admin/' + path + query,
       token,
       request.method,
       body,

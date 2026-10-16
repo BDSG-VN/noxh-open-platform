@@ -49,6 +49,27 @@ export class DossierController {
   ) {
     return this.service.closeRequest(await this.citizen.authenticate(h), id, version(v));
   }
+  @Get('admin/projects/:id/preparation-checklists') async checklists(
+    @Headers('authorization') h: unknown,
+    @Param('id') id: string,
+  ) {
+    return this.service.checklists(await this.staff.authenticate(h), id);
+  }
+  @Post('admin/projects/:id/preparation-checklists') async draftChecklist(
+    @Headers('authorization') h: unknown,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ) {
+    return this.service.draftChecklist(await this.staff.authenticate(h), id, body);
+  }
+  @Post('admin/projects/:id/preparation-checklists/:checklistId/review') async reviewChecklist(
+    @Headers('authorization') h: unknown,
+    @Param('id') id: string,
+    @Param('checklistId') checklistId: string,
+    @Body() body: unknown,
+  ) {
+    return this.service.reviewChecklist(await this.staff.authenticate(h), id, checklistId, body);
+  }
   @Get('admin/requests') async requests(@Headers('authorization') h: unknown) {
     return { items: await this.service.requests(await this.staff.authenticate(h)) };
   }

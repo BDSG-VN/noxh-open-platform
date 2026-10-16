@@ -9,8 +9,16 @@ import {
   HttpException,
   NotFoundException,
 } from '@nestjs/common';
-import { randomUUID } from 'node:crypto';
-import { DeclarationSchema, emptyDeclaration, preparationReadiness } from '@noxh/contracts';
+import { randomUUID, createHash } from 'node:crypto';
+import {
+  DeclarationSchema,
+  emptyDeclaration,
+  preparationReadiness,
+  PreparationChecklistSchema,
+  type PreparationChecklist,
+  type PreparationEvidence,
+} from '@noxh/contracts';
+import { AssistanceService } from './assistance-service';
 import { Database, type Sql, type Row } from './database';
 import { event, record, text, uuid } from './admin-service';
 import { seal, unseal } from './identity-crypto';
@@ -53,6 +61,232 @@ export class DossierService {
         )
       : { ...emptyDeclaration, household: [] };
   }
+  private async projectLock(q: Sql, c: Citizen, id: string) {
+    const d = await this.owner(q, c, id);
+    // Same lock order as form approval/generation: project, then dossier.
+    await q.query('SELECT id FROM projects WHERE id=$1 AND organization_id=$2 FOR SHARE', [
+      d.project_id,
+      c.organizationId,
+    ]);
+  }
+  private checklistView(row: Row): PreparationChecklist {
+    return {
+      ...PreparationChecklistSchema.parse(row.payload),
+      id: String(row.id),
+      version: Number(row.version),
+      status: row.status as PreparationChecklist['status'],
+      created_by: String(row.created_by),
+      approved_by: row.approved_by ? String(row.approved_by) : null,
+      created_at: String(row.created_at),
+      approved_at: row.approved_at ? String(row.approved_at) : null,
+    };
+  }
+  private async readiness(
+    q: Sql,
+    c: Citizen,
+    d: Row,
+    declaration: ReturnType<typeof DeclarationSchema.parse>,
+  ) {
+    const policies = (
+      await q.query(
+        "SELECT *, effective_from<=CURRENT_DATE AND (effective_to IS NULL OR effective_to>=CURRENT_DATE) AS current FROM project_preparation_checklists WHERE organization_id=$1 AND project_id=$2 AND status IN('approved','revoked') AND effective_from<=CURRENT_DATE ORDER BY version DESC LIMIT 1 FOR SHARE",
+        [c.organizationId, d.project_id],
+      )
+    ).rows;
+    const latest = policies[0];
+    const checklist = latest ? this.checklistView(latest) : undefined;
+    const documents = (
+      await q.query(
+        "SELECT id,type,CASE WHEN scan_status='clean' AND scanned_at IS NULL THEN 'quarantined' ELSE scan_status END AS scan_status,sha256,version FROM documents WHERE organization_id=$1 AND project_id=$2 AND dossier_id=$3 AND owner_user_id=$4 AND deleted_at IS NULL ORDER BY id FOR SHARE",
+        [c.organizationId, d.project_id, d.id, c.userId],
+      )
+    ).rows;
+    const rows = (
+      await q.query(
+        `SELECT f.id,CASE WHEN f.status='confirmed' AND f.confirmed_at IS NULL THEN 'draft' ELSE f.status END AS status,f.input_version,f.sha256,f.version,m.form_id,m.id AS mapping_id,m.version AS mapping_version,r.id AS release_id,r.version AS release_version,m.source_hash,r.source_hash AS release_source_hash,
+        (m.status='approved' AND r.status='approved' AND m.project_id=f.project_id AND r.project_id=f.project_id AND m.form_id=r.form_id AND
+        m.effective_from<=CURRENT_DATE AND(m.effective_to IS NULL OR m.effective_to>=CURRENT_DATE) AND r.effective_from<=CURRENT_DATE AND(r.effective_to IS NULL OR r.effective_to>=CURRENT_DATE) AND
+        NOT EXISTS(SELECT 1 FROM form_field_mappings newer WHERE newer.organization_id=m.organization_id AND newer.release_id=m.release_id AND newer.status IN('approved','revoked') AND newer.effective_from<=CURRENT_DATE AND newer.version>m.version) AND
+        NOT EXISTS(SELECT 1 FROM project_form_releases newer WHERE newer.organization_id=r.organization_id AND newer.project_id=r.project_id AND newer.form_id=r.form_id AND newer.mode=r.mode AND newer.subject_group=r.subject_group AND newer.status IN('approved','revoked') AND newer.effective_from<=CURRENT_DATE AND newer.version>r.version)) AS active
+       FROM generated_forms f JOIN form_field_mappings m ON m.id=f.mapping_id AND m.organization_id=f.organization_id JOIN project_form_releases r ON r.id=m.release_id AND r.organization_id=m.organization_id
+       WHERE f.organization_id=$1 AND f.project_id=$2 AND f.dossier_id=$3 AND f.owner_user_id=$4 ORDER BY f.id FOR SHARE OF f,m,r`,
+        [c.organizationId, d.project_id, d.id, c.userId],
+      )
+    ).rows;
+    const sources = new AssistanceService(this.db);
+    const verified = new Map<string, string>();
+    for (const row of rows.filter((r) => r.active === true)) {
+      const formId = String(row.form_id);
+      if (!verified.has(formId)) {
+        try {
+          verified.set(
+            formId,
+            createHash('sha256')
+              .update((await sources.pdf(formId)).bytes)
+              .digest('hex'),
+          );
+        } catch {
+          verified.set(formId, '');
+        }
+      }
+    }
+    const evidence: PreparationEvidence = {
+      inputVersion: Number(d.version),
+      checklist,
+      configurationUnavailable: Boolean(
+        latest && (latest.status !== 'approved' || latest.current !== true),
+      ),
+      documents: documents.map((r) => ({
+        id: String(r.id),
+        type: String(r.type),
+        scanStatus: String(r.scan_status),
+        sha256: String(r.sha256),
+        version: Number(r.version),
+      })),
+      forms: rows.map((r) => ({
+        id: String(r.id),
+        formId: String(r.form_id),
+        status: String(r.status),
+        inputVersion: Number(r.input_version),
+        active:
+          r.active === true &&
+          Boolean(verified.get(String(r.form_id))) &&
+          verified.get(String(r.form_id)) === r.source_hash &&
+          r.source_hash === r.release_source_hash,
+        sha256: String(r.sha256),
+        version: Number(r.version),
+        mappingId: String(r.mapping_id),
+        mappingVersion: Number(r.mapping_version),
+        releaseId: String(r.release_id),
+        releaseVersion: Number(r.release_version),
+      })),
+    };
+    return preparationReadiness(declaration, new Date().toISOString().slice(0, 10), evidence);
+  }
+  private async checklistScope(q: Sql, s: Staff, project: string, review = false, read = false) {
+    project = uuid(project);
+    if (s.role !== 'org_admin' && !s.projectIds?.includes(project))
+      throw new ForbiddenException('Dự án ngoài phạm vi nhân sự');
+    const p = (
+      await q.query(
+        'SELECT id FROM projects WHERE id=$1 AND organization_id=$2 AND archived_at IS NULL FOR UPDATE',
+        [project, s.organizationId],
+      )
+    ).rows[0];
+    if (!p) throw new NotFoundException('Không có dự án');
+    const permission = review ? 'form_legal_approver' : 'form_legal_editor';
+    if (review && !s.permissions?.includes(permission))
+      throw new ForbiddenException('Cần quyền form_legal_approver để duyệt checklist');
+    if (s.role !== 'org_admin') {
+      const employee = (
+        await q.query(
+          "SELECT e.permissions FROM identity_private.investor_employees e JOIN investor_employee_projects g ON g.organization_id=e.organization_id AND g.employee_id=e.id WHERE e.organization_id=$1 AND e.subject=$2 AND e.status='active' AND g.project_id=$3 FOR SHARE OF e,g",
+          [s.organizationId, s.subject, project],
+        )
+      ).rows[0];
+      if (
+        !employee ||
+        !(employee.permissions as string[]).some((p) =>
+          read ? ['form_legal_editor', 'form_legal_approver'].includes(p) : p === permission,
+        )
+      )
+        throw new ForbiddenException('Chưa được cấp quyền checklist tại dự án');
+    }
+    return project;
+  }
+  async checklists(s: Staff, project: string) {
+    return this.db.tx(async (q) => {
+      await this.checklistScope(q, s, project, false, true);
+      return {
+        items: (
+          await q.query(
+            'SELECT * FROM project_preparation_checklists WHERE organization_id=$1 AND project_id=$2 ORDER BY version DESC LIMIT 100',
+            [s.organizationId, uuid(project)],
+          )
+        ).rows.map((r) => this.checklistView(r)),
+      };
+    });
+  }
+  async draftChecklist(s: Staff, project: string, body: unknown) {
+    const p = PreparationChecklistSchema.safeParse(body);
+    if (!p.success)
+      throw new BadRequestException(
+        'Kiểm tra danh mục, nguồn hướng dẫn và ngày hiệu lực checklist',
+      );
+    const catalog = await new AssistanceService(this.db).catalog();
+    if (p.data.formIds.some((id) => id !== 'any' && !catalog.forms.some((f) => f.id === id)))
+      throw new BadRequestException('Biểu mẫu chưa có trong danh mục nguồn');
+    return this.db.tx(async (q) => {
+      project = await this.checklistScope(q, s, project);
+      const version = Number(
+        (
+          await q.query(
+            'SELECT COALESCE(max(version),0)+1 AS version FROM project_preparation_checklists WHERE organization_id=$1 AND project_id=$2',
+            [s.organizationId, project],
+          )
+        ).rows[0]!.version,
+      );
+      const id = randomUUID(),
+        payload = JSON.stringify(p.data);
+      await q.query(
+        'INSERT INTO project_preparation_checklists(id,organization_id,project_id,version,payload,content_hash,created_by,effective_from,effective_to) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+        [
+          id,
+          s.organizationId,
+          project,
+          version,
+          payload,
+          createHash('sha256').update(payload).digest('hex'),
+          s.subject,
+          p.data.effectiveFrom,
+          p.data.effectiveTo,
+        ],
+      );
+      await event(q, s, 'preparation.checklist-drafted', id);
+      return { id, version, status: 'draft' };
+    });
+  }
+  async reviewChecklist(s: Staff, project: string, id: string, body: unknown) {
+    const b = record(body);
+    if (
+      b.accepted !== true ||
+      !['approve', 'revoke'].includes(String(b.action)) ||
+      Object.keys(b).some((k) => !['accepted', 'action'].includes(k))
+    )
+      throw new BadRequestException('Cần quyết định và xác nhận rà soát checklist');
+    return this.db.tx(async (q) => {
+      project = await this.checklistScope(q, s, project, true);
+      const r = (
+        await q.query(
+          'SELECT * FROM project_preparation_checklists WHERE id=$1 AND organization_id=$2 AND project_id=$3 FOR UPDATE',
+          [uuid(id), s.organizationId, project],
+        )
+      ).rows[0];
+      if (!r) throw new NotFoundException('Không có checklist');
+      if (r.created_by === s.subject)
+        throw new ForbiddenException('Người soạn không tự duyệt checklist');
+      if (r.status !== (b.action === 'approve' ? 'draft' : 'approved'))
+        throw new ConflictException('Trạng thái checklist đã thay đổi');
+      if (b.action === 'approve') {
+        const newer = (
+          await q.query(
+            "SELECT id FROM project_preparation_checklists WHERE organization_id=$1 AND project_id=$2 AND version>$3 AND status IN('approved','revoked') LIMIT 1",
+            [s.organizationId, project, r.version],
+          )
+        ).rows[0];
+        if (newer) throw new ConflictException('Đã có checklist phiên bản mới hơn được quyết định');
+        await q.query(
+          "UPDATE project_preparation_checklists SET status='approved',approved_by=$2,approved_at=now() WHERE id=$1",
+          [uuid(id), s.subject],
+        );
+      } else
+        await q.query("UPDATE project_preparation_checklists SET status='revoked' WHERE id=$1", [
+          uuid(id),
+        ]);
+      await event(q, s, 'preparation.checklist-' + b.action, uuid(id));
+      return { saved: true };
+    });
+  }
   private requestView(row: Row): Row & { message: string; reply: string | null } {
     const scope = 'request:' + row.organization_id + ':' + row.id;
     const { message_cipher, reply_cipher, owner_user_id: _owner, ...rest } = row;
@@ -65,6 +299,7 @@ export class DossierService {
   }
   async detail(c: Citizen, id: string) {
     return this.db.tx(async (q) => {
+      await this.projectLock(q, c, id);
       // Row lock serializes the response with concurrent declaration saves.
       const d = await this.owner(q, c, id, true);
       const declaration = await this.declaration(q, c, id);
@@ -89,7 +324,7 @@ export class DossierService {
         created_at: d.created_at,
         updated_at: d.updated_at,
         declaration,
-        readiness: preparationReadiness(declaration),
+        readiness: await this.readiness(q, c, d, declaration),
         history,
         requests,
       };
@@ -117,6 +352,7 @@ export class DossierService {
     const apply = async (q: Sql) => {
       await this.owner(q, c, id);
       await new PrivacyService(this.db).assertProcessing(c, q);
+      await this.projectLock(q, c, id);
       const dossier = await this.owner(q, c, id, true);
       if (Number(dossier.version) !== expected)
         throw new ConflictException('Hồ sơ đã thay đổi ở cửa sổ khác. Tải lại trước khi lưu.');
@@ -163,7 +399,11 @@ export class DossierService {
         'declaration.saved',
         id,
       );
-      return { id, version: expected + 1, readiness: preparationReadiness(d) };
+      return {
+        id,
+        version: expected + 1,
+        readiness: await this.readiness(q, c, { ...dossier, version: expected + 1 }, d),
+      };
     };
     return sql ? apply(sql) : this.db.tx(apply);
   }
@@ -171,10 +411,11 @@ export class DossierService {
     return this.db.tx(async (q) => {
       await this.owner(q, c, id);
       await new PrivacyService(this.db).assertProcessing(c, q);
+      await this.projectLock(q, c, id);
       const d = await this.owner(q, c, id, true);
       if (Number(d.version) !== expected)
         throw new ConflictException('Thông tin đã thay đổi; tải lại hồ sơ');
-      const result = preparationReadiness(await this.declaration(q, c, id));
+      const result = await this.readiness(q, c, d, await this.declaration(q, c, id));
       await q.query(
         'INSERT INTO readiness_assessments(id,organization_id,project_id,dossier_id,input_version,checklist_version,score,result_json) VALUES($1,$2,$3,$4,$5,$6,$7,$8)',
         [
@@ -183,7 +424,7 @@ export class DossierService {
           d.project_id,
           id,
           d.version,
-          result.version,
+          result.checklist ? result.checklist.id + ':' + result.checklist.version : result.version,
           result.score,
           JSON.stringify(result),
         ],

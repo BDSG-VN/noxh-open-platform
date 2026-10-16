@@ -975,13 +975,13 @@ export default function LotteryAdmin({
       {workspaceTab === 'priority' && (
         <section className="surface">
           <div className="surface-head">
-            <h2>Tính suất ưu tiên theo Điều 38</h2>
+            <h2>Tham khảo phép tính ưu tiên 5 nhóm</h2>
             <a
               href="https://datafiles.chinhphu.vn/cpp/files/vbpq/2026/5/24-vbhn-bxd.pdf"
               target="_blank"
               rel="noopener noreferrer"
             >
-              Đọc căn cứ ↗
+              Nguồn hợp nhất 18/5/2026 ↗
             </a>
           </div>
           <form
@@ -1005,11 +1005,28 @@ export default function LotteryAdmin({
               }
             }}
           >
-            <p>
-              Áp dụng phạm vi Điều 38: dự án không dùng vốn đầu tư công, tài chính công đoàn. Không
-              áp công thức này mặc định cho mọi loại dự án. Điều kiện ưu tiên nữ giới cần được xác
-              minh đúng trường hợp; không tính toàn bộ khách nữ.
-            </p>
+            <div className="status-panel" role="note">
+              <strong>Chờ rà soát pháp lý sau ngày 1/7/2026</strong>
+              <p>
+                Công cụ chỉ mô phỏng 5 nhóm trong Điều 38 của nguồn hợp nhất ngày 18/5/2026. Luật
+                Dân số đã sửa nhóm và thứ tự ưu tiên từ 1/7/2026, có nhóm người từ hai con đẻ trở
+                lên. Phép tính này chưa xác minh phù hợp pháp luật hiện hành và chưa bao quát thay
+                đổi đó.
+              </p>
+              <p>
+                Không dùng kết quả để tự xác định suất miễn bốc thăm hoặc quyền mua. Phải rà soát
+                theo thời điểm, nguồn vốn và loại dự án; không áp chung cho vốn đầu tư công, tài
+                chính công đoàn hoặc nhà ở chuyên ngành. Điều kiện ưu tiên nữ giới cần xác minh đúng
+                trường hợp, không tính toàn bộ khách nữ.
+              </p>
+              <a
+                href="https://chinhsachonline.chinhphu.vn/dieu-kien-mua-nha-o-xa-hoi-voi-nguoi-co-tu-2-con-tro-len-92439.htm"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Giải đáp của Bộ Xây dựng ngày 11/10/2026 ↗
+              </a>
+            </div>
             <div className="form-grid">
               <label>
                 Tổng hồ sơ đủ điều kiện
@@ -1065,28 +1082,29 @@ export default function LotteryAdmin({
               Các hồ sơ đã đủ điều kiện và loại trùng: mỗi hồ sơ chỉ nằm trong nhóm ưu tiên cao
               nhất.
             </label>
-            <Button disabled={busy}>Tính và xem các trường hợp</Button>
+            <Button disabled={busy}>Tính tham khảo</Button>
             {preview && (
               <div className="status-panel">
+                <strong>{preview.referencePolicy.label} · Chờ rà soát pháp lý</strong>
                 <h3>
                   {preview.formula} ={' '}
                   {preview.exact.toLocaleString('vi-VN', { maximumFractionDigits: 6 })} suất
                 </h3>
                 <p>
                   {preview.requiresSelection
-                    ? 'Số hồ sơ vượt số căn; xử lý ưu tiên trước khi lập danh sách bốc thăm.'
-                    : 'Số hồ sơ không vượt số căn; không bắt buộc bốc thăm chọn người theo trường hợp này.'}
+                    ? 'Theo số liệu nhập: số hồ sơ vượt số căn. Chưa kết luận cách lựa chọn hoặc ưu tiên hợp pháp.'
+                    : 'Theo số liệu nhập: số hồ sơ không vượt số căn. Phép so sánh này không xác nhận quyền được mua.'}
                 </p>
                 <p>
                   {preview.quota === null
                     ? 'Kết quả có phần lẻ — chưa chốt suất, cần rà soát căn cứ làm tròn.'
-                    : `Suất ưu tiên: ${preview.quota} · Suất còn lại: ${preview.generalSeats}`}
+                    : `Suất tính tham khảo: ${preview.quota} · Phần còn lại theo phép tính: ${preview.generalSeats}`}
                 </p>
                 {preview.groups.map((g) => (
                   <p key={g.name}>
                     <strong>{g.name}</strong>: {g.count} hồ sơ → {g.allocate ?? 'chưa chốt'} suất{' '}
                     {g.requiresDraw
-                      ? '· Cần bốc thăm trong nhóm này; người chưa được chọn tham gia nhóm chung.'
+                      ? '· Số hồ sơ vượt phần phân bổ của mô hình 5 nhóm; cần rà soát cách xử lý.'
                       : ''}
                   </p>
                 ))}

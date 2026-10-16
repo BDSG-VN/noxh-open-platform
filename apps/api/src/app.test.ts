@@ -56,7 +56,7 @@ it('never accepts caller-provided Zalo identity', async () => {
   const r = await request(app.getHttpServer())
     .post('/api/v1/auth/zalo/exchange')
     .send({ userId: 'admin', accessToken: 'fake' });
-  expect(r.status).toBe(501);
+  expect(r.status).toBe(400);
 });
 it('does not expose a business write endpoint', async () =>
   expect(
@@ -76,6 +76,14 @@ it('denies unauthenticated staff mutations and private customer routes at HTTP b
       '/api/v1/admin/settings/openai',
       '/api/v1/admin/partners',
       '/api/v1/admin/partner-campaigns',
+      '/api/v1/admin/settings/zalo-miniapp',
+      '/api/v1/admin/notifications/projects/20000000-0000-4000-8000-000000000001/workspace',
+      '/api/v1/citizen/notifications/workspace',
+      '/api/v1/admin/audit/checkpoints',
+      '/api/v1/admin/knowledge/projects/20000000-0000-4000-8000-000000000001',
+      '/api/v1/admin/tenancy/projects/20000000-0000-4000-8000-000000000001/contracts',
+      '/api/v1/admin/projects/20000000-0000-4000-8000-000000000001/preparation-checklists',
+      '/api/v1/citizen/tenancy/contracts',
       '/api/v1/partner/workspace',
       '/api/v1/partner/leads',
       '/api/v1/citizen/consultations',

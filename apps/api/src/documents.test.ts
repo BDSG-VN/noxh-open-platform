@@ -4,7 +4,7 @@ import { createServer } from 'node:net';
 import { DocumentScanner } from './document-scanner';
 import { encryptObject, decryptObject } from './document-storage';
 import { validateDocument } from './document-service';
-import { FormMappingSchema, DocumentUploadSchema } from '@noxh/contracts';
+import { FormMappingSchema, DocumentUploadSchema, emptyDeclaration } from '@noxh/contracts';
 process.env.AUTH_ENCRYPTION_KEY = 'e'.repeat(64);
 describe('private document boundary', () => {
   it('authenticates envelope bytes and owner context', () => {
@@ -378,6 +378,49 @@ describe('document to reviewed PDF workflow', () => {
     } finally {
       warnings.mockRestore();
       scanner.result = 'clean';
+    }
+  });
+  it('holds one dossier snapshot while assembling a packet, then rejects that packet after the waiting declaration changes', async () => {
+    let entered: () => void = () => {},
+      release: () => void = () => {};
+    const reading = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const barrier = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const get = storage.get.bind(storage);
+    const hook = vi.spyOn(storage, 'get').mockImplementationOnce(async (key) => {
+      entered();
+      await barrier;
+      return get(key);
+    });
+    const packet = forms.packet(citizen, dossier);
+    let save: Promise<unknown> | undefined;
+    try {
+      await reading;
+      save = new DossierService(db).save(
+        citizen,
+        dossier,
+        {
+          ...emptyDeclaration,
+          fullName: 'BẢN KHAI GIẢ LẬP MỚI',
+        },
+        1,
+      );
+      const savedBeforeRelease = await Promise.race([
+        save.then(() => true),
+        new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 200)),
+      ]);
+      expect(savedBeforeRelease).toBe(false);
+      release();
+      expect((await packet).mime).toBe('application/zip');
+      await save;
+      await expect(forms.packet(citizen, dossier)).rejects.toThrow('phiên bản');
+    } finally {
+      release();
+      await Promise.allSettled([packet, ...(save ? [save] : [])]);
+      hook.mockRestore();
     }
   });
   it('blocks revoked mappings, changed source and further processing after privacy restriction', async () => {

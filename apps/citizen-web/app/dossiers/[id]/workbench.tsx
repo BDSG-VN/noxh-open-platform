@@ -82,6 +82,22 @@ export default function DossierWorkbench({ initial }: { initial: DossierDetail }
       setBusy(false);
     }
   };
+  const refreshEvidence = async () => {
+    const response = await fetch('/api/workflow/dossiers/' + initial.id, { cache: 'no-store' });
+    if (!response.ok)
+      throw new Error('Thao tác đã lưu. Chưa cập nhật được checklist; hãy tải lại.');
+    const updated: DossierDetail = await response.json();
+    setReadiness(updated.readiness);
+    setHistory(updated.history);
+    setRequests(updated.requests);
+    if (!dirty) {
+      setData(updated.declaration);
+      setVersion(updated.version);
+    } else if (updated.version !== version)
+      setError(
+        'Bản khai trên máy chủ đã thay đổi. Bản đang nhập chưa bị ghi đè; hãy đối chiếu trước khi lưu lại.',
+      );
+  };
   const activeRequest = requests.find((r) => r.status !== 'closed');
   return (
     <div
@@ -322,7 +338,11 @@ export default function DossierWorkbench({ initial }: { initial: DossierDetail }
               )}
               {tab === 'documents' && (
                 <div className="stack">
-                  <DocumentWorkspace id={initial.id} />
+                  <DocumentWorkspace
+                    id={initial.id}
+                    dirty={dirty}
+                    onEvidenceChanged={refreshEvidence}
+                  />
                   <ProjectForms id={initial.id} />
                 </div>
               )}
@@ -544,9 +564,11 @@ export default function DossierWorkbench({ initial }: { initial: DossierDetail }
                 </strong>
               </div>
               <div>
-                <strong>Checklist chung</strong>
+                <strong>{readiness.checklist?.title ?? 'Checklist chuẩn bị chung'}</strong>
                 <p className="section-subtitle">
-                  {readiness.version}
+                  {readiness.checklist
+                    ? 'Hướng dẫn phiên bản ' + readiness.checklist.version
+                    : readiness.version}
                   <br />
                   {dirty ? 'Lưu thay đổi để cập nhật' : 'Tính từ dữ liệu đã lưu'}
                 </p>
@@ -554,7 +576,7 @@ export default function DossierWorkbench({ initial }: { initial: DossierDetail }
             </div>
             {readiness.categories.map((c) => (
               <div key={c.code} style={{ marginBottom: 15 }}>
-                <div className="section-head" style={{ fontSize: 11, marginBottom: 6 }}>
+                <div className="section-head" style={{ fontSize: 12, marginBottom: 6 }}>
                   <span>{c.label}</span>
                   <strong>
                     {c.score}/{c.maximum}
@@ -565,9 +587,33 @@ export default function DossierWorkbench({ initial }: { initial: DossierDetail }
                 </div>
               </div>
             ))}
-            <p style={{ fontSize: 10, color: '#8a9aaa' }}>
-              Không dùng để xét điều kiện hay xếp hạng người đăng ký.
-            </p>
+            {readiness.configurationState === 'generic' && (
+              <p className="help-note">
+                Chưa có checklist dự án được duyệt. Mục chung chỉ tính ít nhất một tệp an toàn và
+                một PDF hiện hành, không phải bộ hồ sơ pháp lý đầy đủ.
+              </p>
+            )}
+            {readiness.configurationState === 'unavailable' && (
+              <p role="status" className="feedback error">
+                Hướng dẫn dự án đã hết hiệu lực hoặc bị thu hồi. Giấy tờ và mẫu tạm chưa tính hoàn
+                thành; chờ bản cập nhật được duyệt.
+              </p>
+            )}
+            {readiness.checklist && (
+              <details>
+                <summary>Hướng dẫn áp dụng</summary>
+                <p>{readiness.checklist.instructions}</p>
+                <p>Nguồn: {readiness.checklist.sourceReference}</p>
+                <p>
+                  Hiệu lực: {readiness.checklist.effectiveFrom}
+                  {readiness.checklist.effectiveTo ? ' đến ' + readiness.checklist.effectiveTo : ''}
+                </p>
+              </details>
+            )}
+            <p style={{ fontSize: 12 }}>{readiness.disclaimer}</p>
+            <Button variant="outline" disabled={busy} onClick={() => execute(refreshEvidence)}>
+              Cập nhật checklist
+            </Button>
           </div>
         </section>
         <section className="surface">
@@ -580,7 +626,37 @@ export default function DossierWorkbench({ initial }: { initial: DossierDetail }
                 <span className={'checklist-marker ' + (i.done ? 'done' : '')}>
                   {i.done ? <Icon name="check" size={13} /> : <Icon name="clock" size={13} />}
                 </span>
-                <span>{i.label}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <strong>{i.label}</strong>
+                  <p style={{ fontSize: 12, margin: '4px 0' }}>{i.reason}</p>
+                  {i.evidence.length > 0 && (
+                    <details>
+                      <summary>{i.evidence.length} chứng cứ chuẩn bị</summary>
+                      {i.evidence.map((e) => (
+                        <p key={e.id}>
+                          <a
+                            className="text-button"
+                            href={
+                              '/api/workflow/dossiers/' +
+                              initial.id +
+                              (e.kind === 'document' ? '/documents/' : '/generated-forms/') +
+                              e.id +
+                              '/download'
+                            }
+                          >
+                            Tải {e.kind === 'document' ? 'giấy tờ' : 'PDF'} · {e.id.slice(0, 8)}
+                          </a>
+                          <br />
+                          <small>
+                            Phiên bản {e.version}
+                            {e.mappingVersion ? ' · ánh xạ ' + e.mappingVersion : ''}
+                            {e.releaseVersion ? ' · hướng dẫn ' + e.releaseVersion : ''}
+                          </small>
+                        </p>
+                      ))}
+                    </details>
+                  )}
+                </div>
                 {!i.done && (
                   <button type="button" className="text-button" onClick={() => setTab(i.action)}>
                     Xem

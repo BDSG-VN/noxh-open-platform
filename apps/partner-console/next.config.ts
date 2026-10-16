@@ -2,6 +2,7 @@ import type { NextConfig } from 'next';
 const config: NextConfig = {
   transpilePackages: ['@noxh/ui', '@noxh/contracts'],
   poweredByHeader: false,
+  experimental: { cpus: 2 },
   async headers() {
     return [
       {

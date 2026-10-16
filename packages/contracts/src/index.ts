@@ -9,6 +9,10 @@ export * from './applications';
 export * from './operations';
 export * from './inventory';
 export * from './documents';
+export * from './tenancy';
+export * from './knowledge';
+export * from './notifications';
+export * from './channel-identity';
 export const ProjectSchema = z.object({
   id: z.uuid(),
   organizationId: z.uuid(),

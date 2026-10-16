@@ -5,6 +5,10 @@ import { Button } from '@noxh/ui';
 import { departmentLabels } from '@noxh/contracts';
 import ApplicationsAdmin from './applications-admin';
 import OperationsAdmin, { type OperationsStaff } from './operations-admin';
+import TenancyAdmin from './tenancy-admin';
+import KnowledgeAdmin from './knowledge-admin';
+import { PreparationChecklistAdmin } from './preparation-checklist-admin';
+import NotificationsAdmin from './notifications-admin';
 export default function StaffWorkspace({ staff }: { staff: OperationsStaff }) {
   const hasApplications = Boolean(
       staff.permissions?.some((p) =>
@@ -15,7 +19,32 @@ export default function StaffWorkspace({ staff }: { staff: OperationsStaff }) {
     hasOperations = Boolean(
       staff.permissions?.some((p) => ['workflow_read', 'records_read', 'finance_read'].includes(p)),
     );
+  const hasRecords = Boolean(staff.permissions?.includes('records_read'));
   const areas = [
+    ...(hasRecords
+      ? [
+          {
+            key: 'tenancy',
+            label: 'Hợp đồng và khoản thu',
+            description: 'Kiểm tra hợp đồng và quy trình bàn giao trong dự án được giao.',
+          },
+          {
+            key: 'notifications',
+            label: 'Thông báo khách hàng',
+            description: 'Thông báo trong dự án theo phạm vi khách đồng ý nhận.',
+          },
+          {
+            key: 'knowledge',
+            label: 'Tri thức hướng dẫn',
+            description: 'Soạn và rà soát nội dung trợ lý được phép tra cứu.',
+          },
+          {
+            key: 'checklists',
+            label: 'Danh mục hồ sơ',
+            description: 'Danh mục chuẩn bị giấy tờ và mẫu theo dự án.',
+          },
+        ]
+      : []),
     ...(hasApplications
       ? [
           {
@@ -146,6 +175,16 @@ export default function StaffWorkspace({ staff }: { staff: OperationsStaff }) {
               <InventoryAdmin projects={projects} staff={staff} />
             )}{' '}
             {active === 'applications' && hasApplications && <ApplicationsAdmin staff={staff} />}
+            {active === 'tenancy' && hasRecords && (
+              <TenancyAdmin projects={projects} staff={staff} />
+            )}
+            {active === 'notifications' && hasRecords && (
+              <NotificationsAdmin projects={projects} staff={staff} />
+            )}
+            {active === 'knowledge' && hasRecords && <KnowledgeAdmin projects={projects} />}
+            {active === 'checklists' && hasRecords && (
+              <PreparationChecklistAdmin projects={projects} staff={staff} />
+            )}
           </section>
         </>
       )}

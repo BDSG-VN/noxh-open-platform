@@ -1,11 +1,12 @@
 import { Controller, Get, Post, Body, Headers, Inject, Req } from '@nestjs/common';
 import type { Request } from 'express';
 import { PhoneService } from './phone-service';
+import { clientPeer } from './client-peer';
 @Controller('api/v1')
 export class PhoneController {
   constructor(@Inject(PhoneService) readonly service: PhoneService) {}
   @Post('auth/phone/request') request(@Body() body: unknown, @Req() req: Request) {
-    return this.service.request(body, req.socket.remoteAddress ?? 'unknown');
+    return this.service.request(body, clientPeer(req));
   }
   @Post('auth/phone/verify') verify(@Body() body: unknown) {
     return this.service.verify(body);

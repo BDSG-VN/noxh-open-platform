@@ -84,7 +84,7 @@
             }
           }
         },
-        "description": "Checks PostgreSQL, Redis, migrations 001–014 and executable Rust kernels. Does not certify provider connectivity, legal approval or production readiness."
+        "description": "Checks PostgreSQL, Redis, migrations 001–020 and executable Rust kernels. Does not certify legal approval, provider connectivity or production readiness."
       }
     },
     "/api/v1/projects": {
@@ -211,18 +211,20 @@
                       "const": false
                     },
                     "officialForms": {
-                      "const": "source-catalog-project-review"
+                      "const": "reviewed-mappings-deterministic-pdf"
                     },
                     "lottery": {
-                      "type": "boolean",
-                      "const": false
+                      "const": "synthetic-reviewed-cohorts"
                     },
                     "zaloTokenExchange": {
                       "type": "boolean",
-                      "const": false
+                      "description": "Deployment flag only; use auth/zalo/status for organization configuration."
                     },
                     "dvc": {
                       "const": "manual-handoff"
+                    },
+                    "zaloVerification": {
+                      "const": "server-appsecret-proof-organization-configurable"
                     }
                   }
                 }
@@ -235,17 +237,46 @@
     "/api/v1/auth/zalo/exchange": {
       "post": {
         "operationId": "exchangeZaloToken",
-        "description": "Blocked placeholder; no token accepted or session issued. Sprint 2 integrates trusted server verification.",
+        "description": "Challenge, provider token and separate consent required. Backend verifies graph.zalo.me/v2.0/me id with server HMAC appsecret_proof; client user ID/phone/name are rejected. Unlinked ID returns needsLink, never merges or creates a human account.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ZaloExchangeSchema"
+              }
+            }
+          }
+        },
         "responses": {
-          "501": {
-            "description": "Not implemented",
+          "201": {
+            "description": "Scoped result; development and synthetic gates still apply",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "type": "object"
                 }
               }
             }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
           }
         }
       }
@@ -4495,7 +4526,7 @@
       },
       "post": {
         "operationId": "askDossierAssistant",
-        "description": "Per-request consent; saved declaration excluded unless separately opted in. Bounded Responses API function tools prepare proposals; do not execute writes. Requires the current approved privacy notice consent and unrestricted processing. Refusal/withdrawal does not block reading or rights requests.",
+        "description": "Per-request consent; saved declaration excluded unless separately opted in. Bounded Responses API function tools prepare proposals; do not execute writes. Requires the current approved privacy notice consent and unrestricted processing. Refusal/withdrawal does not block reading or rights requests. Project-approved lexical retrieval returns revision/hash citations; reference ID validation does not verify semantic claims. Form proposal values are derived locally from saved declaration/current accepted clean extraction; conflicts and external attestations remain blank. Explicit single-use confirmation generates a draft PDF atomically with proposal consumption.",
         "parameters": [
           {
             "name": "id",
@@ -4517,7 +4548,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AiMessageWrite"
+                "$ref": "#/components/schemas/AiMessageSchema"
               }
             }
           }
@@ -9073,7 +9104,7 @@
     "/api/v1/admin/lotteries/priority-calculation": {
       "post": {
         "operationId": "calculatePriorityQuota",
-        "description": "",
+        "description": "Exact arithmetic for the five-group reference from the 18 May 2026 consolidated decree. Always returns policyReviewRequired=true and currentLawConformityVerified=false: post-1 July 2026 statutory changes, funding regime, applicability and rounding require independent legal review. This preview does not grant draw exemption or activate an allocation policy.",
         "security": [
           {
             "WorkforceBearer": []
@@ -20544,6 +20575,2471 @@
           }
         }
       }
+    },
+    "/api/v1/admin/knowledge/projects/{project}": {
+      "get": {
+        "operationId": "listProjectKnowledge",
+        "description": "Organization/project-scoped revision history. Private drafts are never exposed through citizen search.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      },
+      "post": {
+        "operationId": "draftProjectKnowledge",
+        "description": "Immutable encrypted revision with official source URL/hash and effective applicability. Supplied source hash and legal interpretation require independent human review.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KnowledgeDraftSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/knowledge/projects/{project}/{id}/review": {
+      "post": {
+        "operationId": "reviewProjectKnowledge",
+        "description": "Active project legal grant required; author cannot approve or revoke own text. No fallback to older revision after revocation.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "enum": ["approve", "revoke"]
+                  },
+                  "accepted": {
+                    "const": true
+                  }
+                },
+                "required": ["action", "accepted"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/dossiers/{id}/knowledge/search": {
+      "post": {
+        "operationId": "searchProjectKnowledge",
+        "description": "Owner-only deterministic lexical search in latest effective approved revisions. Missing scope includes general guidance only. No remote embeddings or public web search.",
+        "security": [
+          {
+            "CitizenBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KnowledgeSearchSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/projects/{project}/preparation-checklists": {
+      "get": {
+        "operationId": "listPreparationChecklists",
+        "description": "Scoped checklist revision history; checklist measures preparation, not legal eligibility.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      },
+      "post": {
+        "operationId": "draftPreparationChecklist",
+        "description": "Create immutable project preparation checklist; explicit document types and source form IDs.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreparationChecklistSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/projects/{project}/preparation-checklists/{id}/review": {
+      "post": {
+        "operationId": "reviewPreparationChecklist",
+        "description": "Independent project legal reviewer; obsolete or revoked checklist cannot fall back silently.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "enum": ["approve", "revoke"]
+                  },
+                  "accepted": {
+                    "const": true
+                  }
+                },
+                "required": ["action", "accepted"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/tenancy/projects/{project}/options": {
+      "get": {
+        "operationId": "getTenancyOptions",
+        "description": "Scoped synthetic approved application and unit options; never a sales/eligibility decision.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/tenancy/projects/{project}/contracts": {
+      "get": {
+        "operationId": "listTenancyContracts",
+        "description": "Project grants and active workforce membership required.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      },
+      "post": {
+        "operationId": "draftTenancyContract",
+        "description": "Synthetic draft only for matching approved application/mode/unit. Explicit integer VND installments and idempotency key; no invented legal rates or automatic signing.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenancyDraftSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/tenancy/projects/{project}/contracts/{id}": {
+      "get": {
+        "operationId": "getTenancyContract",
+        "description": "Scoped contract, manual reconciliation, installment and lifecycle history.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/tenancy/projects/{project}/contracts/{id}/review": {
+      "post": {
+        "operationId": "reviewTenancyContract",
+        "description": "Author-independent active legal reviewer approves/rejects the synthetic draft.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            },
+            "description": "Current version of the target resource; 0 for an absent initial configuration."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenancyReviewSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/tenancy/projects/{project}/contracts/{id}/payments": {
+      "post": {
+        "operationId": "recordTenancyPayment",
+        "description": "Record synthetic manual evidence; no payment-provider charge or statutory invoice.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            },
+            "description": "Current version of the target resource; 0 for an absent initial configuration."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenancyPaymentSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/tenancy/projects/{project}/payments/{id}/review": {
+      "post": {
+        "operationId": "reconcileTenancyPayment",
+        "description": "Independent finance_post grant; pending/reconciled sums cannot overpay one due.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            },
+            "description": "Current version of the target resource; 0 for an absent initial configuration."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenancyReviewSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/tenancy/projects/{project}/contracts/{id}/actions": {
+      "post": {
+        "operationId": "proposeTenancyAction",
+        "description": "Propose synthetic handover/extension/termination/return. Unit remains reserved until separately reviewed return.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            },
+            "description": "Current version of the target resource; 0 for an absent initial configuration."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenancyActionSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/tenancy/projects/{project}/actions/{id}/review": {
+      "post": {
+        "operationId": "reviewTenancyAction",
+        "description": "Independent records_review grant and owner-confirmed action; rejects stale lifecycle snapshots.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            },
+            "description": "Current version of the target resource; 0 for an absent initial configuration."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenancyReviewSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/citizen/tenancy/contracts": {
+      "get": {
+        "operationId": "listMyTenancyContracts",
+        "description": "Only current owner contracts; private preparation never grants access to another customer.",
+        "security": [
+          {
+            "CitizenBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/citizen/tenancy/contracts/{id}": {
+      "get": {
+        "operationId": "getMyTenancyContract",
+        "description": "Owner-only synthetic contract and obligations.",
+        "security": [
+          {
+            "CitizenBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/citizen/tenancy/contracts/{id}/confirm": {
+      "post": {
+        "operationId": "confirmMyTenancyContract",
+        "description": "Separate confirmation of reading a synthetic draft; not a digital or legally binding signature.",
+        "security": [
+          {
+            "CitizenBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            },
+            "description": "Current version of the target resource; 0 for an absent initial configuration."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenancyConfirmationSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/citizen/tenancy/actions/{id}/confirm": {
+      "post": {
+        "operationId": "confirmMyTenancyAction",
+        "description": "Owner confirmation before independent lifecycle review.",
+        "security": [
+          {
+            "CitizenBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            },
+            "description": "Current version of the target resource; 0 for an absent initial configuration."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenancyConfirmationSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/audit/checkpoints": {
+      "get": {
+        "operationId": "getAuditCheckpoints",
+        "description": "Pinned public key status and locally stored checkpoint metadata; same-host storage is not evidence of independent custody.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/audit/checkpoints/proposals": {
+      "post": {
+        "operationId": "proposeAuditCheckpoint",
+        "description": "Freeze exact organization cursor for offline Ed25519 signer. API never receives a signing private key.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "signerId": {
+                    "type": "string"
+                  },
+                  "requestId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": ["signerId", "requestId"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/audit/checkpoints/proposals/{id}/evidence": {
+      "get": {
+        "operationId": "getAuditCheckpointEvidence",
+        "description": "Bounded ordered page. Verify all pages from genesis through the signed cursor; a valid prefix is insufficient.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "afterSequence",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]{0,18})$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/audit/checkpoints/imports": {
+      "post": {
+        "operationId": "importAuditCheckpoint",
+        "description": "Import exact signed proposal after signature, active pinned organization signer and full Rust prefix verification; importer differs from proposer.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignedAuditCheckpoint"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/audit/checkpoints/verify": {
+      "post": {
+        "operationId": "verifyAuditCheckpoint",
+        "description": "Verify full bounded segments to a supplied signed trusted cursor; never asserts this is the latest off-host checkpoint.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignedAuditCheckpoint"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/notifications/projects/{project}/workspace": {
+      "get": {
+        "operationId": "getNotificationWorkspace",
+        "description": "Scoped templates, explicit channel configuration, synthetic approved application choices and delivery histories.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/notifications/projects/{project}/templates": {
+      "post": {
+        "operationId": "draftNotificationTemplate",
+        "description": "Immutable encrypted template; author differs from active project reviewer. No external send.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationTemplateSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/notifications/projects/{project}/templates/{id}/review": {
+      "post": {
+        "operationId": "reviewNotificationTemplate",
+        "description": "Append-only approval/rejection/revocation evidence; active records_review grant and separation of duties.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            },
+            "description": "Current version of the target resource; 0 for an absent initial configuration."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationReviewSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/notifications/projects/{project}/queue": {
+      "post": {
+        "operationId": "queueNotification",
+        "description": "Explicit target application, current customer and exact active purpose/channel/privacy consent are bound immutably. Regrant cannot revive a revoked queued message.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationQueueSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/notifications/projects/{project}/messages/{id}/deliver": {
+      "post": {
+        "operationId": "deliverNotification",
+        "description": "Explicit operator action with version. In-app delivery is local; external provider must be operator-installed, enabled and idempotent. Unknown outcome is terminal, no automatic retry.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            },
+            "description": "Current version of the target resource; 0 for an absent initial configuration."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationAcceptedSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/notifications/projects/{project}/transports": {
+      "post": {
+        "operationId": "configureNotificationTransport",
+        "description": "Operator-installed adapter selection only, no arbitrary endpoints/credentials accepted from browser; outside delivery defaults disabled.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            },
+            "description": "Current version of the target resource; 0 for an absent initial configuration."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationTransportSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/citizen/notifications/workspace": {
+      "get": {
+        "operationId": "getMyNotificationWorkspace",
+        "description": "Owner-only inbox/preferences. Still accessible for reading/withdrawal after general processing consent is withdrawn.",
+        "security": [
+          {
+            "CitizenBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/citizen/notifications/projects/{project}/preferences": {
+      "post": {
+        "operationId": "changeMyNotificationPreference",
+        "description": "Explicit separate purpose/channel choice. Enabling requires current processing consent; withdrawal never requires re-consent.",
+        "security": [
+          {
+            "CitizenBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            },
+            "description": "Current version of the target resource; 0 for an absent initial configuration."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationPreferenceSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/citizen/notifications/messages/{id}/read": {
+      "post": {
+        "operationId": "acknowledgeMyNotification",
+        "description": "Owner acknowledgment of reading, not proof of legal service.",
+        "security": [
+          {
+            "CitizenBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            },
+            "description": "Current version of the target resource; 0 for an absent initial configuration."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationAcceptedSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/settings/zalo-miniapp": {
+      "get": {
+        "operationId": "getZaloIdentitySettings",
+        "description": "Organization administrator only; key presence is returned but secret never is.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      },
+      "put": {
+        "operationId": "configureZaloIdentity",
+        "description": "Organization-specific encrypted ZaloAppID/AppSecret configuration, disabled by default. Changes revoke all Mini App sessions and challenges; live AppID-secret pairing still needs provider-console acceptance.",
+        "security": [
+          {
+            "WorkforceBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            },
+            "description": "Current version of the target resource; 0 for an absent initial configuration."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ZaloIdentitySettingsSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/zalo/status": {
+      "get": {
+        "operationId": "getZaloIdentityStatus",
+        "description": "Configuration/deployment enabled state only, no secret or legal identity claim.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/zalo/challenges": {
+      "post": {
+        "operationId": "createZaloExchangeChallenge",
+        "description": "Rate-limited random single-use login challenge, bound to organization and peer.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/link/start": {
+      "post": {
+        "operationId": "startZaloIdentityLink",
+        "description": "Requires the same fresh phone-OTP session (<=5min), verified provider token, exact app/config and explicit intent. No automatic matching by phone/name.",
+        "security": [
+          {
+            "CitizenBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ZaloLinkStartSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/link/confirm": {
+      "post": {
+        "operationId": "confirmZaloIdentityLink",
+        "description": "Re-verifies provider proof and exact same phone session/challenge/token/config; conflict across accounts is rejected, never merged.",
+        "security": [
+          {
+            "CitizenBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ZaloExchangeSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Scoped result; development and synthetic gates still apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Scope, grant, consent or separation of duties denied"
+          },
+          "404": {
+            "description": "Resource absent in caller scope"
+          },
+          "409": {
+            "description": "Stale, conflicting, inactive or replayed transition"
+          },
+          "503": {
+            "description": "Required provider, key, dependency or Rust kernel unavailable"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -26627,6 +29123,827 @@
           }
         },
         "required": ["status", "engine", "reason"]
+      },
+      "KnowledgeDraftSchema": {
+        "type": "object",
+        "properties": {
+          "recordId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 200
+          },
+          "content": {
+            "type": "string",
+            "minLength": 30,
+            "maxLength": 24000
+          },
+          "sourceUrl": {
+            "type": "string",
+            "maxLength": 2048,
+            "format": "uri"
+          },
+          "sourceHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "legalBasis": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 500
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["all", "buy", "rent-buy", "rent"]
+          },
+          "group": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 13
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "effectiveTo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reviewedSource": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "title",
+          "content",
+          "sourceUrl",
+          "sourceHash",
+          "legalBasis",
+          "mode",
+          "group",
+          "effectiveFrom",
+          "effectiveTo",
+          "reviewedSource"
+        ],
+        "additionalProperties": false
+      },
+      "KnowledgeSearchSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "mode": {
+            "default": null,
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": ["buy", "rent-buy", "rent"]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "group": {
+            "default": null,
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 13
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": ["query", "mode", "group"],
+        "additionalProperties": false
+      },
+      "PreparationChecklistSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 200
+          },
+          "instructions": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 3000
+          },
+          "sourceReference": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 1000
+          },
+          "effectiveFrom": {
+            "type": "string"
+          },
+          "effectiveTo": {
+            "type": ["string", "null"]
+          },
+          "documentTypes": {
+            "minItems": 1,
+            "maxItems": 6,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["any", "identity", "housing", "income", "subject", "attested-form", "other"]
+            }
+          },
+          "formIds": {
+            "minItems": 1,
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]{1,100}$"
+            }
+          }
+        },
+        "required": [
+          "title",
+          "instructions",
+          "sourceReference",
+          "effectiveFrom",
+          "effectiveTo",
+          "documentTypes",
+          "formIds"
+        ],
+        "additionalProperties": false
+      },
+      "TenancyDraftSchema": {
+        "type": "object",
+        "properties": {
+          "applicationId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "unitId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["buy", "rent", "rent-buy"]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 180
+          },
+          "startsOn": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "endsOn": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "terms": {
+            "type": "string",
+            "minLength": 30,
+            "maxLength": 12000
+          },
+          "basis": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 3000
+          },
+          "evidenceHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "handoverRequiredVnd": {
+            "type": "string",
+            "pattern": "^(0|[1-9]\\d{0,17})$"
+          },
+          "schedule": {
+            "minItems": 1,
+            "maxItems": 240,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "dueOn": {
+                  "type": "string",
+                  "format": "date",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                },
+                "label": {
+                  "type": "string",
+                  "minLength": 2,
+                  "maxLength": 160
+                },
+                "amountVnd": {
+                  "type": "string",
+                  "pattern": "^(0|[1-9]\\d{0,17})$"
+                }
+              },
+              "required": ["dueOn", "label", "amountVnd"],
+              "additionalProperties": false
+            }
+          },
+          "synthetic": {
+            "type": "boolean",
+            "const": true
+          },
+          "idempotencyKey": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        },
+        "required": [
+          "applicationId",
+          "unitId",
+          "mode",
+          "title",
+          "startsOn",
+          "endsOn",
+          "terms",
+          "basis",
+          "evidenceHash",
+          "handoverRequiredVnd",
+          "schedule",
+          "synthetic",
+          "idempotencyKey"
+        ],
+        "additionalProperties": false
+      },
+      "TenancyReviewSchema": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": ["approve", "reject"]
+          },
+          "accepted": {
+            "type": "boolean",
+            "const": true
+          },
+          "note": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 2000
+          }
+        },
+        "required": ["decision", "accepted", "note"],
+        "additionalProperties": false
+      },
+      "TenancyPaymentSchema": {
+        "type": "object",
+        "properties": {
+          "dueId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "amountVnd": {
+            "type": "string",
+            "pattern": "^(0|[1-9]\\d{0,17})$"
+          },
+          "reference": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 200
+          },
+          "evidenceHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "idempotencyKey": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "synthetic": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "dueId",
+          "amountVnd",
+          "reference",
+          "evidenceHash",
+          "idempotencyKey",
+          "synthetic"
+        ],
+        "additionalProperties": false
+      },
+      "TenancyActionSchema": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["handover", "extend", "terminate", "return"]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 3000
+          },
+          "evidenceHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "newEndsOn": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "schedule": {
+            "default": [],
+            "maxItems": 240,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "dueOn": {
+                  "type": "string",
+                  "format": "date",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                },
+                "label": {
+                  "type": "string",
+                  "minLength": 2,
+                  "maxLength": 160
+                },
+                "amountVnd": {
+                  "type": "string",
+                  "pattern": "^(0|[1-9]\\d{0,17})$"
+                }
+              },
+              "required": ["dueOn", "label", "amountVnd"],
+              "additionalProperties": false
+            }
+          },
+          "idempotencyKey": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "synthetic": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": ["kind", "reason", "evidenceHash", "schedule", "idempotencyKey", "synthetic"],
+        "additionalProperties": false
+      },
+      "TenancyConfirmationSchema": {
+        "type": "object",
+        "properties": {
+          "accepted": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": ["accepted"],
+        "additionalProperties": false
+      },
+      "AiMessageSchema": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "accepted": {
+            "type": "boolean",
+            "const": true
+          },
+          "shareDeclaration": {
+            "type": "boolean"
+          },
+          "mode": {
+            "default": null,
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": ["buy", "rent-buy", "rent"]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "group": {
+            "default": null,
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 13
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": ["message", "accepted", "shareDeclaration", "mode", "group"],
+        "additionalProperties": false
+      },
+      "AiFormProposalSchema": {
+        "type": "object",
+        "properties": {
+          "mappingId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "values": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "type": "string",
+              "maxLength": 1000
+            }
+          },
+          "evidenceIds": {
+            "maxItems": 30,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          "warnings": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 300
+            }
+          },
+          "scope": {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "type": "string",
+                "enum": ["buy", "rent-buy", "rent"]
+              },
+              "group": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 13
+              }
+            },
+            "required": ["mode", "group"],
+            "additionalProperties": false
+          },
+          "preparationHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "mappingId",
+          "title",
+          "values",
+          "evidenceIds",
+          "warnings",
+          "scope",
+          "preparationHash"
+        ],
+        "additionalProperties": false
+      },
+      "ZaloIdentitySettingsSchema": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "appId": {
+            "type": "string",
+            "pattern": "^[0-9]{1,30}$"
+          },
+          "appSecret": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 512
+          }
+        },
+        "required": ["enabled", "appId"],
+        "additionalProperties": false
+      },
+      "ZaloExchangeSchema": {
+        "type": "object",
+        "properties": {
+          "challengeId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "challengeProof": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          },
+          "accessToken": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 4096
+          },
+          "accepted": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": ["challengeId", "challengeProof", "accessToken", "accepted"],
+        "additionalProperties": false
+      },
+      "ZaloLinkStartSchema": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 4096
+          },
+          "accepted": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": ["accessToken", "accepted"],
+        "additionalProperties": false
+      },
+      "NotificationTemplateSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 160
+          },
+          "channel": {
+            "type": "string",
+            "enum": ["in_app", "email", "zalo"]
+          },
+          "purpose": {
+            "type": "string",
+            "enum": ["transactional", "marketing"]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 200
+          },
+          "body": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 3000
+          },
+          "basis": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 2000
+          },
+          "idempotencyKey": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        },
+        "required": ["name", "channel", "purpose", "title", "body", "basis", "idempotencyKey"],
+        "additionalProperties": false
+      },
+      "NotificationReviewSchema": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": ["approve", "reject", "revoke"]
+          },
+          "accepted": {
+            "type": "boolean",
+            "const": true
+          },
+          "note": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 1000
+          }
+        },
+        "required": ["decision", "accepted", "note"],
+        "additionalProperties": false
+      },
+      "NotificationQueueSchema": {
+        "type": "object",
+        "properties": {
+          "templateId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "applicationId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "reference": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "idempotencyKey": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        },
+        "required": ["templateId", "applicationId", "reference", "idempotencyKey"],
+        "additionalProperties": false
+      },
+      "NotificationPreferenceSchema": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "enum": ["in_app", "email", "zalo"]
+          },
+          "purpose": {
+            "type": "string",
+            "enum": ["transactional", "marketing"]
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "accepted": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": ["channel", "purpose", "enabled", "accepted"],
+        "additionalProperties": false
+      },
+      "NotificationTransportSchema": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "enum": ["email", "zalo"]
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "adapterId": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{2,60}$"
+          },
+          "maxAttempts": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3
+          },
+          "accepted": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": ["channel", "enabled", "adapterId", "maxAttempts", "accepted"],
+        "additionalProperties": false
+      },
+      "NotificationAcceptedSchema": {
+        "type": "object",
+        "properties": {
+          "accepted": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": ["accepted"],
+        "additionalProperties": false
+      },
+      "AuditCursor": {
+        "type": "object",
+        "properties": {
+          "sequence": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]{0,18})$"
+          },
+          "head": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "eventCount": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]{0,18})$"
+          },
+          "sequenceDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": ["sequence", "head", "eventCount", "sequenceDigest"],
+        "additionalProperties": false
+      },
+      "AuditCheckpointProposal": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "const": "noxh-audit-checkpoint-v1"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "organizationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "signerId": {
+            "type": "string"
+          },
+          "requestedBy": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "previousCheckpointHash": {
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cursor": {
+            "$ref": "#/components/schemas/AuditCursor"
+          }
+        },
+        "required": [
+          "version",
+          "id",
+          "organizationId",
+          "signerId",
+          "requestedBy",
+          "createdAt",
+          "previousCheckpointHash",
+          "cursor"
+        ],
+        "additionalProperties": false
+      },
+      "SignedAuditCheckpoint": {
+        "type": "object",
+        "properties": {
+          "proposal": {
+            "$ref": "#/components/schemas/AuditCheckpointProposal"
+          },
+          "signature": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{86}$"
+          }
+        },
+        "required": ["proposal", "signature"],
+        "additionalProperties": false
       }
     },
     "securitySchemes": {

@@ -1,3 +1,19 @@
+# Bằng chứng đợt hoàn thiện — 16/10/2026
+
+Bản phát triển trên nhánh `codex/housing-completion`, migration 001–020. Các kết quả sau đã chạy trên mã tích hợp; không thay nghiệm thu provider, pháp lý hoặc production.
+
+- ESLint/Prettier toàn kho và typecheck 10 gói (13 tác vụ phụ thuộc) qua. Build production cuối và kiểm tra giao diện đang được chốt riêng, chưa suy ra từ typecheck.
+- `pnpm test`: **221 Vitest cases** (trong đó API **177/177**), **24 kết quả Node test** đều qua. API chạy một worker; kiểm tra loopback dùng quyền listener. Bao gồm toàn bộ hành trình Mini App qua AppModule/controller/CORS/privacy thật, stale/cross-owner/cross-dossier, ZIP đồng thời với sửa bản khai, AI hash/phạm vi/thu hồi consent, tenancy/notification và checkpoint.
+- `cargo test --workspace --locked --offline`: **35 test qua** trên toolchain 1.99.0; `cargo fmt --all -- --check` qua. Ba binary release được build và các bài API gọi Rust thật, gồm phân trang trên 10.000 sự kiện. CLI ký/kiểm Ed25519 giữ giới hạn 15 giây mỗi child; ngân sách tổng của bài kiểm 5 child được tách khỏi giới hạn từng process.
+- Python worker: **3 test qua** trên Python 3.11.15; CI vẫn dùng Python 3.12. Không thay runtime Python hoặc nâng dependency trong đợt này.
+- OpenAPI 3.1/generated operations, secret-pattern gate và hash/giấy phép/độ phủ ký tự tiếng Việt của bốn trọng lượng font đều qua. Đây là kiểm tra nguồn, không phải pentest hay kiểm toán bảo mật.
+- Khôi phục native: PostgreSQL **17.6**, **20 migration**, **1 object tổng hợp**, **1 sự kiện audit có checkpoint ký**. Capture → plan → restore vào database mới → kiểm inventory/config/migration/Rust → dọn database đã qua; tamper bị từ chối trước restore. Không khôi phục đè hệ thống đang chạy, không import S3/Keycloak thật hoặc chứng minh custody/RPO/RTO.
+- Kho pháp lý: **10 PDF nguồn, 16 mẫu trích** được kiểm hash/trang; 15 mẫu cũ giữ nguyên byte. Mẫu BQP mới chờ duyệt chuyên ngành/dự án; nguồn BCA cũ được đánh dấu lịch sử/chưa xác minh hiện hành. Đối chiếu và các khoảng trống nằm trong [báo cáo nguồn](LEGAL-COVERAGE-20261016.md).
+
+Identity/OA/OpenAI/antivirus/object storage bên ngoài trong hành trình Mini App dùng test-double có nhãn tổng hợp; không có token provider thật, giấy tờ người thật hoặc thông báo trả phí. CORS/PrivacyGuard/controller/service/PDF và các processor Rust được chạy thực trong phạm vi kiểm tra. Chưa đồng bộ API cơ quan nhà nước, ký/thu tiền/bốc thăm thật, kết luận nhóm 13 hoặc tự coi các nhánh vốn có cùng quy trình. Các điều kiện còn mở ở [ma trận](IMPLEMENTATION-MATRIX.md).
+
+---
+
 # Bằng chứng v0.5 — bản tích hợp (2026-10-15)
 
 Đây là kiểm tra phát triển bằng dữ liệu giả lập, không phải chứng nhận production/pháp lý. CI bản tích hợp sẽ được ghi theo commit sau khi hoàn tất; kết quả v0.4 phía dưới chỉ chứng minh phiên bản lịch sử đó.

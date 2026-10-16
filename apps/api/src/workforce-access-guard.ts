@@ -21,6 +21,11 @@ export class WorkforceAccessGuard implements CanActivate {
     if (path === '/api/v1/admin/logout' && request.method === 'POST') return true;
     if (path.startsWith('/api/v1/admin/operations/')) return true;
     if (path.startsWith('/api/v1/admin/inventory/')) return true;
+    if (path.startsWith('/api/v1/admin/tenancy/')) return true;
+    if (path.startsWith('/api/v1/admin/knowledge/')) return true;
+    if (path.startsWith('/api/v1/admin/notifications/')) return true;
+    if (/^\/api\/v1\/admin\/projects\/[a-f0-9-]{36}\/preparation-checklists(?:\/|$)/.test(path))
+      return true;
     if (path === '/api/v1/admin/applications' || path.startsWith('/api/v1/admin/applications/'))
       return true;
     throw new ForbiddenException('Nhân viên chỉ được truy cập phân hệ và dự án đã được cấp quyền');
