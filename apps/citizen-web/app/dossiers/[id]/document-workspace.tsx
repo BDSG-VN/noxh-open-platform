@@ -340,7 +340,7 @@ export function DocumentWorkspace({
                 ),
               )
             }
-            useFields={(fields) => {
+            onUseFields={(fields) => {
               setValues((v) => ({
                 ...v,
                 ...Object.fromEntries(fields.map((f) => [f.key, f.value])),
@@ -556,12 +556,12 @@ function ExtractionReview({
   value: x,
   busy,
   accept,
-  useFields,
+  onUseFields,
 }: {
   value: Extraction;
   busy: boolean;
   accept: (fields: ExtractionField[]) => void;
-  useFields: (fields: ExtractionField[]) => void;
+  onUseFields: (fields: ExtractionField[]) => void;
 }) {
   const [fields, setFields] = useState(x.fields),
     [checked, setChecked] = useState<string[]>([]);
@@ -626,7 +626,7 @@ function ExtractionReview({
         </div>
       ))}
       {x.accepted_at ? (
-        <Button type="button" onClick={() => useFields(fields)}>
+        <Button type="button" onClick={() => onUseFields(fields)}>
           Dùng dữ liệu đã kiểm tra để điền mẫu
         </Button>
       ) : (
