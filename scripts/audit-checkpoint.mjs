@@ -81,7 +81,11 @@ function kernel(payload) {
   return output;
 }
 try {
-  protocol = require('../apps/api/dist/audit-checkpoint-protocol.js');
+  try {
+    protocol = require('../apps/api/dist/audit-checkpoint-protocol.js');
+  } catch {
+    fail('API_BUILD_REQUIRED');
+  }
   const input = args();
   if (input.mode === 'sign') {
     if (!isAbsolute(input['private-key-file'])) fail('PRIVATE_KEY_ABSOLUTE_PATH_REQUIRED');
@@ -178,10 +182,14 @@ try {
       }) + '\n',
     );
   }
-} catch {
-  // Do not reflect keys, paths, event metadata or provider/process diagnostics.
+} catch (error) {
+  // Only this tool's own reason codes are reported; never keys, paths, event metadata or
+  // provider/process diagnostics (parser and system errors stay generic).
+  const code = error instanceof Error && /^[A-Z_]{3,60}$/.test(error.message) ? error.message : '';
   process.stderr.write(
-    'Audit checkpoint operation failed; inspect configuration and private evidence.\n',
+    'Audit checkpoint operation failed' +
+      (code ? ' (' + code + ')' : '') +
+      '; inspect configuration and private evidence.\n',
   );
   process.exitCode = 1;
 }

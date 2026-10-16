@@ -52,7 +52,8 @@ async function main() {
   process.once('SIGTERM', () => server.close());
   process.once('SIGINT', () => server.close());
 }
-main().catch(() => {
-  console.error('Worker startup failed');
+main().catch((e: unknown) => {
+  const cause = e instanceof Error ? e.name + ': ' + e.message : 'unknown';
+  console.error('Worker startup failed (' + cause.slice(0, 300) + ')');
   process.exitCode = 1;
 });

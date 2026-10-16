@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
+import { lstat, readFile } from 'node:fs/promises';
 const files = execFileSync(
   'git',
   ['ls-files', '--cached', '--others', '--exclude-standard', '-z'],
@@ -20,6 +20,8 @@ for (const file of files) {
     failures++;
     continue;
   }
+  // Symlinks and directories (e.g. a linked build target) are not source text to scan.
+  if (!(await lstat(file)).isFile()) continue;
   const content = await readFile(file, 'utf8');
   if (patterns.some((p) => p.test(content))) {
     console.error(`Possible credential in ${file}; value redacted`);

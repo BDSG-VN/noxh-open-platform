@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
@@ -124,7 +125,15 @@ export class InternalFileService {
         await event(q, s, 'internal-file.uploaded', id);
       });
     } catch (e) {
-      await this.storage.remove(key).catch(() => {});
+      // Compensating cleanup; an orphaned object is reported for operators, not hidden.
+      await this.storage
+        .remove(key)
+        .catch((cleanup: unknown) =>
+          new Logger('internal-file').warn(
+            'Orphaned upload object after failed write: ' +
+              (cleanup instanceof Error ? cleanup.name : 'unknown'),
+          ),
+        );
       throw e;
     }
     await this.scan(s, project, id);

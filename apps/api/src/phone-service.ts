@@ -24,6 +24,7 @@ export class ZaloDelivery {
     try {
       const response = await fetch('https://business.openapi.zalo.me/message/template', {
         method: 'POST',
+        redirect: 'error',
         headers: { 'Content-Type': 'application/json', access_token: settings.accessToken },
         body: JSON.stringify({
           phone,
@@ -36,8 +37,23 @@ export class ZaloDelivery {
         }),
         signal: AbortSignal.timeout(8000),
       });
-      const value = (await response.json()) as { error?: number };
-      if (!response.ok || value.error !== 0) throw new Error('provider rejected');
+      // Bounded read: the provider's acknowledgement is tiny; stop at 64 KiB instead of buffering.
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('empty');
+      const chunks: Uint8Array[] = [];
+      let size = 0;
+      for (;;) {
+        const chunk = await reader.read();
+        if (chunk.done) break;
+        size += chunk.value.byteLength;
+        if (size > 65536) {
+          await reader.cancel();
+          throw new Error('oversize');
+        }
+        chunks.push(chunk.value);
+      }
+      const value = JSON.parse(Buffer.concat(chunks).toString('utf8')) as { error?: number };
+      if (!response.ok || value?.error !== 0) throw new Error('provider rejected');
     } catch {
       throw new ServiceUnavailableException(
         'Không gửi được mã qua Zalo. Hãy thử lại sau hoặc liên hệ chủ đầu tư.',

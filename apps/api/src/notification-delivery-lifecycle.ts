@@ -9,6 +9,7 @@ import {
   emptyDeliveryMetrics,
   type NotificationDeliveryMetrics,
 } from './notification-delivery-service';
+import { WorkerBackoff } from './worker-backoff';
 /** Worker loop for external deliveries; identical fail-closed rules to the automation lifecycle. */
 @Injectable()
 export class NotificationDeliveryLifecycle implements OnApplicationBootstrap, OnModuleDestroy {
@@ -16,6 +17,7 @@ export class NotificationDeliveryLifecycle implements OnApplicationBootstrap, On
   private stopped = false;
   private inFlight: Promise<void> | undefined;
   private last: NotificationDeliveryMetrics = emptyDeliveryMetrics();
+  private readonly backoff = new WorkerBackoff();
   onError = false;
   constructor(@Inject(NotificationDeliveryService) readonly service: NotificationDeliveryService) {}
   onApplicationBootstrap() {
@@ -25,16 +27,18 @@ export class NotificationDeliveryLifecycle implements OnApplicationBootstrap, On
     this.timer.unref();
   }
   tick() {
-    if (this.stopped || this.inFlight) return;
+    if (this.stopped || this.inFlight || !this.backoff.due()) return;
     this.inFlight = this.service
       .runConfiguredBatch(() => !this.stopped)
       .then((value) => {
         this.last = value;
         this.onError = false;
+        this.backoff.succeeded();
       })
       .catch((e: unknown) => {
         // Surface the failure class only; messages could carry connection or provider details.
         this.onError = true;
+        this.backoff.failed();
         console.error(
           JSON.stringify({
             event: 'notification.delivery-batch-failed',

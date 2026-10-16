@@ -30,3 +30,23 @@ it('uses fixed official transport and accepts only explicit provider success', a
     new ZaloDelivery().send(settings, '84900000000', '123456', 'test'),
   ).rejects.toMatchObject({ status: 503 });
 });
+it('never follows redirects and bounds the provider response it reads', async () => {
+  const settings = {
+    accessToken: 'synthetic-token',
+    appSecret: 'synthetic-secret',
+    templateId: 'test-template',
+    otpParameter: 'otp',
+  };
+  const fetcher = vi
+    .fn()
+    .mockResolvedValue(
+      new Response('{"error":0,"pad":"' + 'x'.repeat(70000) + '"}', { status: 200 }),
+    );
+  vi.stubGlobal('fetch', fetcher);
+  await expect(
+    new ZaloDelivery().send(settings, '84900000000', '123456', 'test'),
+  ).rejects.toMatchObject({ status: 503 });
+  const [, init] = fetcher.mock.calls[0]!;
+  expect(init.redirect).toBe('error');
+  expect(init.signal).toBeInstanceOf(AbortSignal);
+});

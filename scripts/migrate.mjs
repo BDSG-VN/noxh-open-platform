@@ -30,9 +30,14 @@ try {
     console.log(`Applied migration ${version}`);
   }
   await c.query('COMMIT');
-} catch {
-  await c.query('ROLLBACK');
-  console.error('Migration failed; transaction rolled back');
+} catch (e) {
+  await c.query('ROLLBACK').catch(() => {});
+  // PostgreSQL error class/message and the failing statement position; the SQL text is not echoed.
+  const cause =
+    e instanceof Error
+      ? `${e.name}: ${e.message}${e.position ? ' at ' + e.position : ''}`
+      : 'unknown';
+  console.error('Migration failed; transaction rolled back (' + cause + ')');
   process.exitCode = 1;
 } finally {
   c.release();

@@ -14,10 +14,11 @@ try {
   }
   await c.query('COMMIT');
   console.log('Synthetic fixtures installed');
-} catch {
-  await c.query('ROLLBACK');
+} catch (e) {
+  await c.query('ROLLBACK').catch(() => {});
   process.exitCode = 1;
-  console.error('Seed failed; transaction rolled back');
+  const cause = e instanceof Error ? `${e.name}: ${e.message}` : 'unknown';
+  console.error('Seed failed; transaction rolled back (' + cause + ')');
 } finally {
   c.release();
   await p.end();

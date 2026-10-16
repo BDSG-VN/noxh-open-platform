@@ -8,6 +8,7 @@ import {
   NotificationAutomationService,
   type NotificationAutomationBatch,
 } from './notification-automation-service';
+import { WorkerBackoff } from './worker-backoff';
 @Injectable()
 export class NotificationAutomationLifecycle implements OnApplicationBootstrap, OnModuleDestroy {
   private timer: ReturnType<typeof setInterval> | undefined;
@@ -15,6 +16,7 @@ export class NotificationAutomationLifecycle implements OnApplicationBootstrap, 
   private inFlight: Promise<void> | undefined;
   private last: NotificationAutomationBatch = { claimed: 0, delivered: 0, skipped: 0, failed: 0 };
   private total = 0;
+  private readonly backoff = new WorkerBackoff();
   onError = false;
   constructor(
     @Inject(NotificationAutomationService) readonly service: NotificationAutomationService,
@@ -27,16 +29,25 @@ export class NotificationAutomationLifecycle implements OnApplicationBootstrap, 
     this.timer.unref();
   }
   tick() {
-    if (this.stopped || this.inFlight) return;
+    if (this.stopped || this.inFlight || !this.backoff.due()) return;
     this.inFlight = this.service
       .runConfiguredBatch(() => !this.stopped)
       .then((value) => {
         this.last = value;
         this.total += value.delivered + value.skipped;
         this.onError = false;
+        this.backoff.succeeded();
       })
-      .catch(() => {
+      .catch((e: unknown) => {
+        // Failure class only; messages could carry connection details.
         this.onError = true;
+        this.backoff.failed();
+        console.error(
+          JSON.stringify({
+            event: 'notification.automation-batch-failed',
+            error: e instanceof Error ? e.name : 'unknown',
+          }),
+        );
       })
       .finally(() => {
         this.inFlight = undefined;

@@ -116,3 +116,41 @@ it('reports failure without claiming delivery and recovers on a later successful
   });
   await lifecycle.onModuleDestroy();
 });
+
+it('backs off after consecutive batch failures, logs the error class and recovers', async () => {
+  vi.useFakeTimers();
+  const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+  const { service, lifecycle } = fixture();
+  service.runConfiguredBatch.mockRejectedValue(new Error('connection refused: secret-host'));
+  lifecycle.onApplicationBootstrap();
+  try {
+    // Ticks every 5s: attempts at 5s, 10s, then 20s and 40s (doubling gap, capped), not every tick.
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(service.runConfiguredBatch).toHaveBeenCalledTimes(1);
+    expect(lifecycle.status().error).toBe(true);
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(service.runConfiguredBatch).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(service.runConfiguredBatch).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(service.runConfiguredBatch).toHaveBeenCalledTimes(3);
+    await vi.advanceTimersByTimeAsync(15000);
+    expect(service.runConfiguredBatch).toHaveBeenCalledTimes(3);
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(service.runConfiguredBatch).toHaveBeenCalledTimes(4);
+    const logged = error.mock.calls.map((c) => String(c[0])).join('\n');
+    expect(logged).toContain('notification.automation-batch-failed');
+    expect(logged).toContain('Error');
+    expect(logged).not.toContain('secret-host');
+    service.runConfiguredBatch.mockResolvedValue(empty());
+    await vi.advanceTimersByTimeAsync(40000);
+    expect(lifecycle.status().error).toBe(false);
+    // Back to the normal cadence once a batch succeeds.
+    const calls = service.runConfiguredBatch.mock.calls.length;
+    await vi.advanceTimersByTimeAsync(10000);
+    expect(service.runConfiguredBatch.mock.calls.length).toBe(calls + 2);
+  } finally {
+    await lifecycle.onModuleDestroy();
+    error.mockRestore();
+  }
+});
