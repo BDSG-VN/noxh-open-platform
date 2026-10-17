@@ -10,7 +10,7 @@ export default async function PrivacyPage() {
     if (!r.ok) throw new Error();
     const data = await r.json();
     return (
-      <main className="container section">
+      <main id="noi-dung" tabIndex={-1} className="container section">
         <Brand />
         <p>
           <a href={token ? '/dashboard' : '/login'}>← {token ? 'Bảng điều khiển' : 'Đăng nhập'}</a>
@@ -23,7 +23,7 @@ export default async function PrivacyPage() {
     );
   } catch {
     return (
-      <main className="container section">
+      <main id="noi-dung" tabIndex={-1} className="container section">
         <h1>Quyền riêng tư</h1>
         <p role="alert">
           Chưa tải được thông báo. Hãy thử tải lại; không gửi thêm giấy tờ khi chưa đọc được điều

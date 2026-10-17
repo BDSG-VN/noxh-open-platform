@@ -20,13 +20,13 @@ export default async function Home() {
             </Button>
           </nav>
         </div>
-      </header>
-      <div className="notice">
-        <div className="container">
-          Bản phát triển · Chỉ dùng dữ liệu giả lập · Chưa tiếp nhận hồ sơ thật
+        <div className="notice">
+          <div className="container">
+            Bản phát triển · Chỉ dùng dữ liệu giả lập · Chưa tiếp nhận hồ sơ thật
+          </div>
         </div>
-      </div>
-      <main>
+      </header>
+      <main id="noi-dung" tabIndex={-1}>
         <div className="container">
           <section className="public-hero">
             <div>

@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button, EmptyState } from '@noxh/ui';
 import { departments, departmentLabels } from '@noxh/contracts';
 import type { OperationsStaff } from './operations-admin';
@@ -15,11 +15,12 @@ interface InternalFile {
   bytes: number;
   created_at: string;
 }
-async function call(path: string, body?: unknown) {
+async function call(path: string, body?: unknown, signal?: AbortSignal) {
   const r = await fetch('/api/admin/operations/' + path, {
     method: body === undefined ? 'GET' : 'POST',
     headers: { 'Content-Type': 'application/json' },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    signal,
   });
   const v = await r.json();
   if (!r.ok) throw new Error(v.detail ?? 'Không thực hiện được');
@@ -39,7 +40,9 @@ export default function InternalFiles({
     [message, setMessage] = useState(''),
     [busy, setBusy] = useState(false),
     [scanner, setScanner] = useState(false),
+    [uploading, setUploading] = useState(false),
     [selected, setSelected] = useState<InternalFile>();
+  const upload = useRef<AbortController | null>(null);
   const writable =
     staff.role === 'org_admin' || Boolean(staff.permissions?.includes('records_write'));
   const base = 'projects/' + projectId + '/files';
@@ -115,13 +118,30 @@ export default function InternalFiles({
                   reader.onerror = () => reject(new Error('Không đọc được tệp'));
                   reader.readAsDataURL(file);
                 });
-                await call(base, {
-                  name: file.name,
-                  mime: file.type,
-                  base64,
-                  department: staff.role === 'org_admin' ? f.get('department') : staff.department,
-                  classification: 'restricted',
-                });
+                const controller = new AbortController();
+                upload.current = controller;
+                setUploading(true);
+                try {
+                  await call(
+                    base,
+                    {
+                      name: file.name,
+                      mime: file.type,
+                      base64,
+                      department:
+                        staff.role === 'org_admin' ? f.get('department') : staff.department,
+                      classification: 'restricted',
+                    },
+                    controller.signal,
+                  );
+                } catch (e) {
+                  if (controller.signal.aborted)
+                    throw new Error('Đã hủy tải lên. Tệp chưa được lưu.');
+                  throw e;
+                } finally {
+                  upload.current = null;
+                  setUploading(false);
+                }
                 setMessage(
                   'Đã lưu tệp vào kho riêng; chỉ dùng sau khi trạng thái quét an toàn thành công.',
                 );
@@ -163,7 +183,19 @@ export default function InternalFiles({
               Tôi có thẩm quyền lưu trữ tệp, đã kiểm tra nội dung và chỉ đưa dữ liệu cá nhân cần
               thiết theo chính sách dự án.
             </label>
-            <Button disabled={busy}>Tải vào kho mã hóa</Button>
+            <Button disabled={busy}>{uploading ? 'Đang tải lên…' : 'Tải vào kho mã hóa'}</Button>
+            {uploading && (
+              <p className="feedback" role="status" aria-live="polite">
+                Đang tải tệp vào kho mã hóa, vui lòng đợi.{' '}
+                <button
+                  type="button"
+                  className="text-button"
+                  onClick={() => upload.current?.abort()}
+                >
+                  Hủy tải lên
+                </button>
+              </p>
+            )}
           </form>
         )}
         {!items && !error && <p role="status">Đang tải kho hồ sơ…</p>}

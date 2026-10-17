@@ -8,12 +8,17 @@ const c = await p.connect();
 try {
   await c.query('BEGIN');
   await c.query(await readFile('db/fixtures/seed.sql', 'utf8'));
+  if (process.env.DEMO_OPEN_ACCESS === 'true') {
+    await c.query(await readFile('db/fixtures/demo-open.sql', 'utf8'));
+    console.log('Open demo fixture installed (fictional project, synthetic notice)');
+  }
   await c.query('COMMIT');
   console.log('Synthetic fixtures installed');
-} catch {
-  await c.query('ROLLBACK');
+} catch (e) {
+  await c.query('ROLLBACK').catch(() => {});
   process.exitCode = 1;
-  console.error('Seed failed; transaction rolled back');
+  const cause = e instanceof Error ? `${e.name}: ${e.message}` : 'unknown';
+  console.error('Seed failed; transaction rolled back (' + cause + ')');
 } finally {
   c.release();
   await p.end();

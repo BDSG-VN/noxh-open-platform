@@ -986,9 +986,9 @@ export default function OperationsAdmin({
                   <table className="data-table">
                     <thead>
                       <tr>
-                        <th>Tài khoản</th>
-                        <th>Nợ</th>
-                        <th>Có</th>
+                        <th scope="col">Tài khoản</th>
+                        <th scope="col">Nợ</th>
+                        <th scope="col">Có</th>
                       </tr>
                     </thead>
                     <tbody>

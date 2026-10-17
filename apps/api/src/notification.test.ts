@@ -7,9 +7,15 @@ import { randomUUID } from 'node:crypto';
 import { Database, type Row } from './database';
 import { NotificationService } from './notification-service';
 import { NotificationController } from './notification-controller';
+import { NotificationDeliveryService } from './notification-delivery-service';
 import { PrivacyService } from './privacy-service';
-import { seal } from './identity-crypto';
-import { seedSyntheticPrivacy } from './test-privacy';
+import {
+  accepted,
+  review,
+  emailProvider,
+  fixture as makeFixture,
+  ready as makeReady,
+} from './test-notification';
 import type { Staff, WorkforceAuth } from './workforce';
 import type { PhoneService } from './phone-service';
 const prior = { ...process.env };
@@ -29,125 +35,8 @@ afterAll(async () => {
   await pg.close();
   process.env = prior;
 });
-const accepted = { accepted: true };
-const review = {
-  decision: 'approve',
-  accepted: true,
-  note: 'Đã kiểm tra nội dung và mục đích diễn tập độc lập.',
-};
-async function fixture(
-  channel: 'in_app' | 'email' | 'zalo' = 'in_app',
-  purpose: 'transactional' | 'marketing' = 'transactional',
-) {
-  const org = randomUUID(),
-    project = randomUUID(),
-    user = randomUUID(),
-    dossier = randomUUID(),
-    round = randomUUID(),
-    application = randomUUID();
-  const maker: Staff = {
-      organizationId: org,
-      subject: 'synthetic-notification-maker',
-      role: 'org_admin',
-    },
-    reviewer: Staff = {
-      ...maker,
-      subject: 'synthetic-notification-reviewer',
-      permissions: ['form_legal_approver', 'privacy_officer'],
-    },
-    citizen = { organizationId: org, userId: user };
-  await db.query('INSERT INTO organizations(id,name) VALUES($1,$2)', [
-    org,
-    'Synthetic notifications',
-  ]);
-  await db.query(
-    "INSERT INTO projects(id,organization_id,name,locality,is_synthetic) VALUES($1,$2,'Dự án giả lập','Địa bàn giả lập',true)",
-    [project, org],
-  );
-  await db.query("INSERT INTO users(id,organization_id,status) VALUES($1,$2,'active')", [
-    user,
-    org,
-  ]);
-  await db.query(
-    'INSERT INTO prep_dossiers(id,organization_id,project_id,owner_user_id) VALUES($1,$2,$3,$4)',
-    [dossier, org, project, user],
-  );
-  await seedSyntheticPrivacy(db, [citizen]);
-  const n = (await new PrivacyService(db).current(org))!;
-  await db.query(
-    "INSERT INTO intake_rounds(id,organization_id,project_id,name,status,opens_at,closes_at) VALUES($1,$2,$3,'Synthetic notifications','closed','2025-01-01','2025-02-01')",
-    [round, org, project],
-  );
-  await db.query(
-    "INSERT INTO applications(id,organization_id,project_id,round_id,dossier_id,owner_user_id,receipt_code,public_code,status,snapshot_cipher,snapshot_hash,input_version,consent_notice_id,synthetic,idempotency_key,request_hash) VALUES($1,$2,$3,$4,$5,$6,$7,$8,'submitted',$9,$10,1,$11,true,$12,$13)",
-    [
-      application,
-      org,
-      project,
-      round,
-      dossier,
-      user,
-      'DEMO-NOTIFY-' + application,
-      'DEMO-' + application.toUpperCase(),
-      seal('{}', 'application:' + org + ':' + application),
-      'a'.repeat(64),
-      n.id,
-      randomUUID(),
-      'b'.repeat(64),
-    ],
-  );
-  const legalEmployee = randomUUID();
-  await db.query(
-    "INSERT INTO identity_private.investor_employees(id,organization_id,subject,name,department,permissions,status) VALUES($1,$2,$3,'Synthetic legal reviewer','legal',$4,'active')",
-    [legalEmployee, org, reviewer.subject, ['form_legal_approver', 'privacy_officer']],
-  );
-  await db.query(
-    'INSERT INTO investor_employee_projects(organization_id,employee_id,project_id) VALUES($1,$2,$3)',
-    [org, legalEmployee, project],
-  );
-  const svc = new NotificationService(db),
-    input = {
-      name: 'Thông báo hồ sơ diễn tập',
-      title: 'Hồ sơ {applicationCode}',
-      body: 'Dự án {projectName}: {reference}. Đây là dữ liệu giả lập.',
-      basis: 'Mục đích và căn cứ chỉ phục vụ diễn tập; không xác lập nghĩa vụ pháp lý.',
-      channel,
-      purpose,
-      idempotencyKey: randomUUID(),
-    };
-  const t = await svc.draft(maker, project, input);
-  const prefs = { channel, purpose, enabled: true, accepted: true };
-  const queue = {
-    templateId: t.id,
-    applicationId: application,
-    reference: 'Thông tin diễn tập cần kiểm tra',
-    idempotencyKey: randomUUID(),
-  };
-  return {
-    org,
-    project,
-    user,
-    dossier,
-    application,
-    maker,
-    reviewer,
-    citizen,
-    svc,
-    input,
-    t,
-    prefs,
-    queue,
-  };
-}
-async function ready(
-  channel: 'in_app' | 'email' | 'zalo' = 'in_app',
-  purpose: 'transactional' | 'marketing' = 'transactional',
-) {
-  const f = await fixture(channel, purpose);
-  await f.svc.review(f.reviewer, f.project, f.t.id, review, 1);
-  await f.svc.preference(f.citizen, f.project, f.prefs, 0);
-  return f;
-}
+const fixture = (...args: [] | ['in_app' | 'email' | 'zalo']) => makeFixture(db, ...args);
+const ready = (...args: [] | ['in_app' | 'email' | 'zalo']) => makeReady(db, ...args);
 it('requires independent approval and exact request fields; stores immutable encrypted snapshots', async () => {
   const f = await fixture();
   await expect(f.svc.queue(f.maker, f.project, f.queue)).rejects.toMatchObject({ status: 409 });
@@ -251,7 +140,7 @@ it('does not infer transactional consent from marketing and cancels on withdrawa
   ).toBe(false);
   expect((await f.svc.citizenWorkspace(f.citizen)).items).toHaveLength(0);
 });
-it('keeps providers disabled by default and supports only bounded explicit retries with stable provider idempotency', async () => {
+it('keeps providers disabled by default and never sends from an HTTP request: confirmation only queues worker work', async () => {
   const f = await ready('email');
   const config = {
     channel: 'email',
@@ -266,9 +155,13 @@ it('keeps providers disabled by default and supports only bounded explicit retri
     supportsIdempotency: true,
     send: async (input) => {
       calls.push(input.idempotencyKey);
-      return { accepted: calls.length > 1, deliveryRef: 'synthetic-' + calls.length };
+      return { accepted: true, deliveryRef: 'synthetic-' + calls.length };
     },
   });
+  const delivery = new NotificationDeliveryService(db, f.svc);
+  await expect(
+    delivery.configureProvider(f.maker, 'email', emailProvider('test-email'), 0),
+  ).rejects.toMatchObject({ status: 503 });
   await expect(f.svc.configure(f.reviewer, f.project, config, 0)).rejects.toMatchObject({
     status: 503,
   });
@@ -278,61 +171,32 @@ it('keeps providers disabled by default and supports only bounded explicit retri
   });
   expect(calls).toHaveLength(0);
   process.env.NOTIFICATIONS_EXTERNAL_ENABLED = 'true';
-  await f.svc.configure(f.reviewer, f.project, config, 0);
-  const failed = await f.svc.deliver(f.maker, f.project, a.id, accepted, 1);
-  expect(failed.status).toBe('failed');
-  await expect(f.svc.deliver(f.maker, f.project, a.id, accepted, 1)).rejects.toMatchObject({
+  // Enabling a project channel needs organization provider settings entered by someone else.
+  await expect(f.svc.configure(f.reviewer, f.project, config, 0)).rejects.toMatchObject({
     status: 409,
   });
-  const sent = await f.svc.deliver(f.maker, f.project, a.id, accepted, 2);
-  expect(sent.status).toBe('delivered');
-  expect(calls).toEqual([a.id, a.id]);
-  await f.svc.deliver(f.maker, f.project, a.id, accepted, 2);
-  expect(calls).toHaveLength(2);
-  delete process.env.NOTIFICATIONS_EXTERNAL_ENABLED;
-});
-it('does not retry unknown provider results or exceed an approved attempt budget', async () => {
-  const f = await ready('zalo');
-  process.env.NOTIFICATIONS_EXTERNAL_ENABLED = 'true';
-  let calls = 0;
-  f.svc.transports.set('test-zalo', {
-    channel: 'zalo',
-    supportsIdempotency: true,
-    send: async () => {
-      calls++;
-      throw new Error('provider-private-secret must never leak');
-    },
-  });
-  await f.svc.configure(
-    f.reviewer,
-    f.project,
-    { channel: 'zalo', enabled: true, adapterId: 'test-zalo', maxAttempts: 3, accepted: true },
+  const provider = await delivery.configureProvider(
+    f.maker,
+    'email',
+    emailProvider('test-email'),
     0,
   );
-  const a = await f.svc.queue(f.maker, f.project, f.queue),
-    unknown = await f.svc.deliver(f.maker, f.project, a.id, accepted, 1);
-  expect(unknown.status).toBe('outcome_unknown');
-  expect(JSON.stringify(unknown)).not.toContain('private-secret');
-  await expect(f.svc.deliver(f.maker, f.project, a.id, accepted, 2)).rejects.toMatchObject({
-    status: 409,
-  });
-  expect(calls).toBe(1);
-  f.svc.transports.set('test-zalo', {
-    channel: 'zalo',
-    supportsIdempotency: true,
-    send: async () => ({ accepted: false, deliveryRef: 'synthetic-rejected' }),
-  });
-  await f.svc.configure(
-    f.reviewer,
-    f.project,
-    { channel: 'zalo', enabled: true, adapterId: 'test-zalo', maxAttempts: 1, accepted: true },
-    1,
+  expect(JSON.stringify(provider)).not.toContain('synthetic-smtp-password');
+  await expect(
+    f.svc.configure({ ...f.reviewer, subject: f.maker.subject }, f.project, config, 0),
+  ).rejects.toMatchObject({ status: 403 });
+  await f.svc.configure(f.reviewer, f.project, config, 0);
+  const queued = await f.svc.deliver(f.maker, f.project, a.id, accepted, 1);
+  expect(queued.status).toBe('queued');
+  expect(queued.attempts).toHaveLength(0);
+  expect(calls).toHaveLength(0);
+  // Repeating the confirmation neither sends nor creates a second job.
+  expect((await f.svc.deliver(f.maker, f.project, a.id, accepted, 1)).status).toBe('queued');
+  const jobs = await db.query(
+    'SELECT status,attempt_budget FROM identity_private.notification_deliveries WHERE message_id=$1',
+    [a.id],
   );
-  const b = await f.svc.queue(f.maker, f.project, { ...f.queue, idempotencyKey: randomUUID() });
-  expect((await f.svc.deliver(f.maker, f.project, b.id, accepted, 1)).status).toBe('failed');
-  await expect(f.svc.deliver(f.maker, f.project, b.id, accepted, 2)).rejects.toMatchObject({
-    status: 409,
-  });
+  expect(jobs).toEqual([{ status: 'queued', attempt_budget: 2 }]);
   delete process.env.NOTIFICATIONS_EXTERNAL_ENABLED;
 });
 it('enforces organization/project/current employee scope and never exposes another customer inbox', async () => {
@@ -416,7 +280,13 @@ it('authenticates every controller action before invoking the service', async ()
       throw Object.assign(new Error('unauthorized'), { status: 401 });
     },
   } as unknown as PhoneService;
-  const controller = new NotificationController(new NotificationService(db), staff, phone),
+  const service = new NotificationService(db),
+    controller = new NotificationController(
+      service,
+      new NotificationDeliveryService(db, service),
+      staff,
+      phone,
+    ),
     p = randomUUID(),
     id = randomUUID();
   for (const action of [
@@ -426,6 +296,10 @@ it('authenticates every controller action before invoking the service', async ()
     () => controller.queue(undefined, p, {}),
     () => controller.deliver(undefined, p, id, {}, '1'),
     () => controller.configure(undefined, p, {}, '0'),
+    () => controller.providers(undefined),
+    () => controller.configureProvider(undefined, 'email', {}, '0'),
+    () => controller.deliveries(undefined, p),
+    () => controller.requeue(undefined, p, id, {}, '1'),
     () => controller.citizen(undefined),
     () => controller.preference(undefined, p, {}, '0'),
     () => controller.read(undefined, id, {}, '1'),

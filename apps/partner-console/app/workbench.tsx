@@ -191,10 +191,10 @@ function Team({ members }: { members: PartnerMember[] }) {
           <table className="data-table">
             <thead>
               <tr>
-                <th>Nhân viên</th>
-                <th>Vai trò</th>
-                <th>Trạng thái</th>
-                <th>Thay đổi quyền</th>
+                <th scope="col">Nhân viên</th>
+                <th scope="col">Vai trò</th>
+                <th scope="col">Trạng thái</th>
+                <th scope="col">Thay đổi quyền</th>
               </tr>
             </thead>
             <tbody>
@@ -409,11 +409,13 @@ function Leads({ actor, members }: { actor: PartnerActor; members: PartnerMember
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Khách hàng</th>
-                  <th>Dự án / chiến dịch</th>
-                  <th>Trạng thái</th>
-                  <th>Chuyên viên</th>
-                  <th />
+                  <th scope="col">Khách hàng</th>
+                  <th scope="col">Dự án / chiến dịch</th>
+                  <th scope="col">Trạng thái</th>
+                  <th scope="col">Chuyên viên</th>
+                  <th scope="col">
+                    <span className="sr-only">Thao tác</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -609,7 +611,7 @@ export default function PartnerWorkbench({
   };
   return (
     <div className="workspace">
-      <aside className="workspace-sidebar">
+      <aside className="workspace-sidebar" aria-label="Thanh bên không gian">
         <Brand compact />
         <div className="workspace-label">ĐỐI TÁC / TƯ VẤN</div>
         <nav aria-label="Chức năng đối tác">
@@ -660,7 +662,7 @@ export default function PartnerWorkbench({
             </Button>
           </div>
         </header>
-        <main className="workspace-content">
+        <main id="noi-dung" tabIndex={-1} className="workspace-content">
           <PageHeading
             eyebrow="BDSG FOUNDATION / MẠNG LƯỚI ĐỐI TÁC"
             title={current[1]!}

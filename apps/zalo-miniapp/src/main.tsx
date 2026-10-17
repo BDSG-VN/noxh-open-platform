@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { Project, PrivacyWorkspace } from '@noxh/contracts';
-import MiniDossierWorkspace from './MiniDossierWorkspace';
+// Loaded only after a verified session reaches the dashboard; keeps the entry chunk small.
+const MiniDossierWorkspace = lazy(() => import('./MiniDossierWorkspace'));
 import { isZaloEnvironment, requestZaloToken, ZaloChannel, type MiniDashboard } from './channel';
 import '@noxh/ui/fonts.css';
 import './style.css';
@@ -83,7 +84,7 @@ function App() {
   }
   const web = import.meta.env.VITE_CITIZEN_WEB_URL ?? 'http://localhost:3000';
   return (
-    <main>
+    <main id="noi-dung" tabIndex={-1}>
       <small>BDSG FOUNDATION · KÊNH ZALO</small>
       <h1>
         Tiếp tục hồ sơ
@@ -256,12 +257,14 @@ function App() {
         </section>
       )}
       {stage === 'dashboard' && workspaceId && (
-        <MiniDossierWorkspace
-          key={workspaceId}
-          id={workspaceId}
-          channel={channel!}
-          onBack={() => run(openDashboard)}
-        />
+        <Suspense fallback={<p role="status">Đang tải hồ sơ…</p>}>
+          <MiniDossierWorkspace
+            key={workspaceId}
+            id={workspaceId}
+            channel={channel!}
+            onBack={() => run(openDashboard)}
+          />
+        </Suspense>
       )}
       {stage === 'dashboard' && dashboard && !workspaceId && (
         <section>

@@ -111,9 +111,33 @@ Tệp khóa bí mật phải là tệp thường, không symlink, thuộc UID ch
 
 Tên bằng chứng `page-000001.json`, `page-000002.json`... liên tục. Với chuỗi rỗng dùng thư mục rỗng; không thêm trang rỗng. Giới hạn API: 100.000 sự kiện mỗi lần, trang 500. Công cụ ngoại tuyến: tối đa 2.000 trang/1 triệu sự kiện; mỗi lần Rust tối đa 2 MB. Quá giới hạn phải dừng và thiết kế lô kiểm lớn hơn có kiểm chứng, không tự cắt rồi tuyên bố hoàn tất.
 
+## Vai trò DB tối thiểu cho runtime (022)
+
+Từ migration 022, API và worker có thể chạy bằng một login chỉ là thành viên `noxh_app`; chủ migration chỉ dùng cho `db:migrate`, `db:seed` (phát triển) và lệnh provision. Quyết định và lý do ở [ADR 018](adr/018-least-privilege-runtime.md).
+
+```sh
+# 1. Chủ migration (superuser tạo database), sau khi đã sao lưu
+DATABASE_URL=<owner-url> pnpm db:migrate
+# 2. Tạo/căn chỉnh login runtime và đăng ký tổ chức của instance
+DATABASE_URL=<owner-url> RUNTIME_DB_USER=noxh_api RUNTIME_DB_PASSWORD=<24–256 ký tự A-Z a-z 0-9 . _ ~ -> \
+  AUTH_ORGANIZATION_ID=<uuid> node scripts/runtime-role.mjs provision
+# 3. Kiểm từ bên trong phiên runtime
+RUNTIME_DATABASE_URL=<runtime-url> node scripts/runtime-role.mjs verify
+# 4. Đổi DATABASE_URL của API/worker sang runtime-url, đặt DATABASE_REQUIRE_LEAST_PRIVILEGE=true
+```
+
+- Mật khẩu chỉ được gửi dạng verifier SCRAM-SHA-256 tạo phía client; không xuất hiện trong câu SQL, log máy chủ hoặc đầu ra JSON. Chạy lại `provision` để xoay mật khẩu.
+- Mỗi database dùng một login riêng. `provision` dừng (không tự hạ quyền) nếu login đã tồn tại mà có thuộc tính nâng quyền, đã phục vụ database khác, sở hữu đối tượng hoặc có quyền trực tiếp ở bất kỳ database nào (`pg_shdepend`), hoặc có thành viên/nhóm khác. Khi chạy lại, nó xóa mọi thiết lập vai trò rồi chỉ đặt `search_path`. Tổ chức phải tồn tại trước khi đăng ký. Chủ migration cần là chủ `instance_organizations` và có SUPERUSER hoặc CREATEROLE.
+- Migration 022 thu hồi TEMPORARY của PUBLIC. `--harden-database` (tùy chọn) thu hồi thêm CONNECT của PUBLIC và chỉ cấp CONNECT cho login runtime này; chỉ dùng khi chắc không có login giám sát/sao lưu nào cần CONNECT qua PUBLIC (công cụ không tự hoàn tác).
+- `verify` trả `FAIL` khi chạy bằng kết nối chủ migration. Kiểm: không thuộc tính nâng quyền, chỉ là thành viên `noxh_app`, không sở hữu đối tượng, không CREATE/TEMPORARY, `session_replication_role=origin`, thiết lập vai trò đúng chuẩn, mọi quyền bảng/cột chỉ đến từ `noxh_app`, RLS bật+FORCE trên mọi bảng, không TRUNCATE/REFERENCES/TRIGGER, tổ chức (và `AUTH_ORGANIZATION_ID` nếu đặt) đã đăng ký cho login, thấy migration 022.
+- Migration 022 khóa ACCESS EXCLUSIVE khoảng 90 bảng trong một giao dịch; `db:migrate` giờ đặt `lock_timeout` (mặc định 60s, `MIGRATION_LOCK_TIMEOUT`) để thất bại thay vì treo. Chạy trong khung bảo trì. Giới hạn kết nối mặc định của login là 100 (`RUNTIME_DB_CONNECTION_LIMIT`).
+- Hoàn tác ứng dụng: trả `DATABASE_URL` của API/worker về kết nối cũ và bỏ cờ yêu cầu; migration 022 chỉ thêm vai trò, bảng phạm vi, chính sách và trigger, không đổi dữ liệu. Không xóa vai trò khi còn phiên đang dùng.
+
+Kiểm thử: `runtime-privileges.test.ts` đối chiếu quyền thực với quyền suy ra, lập kế hoạch (`EXPLAIN (GENERIC_PLAN)`) mọi câu SQL tĩnh dưới vai trò runtime và kiểm các thao tác bị chặn; `NOXH_TEST_RUNTIME_ROLE=1 pnpm --filter @noxh/api test` chạy toàn bộ bộ kiểm thử API với SQL của service dưới `noxh_app`; `tests/database.integration.mjs` provision login thật trên PostgreSQL, kiểm SCRAM/verify, lập kế hoạch mọi câu SQL bằng login đó, từ chối `SET ROLE`, `session_replication_role`, bảng/view tạm, DDL, TRUNCATE, sửa audit/cột không được phép và đọc/ghi tổ chức chưa đăng ký; từ chối nhận lại login có quyền trực tiếp hoặc đang phục vụ database khác, và login của database này không đọc được dữ liệu database khác.
+
 ## Giới hạn quyền DB và vận hành còn lại
 
-Migration không tăng quyền cho runtime công dân và không cấp DDL hay BYPASSRLS cho vai trò mới. Nó không sửa toàn bộ mô hình API hiện còn dùng kết nối chủ sở hữu trong một số chế độ. Chạy API với vai trò DB tối thiểu, phân tách quản trị audit, bảo vệ kho khóa, backup và quy trình restore vẫn cần thiết kế triển khai và diễn tập riêng. RLS không chống được superuser hoặc người có quyền vô hiệu trigger.
+Vai trò `noxh_runtime` cũ giữ nguyên cho tương thích; runtime mới dùng `noxh_app`. Phạm vi RLS là tổ chức đã đăng ký cho login (mô hình một tổ chức mỗi instance); ghim `app.organization_id` theo giao dịch chỉ thu hẹp thêm ở các service đã đặt. RLS không phân tách người dùng trong cùng tổ chức — việc đó vẫn do kiểm tra quyền phía máy chủ. Triển khai đang chạy chưa tự chuyển sang login mới; phải thực hiện theo các bước trên với sao lưu và kiểm tra riêng. Phân tách quản trị audit, bảo vệ kho khóa, backup ngoài máy và quy trình restore toàn hệ thống vẫn cần thiết kế và diễn tập riêng. RLS không chống được superuser hoặc người có quyền chủ bảng.
 
 Lưu checkpoint/hash đã chấp nhận ngoài miền quản trị DB là điều kiện để phát hiện việc cơ sở dữ liệu và bản checkpoint cùng bị quay lui. Kiểm chứng một mốc cũ hợp lệ không phát hiện việc người kiểm tra chưa nhận được mốc mới hơn. Phần mềm nêu rõ giới hạn này thay vì gán nhãn “nhật ký không thể sửa”.
 

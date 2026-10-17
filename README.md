@@ -4,7 +4,7 @@ Giải pháp mã nguồn mở của **BDSG Foundation** cho nhà ở xã hội: 
 
 **Bản tích hợp 16/10/2026 đang nghiệm thu:** cổng khách hàng, chủ đầu tư, nhân viên và đối tác; giấy tờ riêng tư, tạo PDF theo mẫu đã duyệt, tiếp nhận–xét duyệt hồ sơ, quy trình dự án, bảng hàng và bốc thăm diễn tập có kiểm chứng. Tiếp nhận thật và bốc thăm thật chưa được mở. Xem [phạm vi triển khai và phần còn thiếu](docs/IMPLEMENTATION-MATRIX.md).
 
-[![Sprint 0 validation](https://github.com/BDSG-VN/noxh-open-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/BDSG-VN/noxh-open-platform/actions/workflows/ci.yml) Blueprint v2 được lưu nguyên bản tại [docs/blueprint](docs/blueprint/README.md); lựa chọn MIT thay thế đề xuất AGPL trong tài liệu gốc.
+[![Platform validation](https://github.com/BDSG-VN/noxh-open-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/BDSG-VN/noxh-open-platform/actions/workflows/ci.yml) Blueprint v2 được lưu nguyên bản tại [docs/blueprint](docs/blueprint/README.md); lựa chọn MIT thay thế đề xuất AGPL trong tài liệu gốc.
 
 ## Luồng mới trong bản tích hợp
 
@@ -39,9 +39,13 @@ docker compose --profile ai up --build --wait --wait-timeout 600
 docker compose down
 ```
 
-Không dùng `down -v` nếu cần giữ dữ liệu. Migration chạy trước API; seed chỉ chứa dữ liệu giả lập. `/health/ready` kiểm tra Postgres, Redis, migration 001–021 và khả năng truy cập/thực thi ba binary Rust; không chứng minh thuật toán đã được kiểm toán hay đăng nhập/storage/legal readiness. API danh mục đọc dự án đã công bố từ Postgres, có nhãn riêng cho dữ liệu giả lập.
+Không dùng `down -v` nếu cần giữ dữ liệu. Migration chạy trước API; seed chỉ chứa dữ liệu giả lập. `/health/ready` kiểm tra Postgres, Redis, migration 001–025 và khả năng truy cập/thực thi ba binary Rust; Compose chạy API/worker bằng login tối thiểu `noxh_api` (thành viên `noxh_app`, không DDL/BYPASSRLS/superuser) và readiness thất bại nếu kết nối bị nâng quyền, xem [vai trò DB tối thiểu](docs/COMPLETION-OPERATIONS.md#vai-trò-db-tối-thiểu-cho-runtime-022); không chứng minh thuật toán đã được kiểm toán hay đăng nhập/storage/legal readiness. API danh mục đọc dự án đã công bố từ Postgres, có nhãn riêng cho dữ liệu giả lập.
 
-Thông báo nghiệp vụ tự động chỉ chạy khi bật `NOTIFICATIONS_AUTOMATION_ENABLED=true`, cấu hình rõ `AUTH_ORGANIZATION_ID` và có quy tắc/mẫu được duyệt cùng đồng ý hiện hành của khách. API và worker dùng cùng khóa mã hóa. Chỉ dữ liệu giả lập, kênh trong ứng dụng; xem [phạm vi và cách kiểm tra lát cắt021](docs/COMPLETION-NOTIFICATION-AUTOMATION.md).
+Thông báo nghiệp vụ tự động chỉ chạy khi bật `NOTIFICATIONS_AUTOMATION_ENABLED=true`, cấu hình rõ `AUTH_ORGANIZATION_ID` và có quy tắc/mẫu được duyệt cùng đồng ý hiện hành của khách. API và worker dùng cùng khóa mã hóa. Chỉ dữ liệu giả lập, kênh trong ứng dụng; xem [phạm vi và cách kiểm tra lát cắt021](docs/COMPLETION-NOTIFICATION-AUTOMATION.md). Gửi email/Zalo thật qua worker chỉ bật với `NOTIFICATIONS_EXTERNAL_ENABLED=true`, `NOTIFICATIONS_SMTP_ALLOWED_HOSTS` (tùy chọn `NOTIFICATIONS_SMTP_CA_FILE`), cấu hình nhà cung cấp mã hóa của tổ chức và kênh dự án được rà soát dữ liệu bật; mặc định tắt và chưa nghiệm thu nhà cung cấp thật, xem [lát cắt 023](docs/COMPLETION-NOTIFICATIONS.md#lát-cắt-023--gửi-thật-qua-worker).
+
+## Bản trải nghiệm mở
+
+`DEMO_OPEN_ACCESS=true` bật dự án hư cấu **Mây Trắng** với tài khoản công khai: số `0900000xxx` đăng nhập bằng mã cố định điền sẵn, quản trị `demo.admin` có mật khẩu và mã hai bước hiển thị tại `/trai-nghiem`. Chỉ cho dữ liệu giả lập; xem [OPEN-DEMO.md](docs/OPEN-DEMO.md). Bản công khai do BDSG vận hành theo đúng mã nguồn này: <https://noxh-demo.bdsg.vn/trai-nghiem> (quản trị `noxh-demo-admin`, đối tác `noxh-demo-partner`, minh bạch `noxh-demo-lottery`, cùng `.bdsg.vn`).
 
 ## Đăng nhập và quản trị
 
@@ -112,7 +116,7 @@ NestJS tiếp tục kiểm soát đăng nhập, phân quyền, phiên bản, gia
 apps/        api (NestJS), citizen-web, investor-console,
              transparency-web (Next.js), zalo-miniapp (React + SDK)
 packages/    contracts, ui, authz, form-engine
-services/    ai-worker (FastAPI placeholder)
+services/    ai-worker (FastAPI: OCR nội bộ tesseract, mặc định tắt)
 crates/      lottery-engine, lottery-runner, lottery-verifier,
              pricing-engine, audit-verifier
 db/          migrations, synthetic fixtures
@@ -136,7 +140,7 @@ Gửi issue/PR với phạm vi nhỏ, test và cập nhật tài liệu. Không 
 
 Cổng đối tác: `http://localhost:3004`. Chủ đầu tư cấp đơn vị/dự án và tài khoản quản lý; đơn vị thêm nhân viên theo ba vai trò. Chiến dịch phải được chủ đầu tư duyệt trước khi khách mở trang tư vấn và chia sẻ liên hệ. Chuyên viên chỉ đọc/cập nhật các yêu cầu được giao; không có quyền mở hồ sơ riêng. Xem [hướng dẫn và ma trận quyền](docs/PARTNERS.md).
 
-Admin có **Biểu mẫu & pháp lý**, **Cấu hình trợ lý AI** và **Đối tác & marketing**. Khách có **Thủ tục trực tuyến**, **Trợ lý AI** và quản lý yêu cầu tư vấn. OpenAI cần deployment flag `EXTERNAL_AI_ENABLED=true`, sau đó chủ đầu tư tự nhập model/key/hạn mức trong admin; mặc định tắt. Không đưa khóa vào chat hoặc mã nguồn. [Thiết kế và giới hạn tích hợp](docs/adr/013-openai-dvc-legal-sources.md), [nguồn pháp lý và phạm vi chưa xác minh](legal/README.md).
+Admin có **Biểu mẫu & pháp lý**, **Cấu hình trợ lý AI** và **Đối tác & marketing**. Khách có **Thủ tục trực tuyến**, **Trợ lý AI** và quản lý yêu cầu tư vấn. OpenAI cần deployment flag `EXTERNAL_AI_ENABLED=true`, sau đó chủ đầu tư tự nhập model/key/hạn mức trong admin; mặc định tắt. Không đưa khóa vào chat hoặc mã nguồn. [Thiết kế và giới hạn tích hợp](docs/adr/013-openai-dvc-legal-sources.md), [nguồn pháp lý và phạm vi chưa xác minh](legal/README.md). Thay thế không cần nhà cung cấp ngoài: OCR nội bộ (`LOCAL_OCR_ENABLED=true`, `OCR_WORKER_URL`, profile `ai`) đọc chữ giấy tờ đã quét an toàn qua hàng đợi worker và trả về đề xuất cần khách xác nhận; chưa đánh giá chất lượng trên giấy tờ thật, chưa có bộ dữ liệu `vie` ([OCR](docs/COMPLETION-OCR.md)).
 
 DVC hiện mở đúng thủ tục và lưu biên nhận do khách tự cập nhật; chưa có API được cấp quyền để đồng bộ trạng thái chính thức. AI có thể trích xuất giấy tờ đã quét an toàn, đưa đề xuất có nguồn và chờ khách xác nhận; bộ máy PDF điền dữ liệu theo ánh xạ của mẫu đã duyệt, giữ mẫu gốc và xuất gói ZIP có manifest. Chủ đầu tư phải duyệt phạm vi áp dụng và tọa độ ánh xạ từng mẫu; hệ thống không tự chế giấy xác nhận hoặc chữ ký. Phần chưa xong của blueprint được liệt kê trong [ma trận triển khai](docs/IMPLEMENTATION-MATRIX.md).
 

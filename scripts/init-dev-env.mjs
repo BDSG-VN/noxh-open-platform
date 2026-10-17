@@ -2,11 +2,15 @@ import { randomBytes } from 'node:crypto';
 import { writeFile, readFile, chmod } from 'node:fs/promises';
 const password = () => randomBytes(24).toString('hex');
 const pg = password();
+const runtime = password();
 const content = `NODE_ENV=development
 POSTGRES_USER=noxh_owner
 POSTGRES_PASSWORD=${pg}
 POSTGRES_DB=noxh
 DATABASE_URL=postgresql://noxh_owner:${pg}@localhost:5432/noxh
+RUNTIME_DB_USER=noxh_api
+RUNTIME_DB_PASSWORD=${runtime}
+RUNTIME_DATABASE_URL=postgresql://noxh_api:${runtime}@localhost:5432/noxh
 REDIS_URL=redis://localhost:6379
 AUTH_ORGANIZATION_ID=10000000-0000-4000-8000-000000000001
 AUTH_ENCRYPTION_KEY=${randomBytes(32).toString('hex')}
@@ -35,8 +39,9 @@ if (process.argv.includes('--add-auth-keys')) {
     .split('\n')
     .filter(
       (line) =>
-        /^(AUTH_|WORKFORCE_|INVESTOR_PUBLIC_ORIGIN=|CITIZEN_PUBLIC_ORIGIN=)/.test(line) &&
-        !existing.split('\n').some((old) => old.split('=')[0] === line.split('=')[0]),
+        /^(AUTH_|WORKFORCE_|RUNTIME_DB|RUNTIME_DATABASE_URL=|INVESTOR_PUBLIC_ORIGIN=|CITIZEN_PUBLIC_ORIGIN=)/.test(
+          line,
+        ) && !existing.split('\n').some((old) => old.split('=')[0] === line.split('=')[0]),
     );
   if (additions.length)
     await writeFile('.env', '\n' + additions.join('\n') + '\n', { flag: 'a', mode: 0o600 });

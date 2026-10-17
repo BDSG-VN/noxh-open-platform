@@ -8,7 +8,8 @@ export default function LoginForm({ returnTo = '/dashboard' }: { returnTo?: stri
     [step, setStep] = useState<'phone' | 'code'>('phone'),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
-    [retryAt, setRetryAt] = useState(0);
+    [retryAt, setRetryAt] = useState(0),
+    [demoCode, setDemoCode] = useState('');
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -24,6 +25,10 @@ export default function LoginForm({ returnTo = '/dashboard' }: { returnTo?: stri
       if (step === 'phone') {
         setStep('code');
         setRetryAt(Date.now() + 60000);
+        if (typeof value.demoCode === 'string') {
+          setDemoCode(value.demoCode);
+          setCode(value.demoCode);
+        }
       } else window.location.assign(returnTo);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Lỗi kết nối');
@@ -34,6 +39,12 @@ export default function LoginForm({ returnTo = '/dashboard' }: { returnTo?: stri
   return (
     <form onSubmit={submit} className="">
       {step === 'code' && <h2 style={{ fontSize: 18 }}>Nhập mã xác thực</h2>}
+      {demoCode && (
+        <p className="help-note" role="status">
+          Bản trải nghiệm: mã xác thực là <strong>{demoCode}</strong>, đã điền sẵn. Không gửi Zalo
+          thật.
+        </p>
+      )}
       <p>
         <a href="/privacy">Đọc thông báo bảo vệ dữ liệu cá nhân</a>
       </p>
@@ -46,6 +57,9 @@ export default function LoginForm({ returnTo = '/dashboard' }: { returnTo?: stri
             type="tel"
             autoComplete="tel"
             required
+            aria-required="true"
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? 'login-error' : undefined}
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="09xx xxx xxx"
@@ -74,13 +88,16 @@ export default function LoginForm({ returnTo = '/dashboard' }: { returnTo?: stri
             pattern="[0-9]{6}"
             maxLength={6}
             required
+            aria-required="true"
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? 'login-error' : undefined}
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
           />
         </>
       )}
       {error && (
-        <p className="error" role="alert">
+        <p className="error" role="alert" id="login-error">
           {error}
         </p>
       )}

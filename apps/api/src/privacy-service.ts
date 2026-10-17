@@ -222,7 +222,7 @@ export class PrivacyService {
         [c.organizationId, c.userId],
       );
       await q.query(
-        "UPDATE consent_records SET withdrawn_at=now() WHERE organization_id=$1 AND user_id=$2 AND withdrawn_at IS NULL AND (purpose LIKE 'partner-consultation:%' OR purpose LIKE 'openai-request:%' OR purpose LIKE 'openai-document:%')",
+        "UPDATE consent_records SET withdrawn_at=now() WHERE organization_id=$1 AND user_id=$2 AND withdrawn_at IS NULL AND (purpose LIKE 'partner-consultation:%' OR purpose LIKE 'openai-request:%' OR purpose LIKE 'openai-document:%' OR purpose LIKE 'local-ocr:%')",
         [c.organizationId, c.userId],
       );
       await q.query(

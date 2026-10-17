@@ -1,0 +1,130 @@
+{
+  "realm": "noxh",
+  "enabled": true,
+  "registrationAllowed": false,
+  "resetPasswordAllowed": false,
+  "bruteForceProtected": true,
+  "accessTokenLifespan": 900,
+  "ssoSessionIdleTimeout": 1800,
+  "roles": {
+    "realm": [
+      { "name": "org_admin" },
+      { "name": "project_manager" },
+      {
+        "name": "form_legal_approver",
+        "description": "Independent project form legal reviewer; also requires org_admin for the investor console."
+      },
+      { "name": "privacy_officer", "description": "Explicit NOXH workforce permission" },
+      { "name": "lottery_operator", "description": "Explicit NOXH workforce permission" },
+      { "name": "lottery_supervisor", "description": "Explicit NOXH workforce permission" },
+      { "name": "noxh_staff", "description": "Explicit NOXH workforce permission" },
+      {
+        "name": "price_approver",
+        "description": "Quyền NOXH được cấp riêng; yêu cầu MFA và phạm vi dự án phía máy chủ"
+      },
+      {
+        "name": "intake_officer",
+        "description": "Quyền NOXH được cấp riêng; yêu cầu MFA và phạm vi dự án phía máy chủ"
+      },
+      {
+        "name": "reviewer",
+        "description": "Quyền NOXH được cấp riêng; yêu cầu MFA và phạm vi dự án phía máy chủ"
+      },
+      {
+        "name": "approver",
+        "description": "Quyền NOXH được cấp riêng; yêu cầu MFA và phạm vi dự án phía máy chủ"
+      },
+      {
+        "name": "auditor",
+        "description": "Quyền NOXH được cấp riêng; yêu cầu MFA và phạm vi dự án phía máy chủ"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "noxh-investor",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": ["http://localhost:3001/auth/callback"],
+      "webOrigins": ["http://localhost:3001"],
+      "attributes": { "pkce.code.challenge.method": "S256" },
+      "defaultClientScopes": ["basic", "roles", "profile"],
+      "protocolMappers": [
+        {
+          "name": "api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "noxh-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
+        {
+          "name": "authentication-methods",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-amr-mapper",
+          "config": { "access.token.claim": "true", "id.token.claim": "true" }
+        }
+      ]
+    }
+  ],
+  "browserFlow": "noxh-browser",
+  "authenticationFlows": [
+    {
+      "alias": "noxh-browser",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "auth-username-password-form",
+          "authenticatorConfig": "noxh-password",
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "userSetupAllowed": false,
+          "authenticatorFlow": false
+        },
+        {
+          "authenticator": "auth-otp-form",
+          "authenticatorConfig": "noxh-otp",
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "userSetupAllowed": true,
+          "authenticatorFlow": false
+        }
+      ]
+    }
+  ],
+  "authenticatorConfig": [
+    {
+      "alias": "noxh-password",
+      "config": { "default.reference.value": "pwd", "default.reference.maxAge": "1800" }
+    },
+    {
+      "alias": "noxh-otp",
+      "config": { "default.reference.value": "otp", "default.reference.maxAge": "1800" }
+    }
+  ],
+  "users": [
+    {
+      "username": "demo.admin",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Quản trị",
+      "lastName": "Trải nghiệm (giả lập)",
+      "email": "demo.admin@example.test",
+      "realmRoles": ["org_admin"],
+      "credentials": [
+        { "type": "password", "value": "MayTrang-Demo-2026", "temporary": false },
+        {
+          "type": "otp",
+          "secretData": "{\"value\":\"NOXHDEMOMAYTRANGOPENACCESSAB2345\"}",
+          "credentialData": "{\"subType\":\"totp\",\"digits\":6,\"counter\":0,\"period\":30,\"algorithm\":\"HmacSHA1\",\"secretEncoding\":\"BASE32\"}"
+        }
+      ]
+    }
+  ]
+}

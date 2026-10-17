@@ -83,12 +83,12 @@
 .iw-page-heading p {
   margin: 6px 0 0;
   max-width: 76ch;
-  color: #64756e;
+  color: #55665d;
 }
 .iw-page-heading .iw-kicker,
 .investor-workspace .iw-kicker {
   margin: 0 0 5px;
-  color: #61786c;
+  color: #55665d;
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.35px;
@@ -98,7 +98,7 @@
   margin-top: 8px;
 }
 .iw-muted {
-  color: #6b7b73;
+  color: #55665d;
   font-size: 13px;
   font-weight: 400;
 }
@@ -131,7 +131,7 @@
 }
 .iw-stats span {
   display: block;
-  color: #687b70;
+  color: #55665d;
   font-size: 13px;
 }
 .iw-stats strong {
@@ -146,7 +146,7 @@
 .iw-stats strong small {
   font-size: 16px;
   font-weight: 400;
-  color: #7c8b82;
+  color: #55665d;
 }
 .iw-stats-panel {
   padding: 22px 26px;
@@ -158,7 +158,7 @@
   display: flex;
   justify-content: space-between;
   gap: 16px;
-  color: #63786b;
+  color: #55665d;
   font-size: 13px;
 }
 .iw-progress {
@@ -199,7 +199,7 @@
   box-shadow: inset 0 0 0 1px #3c7f60;
 }
 .iw-phase-number {
-  color: #7a9282;
+  color: #55665d;
   font-size: 13px;
   font-weight: 700;
   line-height: 1.8;
@@ -213,7 +213,7 @@
 .iw-phase-card small {
   display: block;
   font-size: 12px;
-  color: #78877e;
+  color: #55665d;
   margin-top: 5px;
 }
 .iw-toolbar {
@@ -245,7 +245,7 @@
 .iw-task-summary::after,
 .iw-disclosure-heading::after {
   content: '+';
-  color: #6d8074;
+  color: #55665d;
   font-size: 20px;
   font-weight: 400;
   flex: none;
@@ -259,7 +259,7 @@ details[open] > .iw-disclosure-heading::after {
   min-width: 0;
 }
 .iw-task-summary small {
-  color: #7b8b81;
+  color: #55665d;
   font-size: 12px;
   display: block;
   margin-bottom: 3px;
@@ -281,7 +281,7 @@ details[open] > .iw-disclosure-heading::after {
   border-top: 1px solid #e2e9e3;
 }
 .iw-context-note {
-  color: #738276;
+  color: #55665d;
   font-size: 13px;
 }
 .iw-context-note summary {
@@ -321,7 +321,7 @@ details[open] > .iw-disclosure-heading::after {
   min-width: 0;
   border-bottom: 3px solid #e4ebe5;
   padding: 8px 8px 13px 0;
-  color: #94a096;
+  color: #55665d;
 }
 .iw-timeline li > span {
   display: flex;
@@ -371,7 +371,7 @@ details[open] > .iw-disclosure-heading::after {
 .iw-cohort-summary > p {
   display: block;
   margin: 6px 0 0;
-  color: #7a897f;
+  color: #55665d;
   font-size: 12px;
 }
 .iw-cohort-body {
@@ -442,7 +442,7 @@ details[open] > .iw-disclosure-heading::after {
   gap: 26px;
   flex-wrap: wrap;
   padding: 0 2px;
-  color: #708176;
+  color: #55665d;
   font-size: 13px;
 }
 .iw-staff-summary strong {
@@ -477,7 +477,7 @@ details[open] > .iw-disclosure-heading::after {
   font-size: 12px;
   line-height: 1.6;
   margin-top: 6px;
-  color: #7a8a7e;
+  color: #55665d;
 }
 .iw-workspace-panel {
   min-width: 0;

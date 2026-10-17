@@ -24,6 +24,7 @@ export class ZaloDelivery {
     try {
       const response = await fetch('https://business.openapi.zalo.me/message/template', {
         method: 'POST',
+        redirect: 'error',
         headers: { 'Content-Type': 'application/json', access_token: settings.accessToken },
         body: JSON.stringify({
           phone,
@@ -36,14 +37,48 @@ export class ZaloDelivery {
         }),
         signal: AbortSignal.timeout(8000),
       });
-      const value = (await response.json()) as { error?: number };
-      if (!response.ok || value.error !== 0) throw new Error('provider rejected');
+      // Bounded read: the provider's acknowledgement is tiny; stop at 64 KiB instead of buffering.
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('empty');
+      const chunks: Uint8Array[] = [];
+      let size = 0;
+      for (;;) {
+        const chunk = await reader.read();
+        if (chunk.done) break;
+        size += chunk.value.byteLength;
+        if (size > 65536) {
+          await reader.cancel();
+          throw new Error('oversize');
+        }
+        chunks.push(chunk.value);
+      }
+      const value = JSON.parse(Buffer.concat(chunks).toString('utf8')) as { error?: number };
+      if (!response.ok || value?.error !== 0) throw new Error('provider rejected');
     } catch {
       throw new ServiceUnavailableException(
         'Không gửi được mã qua Zalo. Hãy thử lại sau hoặc liên hệ chủ đầu tư.',
       );
     }
   }
+}
+/**
+ * Open demo access: synthetic phone numbers log in with a fixed, publicly displayed code and no
+ * provider. Never active in production; refuses to start when misconfigured there.
+ */
+export function openDemo(): { otp: string; phones: RegExp } | null {
+  if (process.env.DEMO_OPEN_ACCESS !== 'true') return null;
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_SYNTHETIC_FIXTURES !== 'true')
+    throw new ServiceUnavailableException('Chế độ trải nghiệm mở chỉ dùng cho dữ liệu giả lập');
+  const otp = process.env.DEMO_OPEN_OTP ?? '123456';
+  if (!/^\d{6}$/.test(otp)) throw new ServiceUnavailableException('DEMO_OPEN_OTP phải có 6 chữ số');
+  const prefix = process.env.DEMO_OPEN_PHONE_PREFIX ?? '0900000';
+  if (!/^0\d{4,9}$/.test(prefix))
+    throw new ServiceUnavailableException('DEMO_OPEN_PHONE_PREFIX không hợp lệ');
+  // normalizePhone() yields the international form 84xxxxxxxxx.
+  return {
+    otp,
+    phones: new RegExp('^84' + prefix.slice(1) + '\\d{' + (10 - prefix.length) + '}$'),
+  };
 }
 export interface Citizen {
   organizationId: string;
@@ -75,10 +110,12 @@ export class PhoneService {
       throw new BadRequestException('Cần đồng ý dùng số điện thoại để xác thực');
     const phone = normalizePhone(b.phone);
     const org = organizationId();
-    const settings = await this.settings(org);
+    const demo = openDemo();
+    const demoPhone = Boolean(demo && demo.phones.test(phone));
+    const settings = demoPhone ? null : await this.settings(org);
     const ref = digest('phone', org + ':' + phone);
     const id = randomUUID(),
-      code = String(randomInt(0, 1000000)).padStart(6, '0'),
+      code = demoPhone ? demo!.otp : String(randomInt(0, 1000000)).padStart(6, '0'),
       proof = randomBytes(32).toString('base64url');
     const now = this.clock(),
       expires = new Date(now + 300000).toISOString();
@@ -134,7 +171,7 @@ export class PhoneService {
       );
     });
     try {
-      await this.delivery.send(settings, phone, code, id);
+      if (settings) await this.delivery.send(settings, phone, code, id);
       await this.db.query(
         "UPDATE identity_private.phone_challenges SET status='sent' WHERE id=$1 AND status='pending'",
         [id],
@@ -148,7 +185,13 @@ export class PhoneService {
         'Không gửi được mã Zalo. Chưa có phiên đăng nhập nào được tạo.',
       );
     }
-    return { challengeId: id, challengeProof: proof, expiresIn: 300, retryAfter: 60 };
+    return {
+      challengeId: id,
+      challengeProof: proof,
+      expiresIn: 300,
+      retryAfter: 60,
+      ...(demoPhone ? { demoCode: code } : {}),
+    };
   }
   async verify(body: unknown) {
     const b = record(body),
@@ -157,7 +200,7 @@ export class PhoneService {
       proof = text(b.challengeProof, 128);
     if (!/^\d{6}$/.test(code)) throw new UnauthorizedException('Mã xác thực không hợp lệ');
     const org = organizationId();
-    await this.settings(org);
+    if (!openDemo()) await this.settings(org);
     const now = this.clock();
     const token = randomBytes(32).toString('base64url');
     const outcome = await this.db.tx(async (q) => {

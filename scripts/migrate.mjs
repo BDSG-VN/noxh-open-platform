@@ -6,6 +6,10 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const c = await pool.connect();
 try {
   await c.query('BEGIN');
+  // Bounded waits: a blocked advisory or table lock fails the run instead of hanging forever.
+  await c.query("SELECT set_config('lock_timeout', $1, true)", [
+    process.env.MIGRATION_LOCK_TIMEOUT ?? '60s',
+  ]);
   await c.query('SELECT pg_advisory_xact_lock(68280401)');
   await c.query(
     'CREATE TABLE IF NOT EXISTS schema_migrations(version text PRIMARY KEY,sha256 text NOT NULL,applied_at timestamptz NOT NULL DEFAULT now())',
@@ -26,9 +30,14 @@ try {
     console.log(`Applied migration ${version}`);
   }
   await c.query('COMMIT');
-} catch {
-  await c.query('ROLLBACK');
-  console.error('Migration failed; transaction rolled back');
+} catch (e) {
+  await c.query('ROLLBACK').catch(() => {});
+  // PostgreSQL error class/message and the failing statement position; the SQL text is not echoed.
+  const cause =
+    e instanceof Error
+      ? `${e.name}: ${e.message}${e.position ? ' at ' + e.position : ''}`
+      : 'unknown';
+  console.error('Migration failed; transaction rolled back (' + cause + ')');
   process.exitCode = 1;
 } finally {
   c.release();

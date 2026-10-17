@@ -1,3 +1,37 @@
+# Bản tích hợp 17/10/2026 — tóm tắt đợt nâng cấp
+
+Nhánh `claude/runtime-least-privilege` gộp năm phần (xem từng mục dưới): vai trò DB tối thiểu cho API/worker (022), gửi email/Zalo qua worker mặc định tắt (023), index hiệu năng và sửa lỗi theo rà soát ECC (024), OCR nội bộ có hàng đợi (025), chế độ trải nghiệm mở với dự án hư cấu Mây Trắng, và cổng kiểm thử truy cập WCAG 2.1 AA cho 5 giao diện. Kết quả kiểm trên bản gộp: 243 test API (chạy lại toàn bộ dưới vai trò `noxh_app`), 3 test PostgreSQL thật, 35 Rust, 25 Python, 24 Node, 168 test truy cập; lint/typecheck/OpenAPI/secret gate đạt. Các điều kiện ngoài phạm vi mã vẫn như [ma trận](IMPLEMENTATION-MATRIX.md): pháp chế duyệt mẫu, provider/Zalo/thiết bị thật, API cơ quan, DR ngoài máy, pentest độc lập, pilot. Triển khai đang chạy chưa được nâng; quy trình vận hành ở [COMPLETION-OPERATIONS.md](COMPLETION-OPERATIONS.md).
+
+---
+
+# Khả năng truy cập giao diện (17/10/2026)
+
+Năm giao diện (công dân, chủ đầu tư, đối tác, minh bạch, Mini App) có cổng kiểm `pnpm test:a11y`: Playwright chạy axe-core theo WCAG 2.0/2.1 A/AA, kiểm bàn phím (liên kết bỏ qua, vòng focus, không dùng `div` làm nút), tràn ngang ở 390px/200% và tắt chuyển động trên bản build thật với API giả lập, chạy trong CI sau `pnpm build`. 41 trang theo vai trò không còn vi phạm axe (trước đó 24/26 trang lỗi, chủ yếu tương phản màu); sửa bằng token màu chữ dùng chung, một `main`/`h1` mỗi trang, `scope` cho bảng, nhãn lỗi biểu mẫu và thông báo/hủy khi tải tệp, không thay đổi nghiệp vụ. Đọc màn hình thật, thứ tự đọc trong Zalo và nội dung PDF vẫn nghiệm thu thủ công; chi tiết trong `docs/VALIDATION.md` và `docs/DESIGN-SYSTEM.md`.
+
+---
+
+# Rà soát ECC và index hiệu năng (024) — 17/10/2026
+
+Rà soát toàn bộ bản tích hợp theo checklist ECC (bảo mật, lỗi im lặng, CSDL, hiệu năng, TypeScript/React/Rust/Python). Sửa: pool PostgreSQL có listener lỗi, không che lỗi gốc khi rollback, `statement_timeout`/`idle_in_transaction_session_timeout` mặc định; bộ lọc 500 ghi log lớp lỗi và đường dẫn (không body/header); hai vòng worker log lỗi và backoff lũy thừa; danh sách nhân sự một câu SQL; transport OTP Zalo không theo redirect và đọc có giới hạn; CLI checkpoint in mã lý do riêng; `eslint-plugin-react-hooks` gác rules-of-hooks; Mini App giảm chunk chính 792 kB → 348 kB. Migration 024 chỉ thêm 29 index cho các truy vấn danh sách/đếm/giới hạn tần suất đang seq scan (hàng đợi hồ sơ 118 ms → 0,5 ms với 100k đơn giả lập); readiness yêu cầu 001–025 sau khi gộp OCR. Hoãn có lý do: gửi email/Zalo vẫn trong giao dịch giữ lock, hai lệnh thu hồi hiếm chưa index, cảnh báo exhaustive-deps. Chi tiết, số đo và rủi ro còn lại trong [REVIEW-ECC-20261017.md](REVIEW-ECC-20261017.md). Không phải chứng nhận bảo mật; `cargo audit`/pentest độc lập chưa chạy.
+
+# OCR nội bộ và hàng đợi xử lý giấy tờ (025) — 17/10/2026
+
+Migration 025 thêm `identity_private.document_ocr_jobs`: khách yêu cầu đọc chữ cho một giấy tờ đã quét an toàn với đồng ý riêng `document-ocr-v1`; worker nhận tác vụ bằng lease có fencing, kiểm lại giấy tờ/đồng ý, gửi byte đến `ai-worker` nội bộ (`POST /ocr`, tesseract trong tiến trình con cô lập hoặc bộ đọc `fake` khi kiểm thử; PDF rasterise bằng `pdftoppm`) với hạn 30 giây, thử lại lũy thừa trong ngân sách 3 lần, lưu kết quả mã hóa AES-GCM và tạo đề xuất `document_extractions` với `model='local-ocr:*'` đi qua đúng luồng đối chiếu/xác nhận từng trường hiện có. Khách hủy được khi đang chờ hoặc đang chạy; `org_admin` xem sức khỏe hàng đợi và đưa lại hàng đợi có giới hạn. Không gửi giấy tờ ra ngoài; không ghi bản khai. Mặc định tắt (`LOCAL_OCR_ENABLED`, `OCR_WORKER_URL`). OCR nội bộ chưa đánh giá chất lượng trên giấy tờ thật; chưa có bộ dữ liệu `vie` nghiệm thu, ảnh CI chỉ có `eng`; kết quả là dòng chữ chưa tách trường. Xem [OCR](COMPLETION-OCR.md) và [ADR 020](adr/020-self-hosted-ocr-queue.md).
+
+---
+
+# Gửi email/Zalo qua worker (023) — 17/10/2026
+
+Migration 023 bổ sung adapter `email-smtp` (STARTTLS/TLS ngầm bằng `node:tls`, chứng chỉ bắt buộc hợp lệ, máy chủ phải nằm trong danh sách vận hành) và `zalo-oa` (endpoint cố định, `appsecret_proof`, không theo redirect); cấu hình nhà cung cấp mã hóa theo tổ chức do quản trị nhập, kênh dự án do `privacy_officer` khác người nhập bật. Xác nhận phát không còn gửi trong HTTP: worker nhận tác vụ bằng lease có fencing, thử lại lũy thừa có jitter trong ngân sách tối đa 3 lần, giới hạn tần suất token bucket và ngắt mạch theo tổ chức/kênh, hàng chờ lỗi với gửi lại có xác nhận và giới hạn; `outcome_unknown` vẫn là trạng thái cuối. Bộ đếm hiện trên `/health/live` của worker, log chỉ có định danh. Kiểm thử dùng máy chủ SMTP/Zalo giả trên `127.0.0.1` và chạy được dưới `noxh_app`. Mặc định tắt; chưa nghiệm thu nhà cung cấp thật, chưa có email xác minh của khách (email chỉ tới hộp thư diễn tập). Xem [thông báo](COMPLETION-NOTIFICATIONS.md#lát-cắt-023--gửi-thật-qua-worker) và [ADR 019](adr/019-worker-external-delivery.md).
+
+---
+
+# Vai trò DB tối thiểu cho runtime (022) — 16/10/2026
+
+Migration 022 thêm vai trò nhóm `noxh_app` và công cụ `scripts/runtime-role.mjs` để API/worker chạy bằng login không superuser/BYPASSRLS/DDL. Quyền bảng suy ra từ 592 câu SQL tĩnh của API và trigger được kích hoạt; bảng chỉ thêm không có UPDATE/DELETE; mọi bảng bật FORCE RLS theo tổ chức của instance và ghim `app.organization_id` khi service đặt. Compose phát triển dùng login này và `/health/ready` từ chối kết nối nâng quyền khi bật `DATABASE_REQUIRE_LEAST_PRIVILEGE`. Kết quả kiểm thử ở [VALIDATION.md](VALIDATION.md#vai-trò-db-tối-thiểu-022--16102026); quyết định ở [ADR 018](adr/018-least-privilege-runtime.md). Các triển khai đang chạy chưa được chuyển kết nối; việc đó cần sao lưu và kế hoạch vận hành riêng.
+
+---
+
 # Bản tích hợp hoàn thiện luồng nghiệp vụ — 2026-10-16
 
 Lõi migration 015–021 đã được hợp nhất vào main; bản 021 qua PR #5, merge `d932a9847ca0365c06e8c181afeef3fbfe972404`, từ source `ac3897827f914acdd92a3d5ee78944f620b9f859`. Migration 021 bổ sung ba thay đổi hồ sơ diễn tập tạo thông báo trong ứng dụng qua outbox giao dịch, quy tắc có người duyệt độc lập và lựa chọn nhận tin của khách. Mặc định tắt; không gửi email/Zalo. CI đạt 4/4 job; QA có 18 xác nhận CUA và 8 kiểm tra BFF, được ghi cùng giới hạn trong [VALIDATION.md](VALIDATION.md). Hợp nhất và kiểm thử không tự xác nhận đã nâng cấp dịch vụ đang chạy.

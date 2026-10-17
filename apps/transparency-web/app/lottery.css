@@ -11,7 +11,7 @@
 .lottery-hero p {
   font-size: 18px;
   line-height: 1.7;
-  color: #647570;
+  color: #58685f;
 }
 .lottery-top {
   display: flex;
@@ -59,7 +59,7 @@
   align-items: center;
   gap: 9px;
   font-size: 13px;
-  color: #83918b;
+  color: #5b6a64;
   flex: 1;
   white-space: nowrap;
 }
@@ -124,6 +124,9 @@
 .lottery-stage-actions button {
   color: #fff;
   border-color: #7bb09a;
+}
+.lottery-stage-actions .bg-background {
+  background: transparent;
 }
 .hash-value {
   display: block;

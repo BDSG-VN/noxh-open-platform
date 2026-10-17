@@ -94,9 +94,9 @@ function Evidence({
       <table>
         <thead>
           <tr>
-            <th>{kind === 'documents' ? 'Giấy tờ đã nộp' : 'Biểu mẫu đã xác nhận'}</th>
-            <th>Toàn vẹn</th>
-            <th>Tệp</th>
+            <th scope="col">{kind === 'documents' ? 'Giấy tờ đã nộp' : 'Biểu mẫu đã xác nhận'}</th>
+            <th scope="col">Toàn vẹn</th>
+            <th scope="col">Tệp</th>
           </tr>
         </thead>
         <tbody>
@@ -320,11 +320,11 @@ export default function ApplicationsAdmin({ staff }: { staff?: Staff }) {
               <table>
                 <thead>
                   <tr>
-                    <th>Hồ sơ</th>
-                    <th>Dự án / đợt</th>
-                    <th>Tiếp nhận</th>
-                    <th>Trạng thái</th>
-                    <th>Thao tác</th>
+                    <th scope="col">Hồ sơ</th>
+                    <th scope="col">Dự án / đợt</th>
+                    <th scope="col">Tiếp nhận</th>
+                    <th scope="col">Trạng thái</th>
+                    <th scope="col">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -512,9 +512,9 @@ export default function ApplicationsAdmin({ staff }: { staff?: Staff }) {
                   <table>
                     <thead>
                       <tr>
-                        <th>Họ tên</th>
-                        <th>Ngày sinh</th>
-                        <th>Quan hệ</th>
+                        <th scope="col">Họ tên</th>
+                        <th scope="col">Ngày sinh</th>
+                        <th scope="col">Quan hệ</th>
                       </tr>
                     </thead>
                     <tbody>

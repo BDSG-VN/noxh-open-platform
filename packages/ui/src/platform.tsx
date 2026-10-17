@@ -84,6 +84,14 @@ export function Icon({ name = 'home', size = 20 }: { name?: string; size?: numbe
     </svg>
   );
 }
+/** First Tab stop on every page; the target is the page's single <main id="noi-dung">. */
+export function SkipLink() {
+  return (
+    <a className="skip-link" href="#noi-dung">
+      Bỏ qua điều hướng, tới nội dung chính
+    </a>
+  );
+}
 export function Brand({ compact = false }: { compact?: boolean }) {
   return (
     <a href="/" className="platform-brand">
@@ -112,7 +120,7 @@ export function Workspace({
 }) {
   return (
     <div className="workspace">
-      <aside className="workspace-sidebar">
+      <aside className="workspace-sidebar" aria-label="Thanh bên không gian">
         <Brand compact />
         <div className="workspace-label">{audience}</div>
         <nav aria-label="Điều hướng không gian">
@@ -138,7 +146,9 @@ export function Workspace({
             {actions}
           </div>
         </header>
-        <main className="workspace-content">{children}</main>
+        <main id="noi-dung" tabIndex={-1} className="workspace-content">
+          {children}
+        </main>
         <footer className="workspace-footer">NOXH Open Platform · BDSG Foundation · MIT</footer>
       </div>
     </div>
@@ -180,7 +190,7 @@ export function EmptyState({
       <span className="empty-icon">
         <Icon name="folder" size={30} />
       </span>
-      <h3>{title}</h3>
+      <p className="empty-title">{title}</p>
       <p>{description}</p>
       {action}
     </div>

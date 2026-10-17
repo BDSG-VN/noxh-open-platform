@@ -43,8 +43,15 @@ jobs:
       - run: rustup toolchain install 1.99.0 --profile minimal --component rustfmt
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
+      # Replay every API test with service SQL under the least-privilege noxh_app role (migration 022).
+      - run: pnpm --filter @noxh/api test
+        env:
+          NOXH_TEST_RUNTIME_ROLE: '1'
       - run: pnpm audit --prod --audit-level high
       - run: pnpm build
+      # Accessibility gate: axe WCAG 2.1 A/AA, keyboard and reflow checks on production builds.
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:a11y
       - run: pnpm db:migrate && pnpm db:migrate && pnpm db:seed && pnpm test:db
       - run: pnpm exec openapi-typescript docs/openapi.json -o packages/contracts/src/generated.ts && git diff --exit-code -- packages/contracts/src/generated.ts
   python:

@@ -32,8 +32,12 @@ for (const n of [
   'NotificationPreferenceSchema',
   'NotificationTransportSchema',
   'NotificationAcceptedSchema',
+  'NotificationProviderSchema',
   'NotificationAutomationPolicySchema',
   'NotificationAutomationReviewSchema',
+  'OcrConsentSchema',
+  'OcrAcceptedSchema',
+  'OcrResultSchema',
 ])
   schema(n);
 function path(url, method, id, description, body, version = false) {
@@ -41,7 +45,7 @@ function path(url, method, id, description, body, version = false) {
     name: m[1],
     in: 'path',
     required: true,
-    schema: uuid,
+    schema: m[1] === 'channel' ? { type: 'string', enum: ['email', 'zalo'] } : uuid,
   }));
   if (version)
     parameters.push({
@@ -282,7 +286,7 @@ path(
   },
 );
 doc.paths['/health/ready'].get.description =
-  'Checks PostgreSQL, Redis, migrations 001–021 and executable Rust kernels. Does not certify legal approval, provider connectivity or production readiness.';
+  'Checks PostgreSQL, Redis, migrations 001–025, executable Rust kernels and, when DATABASE_REQUIRE_LEAST_PRIVILEGE=true, that the API connects as a non-elevated noxh_app member. Does not certify legal approval, provider connectivity or production readiness.';
 const assistant = doc.paths['/api/v1/dossiers/{id}/assistant'].post;
 assistant.description =
   (assistant.description ?? '').split(' Project-approved lexical retrieval')[0] +
@@ -351,6 +355,34 @@ path(
   'configureNotificationTransport',
   'Operator-installed adapter selection only, no arbitrary endpoints/credentials accepted from browser; outside delivery defaults disabled.',
   'NotificationTransportSchema',
+  true,
+);
+path(
+  notifications + '/deliveries',
+  'get',
+  'getNotificationDeliveries',
+  'Worker delivery jobs for the project: status, reason codes, attempt budget, requeue count, dead-letter count and channel rate-limit/circuit state. Identifiers only; no addresses, receipts or content.',
+);
+path(
+  notifications + '/deliveries/{id}/requeue',
+  'post',
+  'requeueNotificationDelivery',
+  'Operator-confirmed, version-bound requeue of one dead-lettered job while the message keeps attempt budget (at most 3 attempts and 2 requeues in total). Final outcomes are never reopened.',
+  'NotificationAcceptedSchema',
+  true,
+);
+path(
+  '/api/v1/admin/notifications/providers',
+  'get',
+  'getNotificationProviders',
+  'Organization administrator view of encrypted provider settings per channel: adapter, rate limit, non-secret summary and version. Credentials are never returned.',
+);
+path(
+  '/api/v1/admin/notifications/providers/{channel}',
+  'post',
+  'configureNotificationProvider',
+  'Organization administrator enters SMTP or Zalo OA settings for a registered adapter; stored encrypted server-side, validated against operator allowlists. A different privacy officer must still enable the channel per project. Default off.',
+  'NotificationProviderSchema',
   true,
 );
 path(
@@ -423,6 +455,48 @@ path(
   'Re-verifies provider proof and exact same phone session/challenge/token/config; conflict across accounts is rejected, never merged.',
   'ZaloExchangeSchema',
 );
+// Self-hosted OCR queue (migration 025, ADR 020): no external AI; results are proposals only.
+path(
+  '/api/v1/dossiers/{id}/ocr-jobs',
+  'get',
+  'listMyOcrJobs',
+  'Owner-only OCR jobs for the dossier with status, reason code, attempt budget, quality score and low-quality flag. Text is only in the job detail. Requires LOCAL_OCR_ENABLED on the deployment.',
+);
+path(
+  '/api/v1/dossiers/{id}/documents/{document}/ocr',
+  'post',
+  'requestDocumentOcr',
+  'Owner requests self-hosted OCR of one clean-scanned document with a separate purpose-specific consent (document-ocr-v1). Quarantined or rejected files are refused; one active job per document; at most 20 requests per hour. The worker claims the job later; nothing is written to the declaration.',
+  'OcrConsentSchema',
+);
+path(
+  '/api/v1/dossiers/{id}/ocr-jobs/{job}',
+  'get',
+  'getMyOcrJob',
+  'Owner-only job detail including the decrypted recognised text blocks (page, bbox, confidence), quality score and the linked local-ocr extraction proposal id. Fields still need explicit acceptance through the existing extraction flow.',
+);
+path(
+  '/api/v1/dossiers/{id}/ocr-jobs/{job}/cancel',
+  'post',
+  'cancelMyOcrJob',
+  'Owner cancels a pending or running job with If-Match. A running job loses its lease so an in-flight result is discarded; the purpose consent is withdrawn.',
+  undefined,
+  true,
+);
+path(
+  '/api/v1/admin/ocr/queue',
+  'get',
+  'getOcrQueueHealth',
+  'Organization administrator queue health: counts per status, oldest pending age, stale leases and the latest failures with reason codes only. Never document or text content.',
+);
+path(
+  '/api/v1/admin/ocr/jobs/{job}/requeue',
+  'post',
+  'requeueOcrJob',
+  'Operator-confirmed, version-bound requeue of one failed job within the bounded budget (at most 3 attempts and 2 requeues in total). Succeeded and cancelled jobs are final.',
+  'OcrAcceptedSchema',
+  true,
+);
 for (const url of [
   '/api/v1/auth/zalo/status',
   '/api/v1/auth/zalo/challenges',
@@ -439,6 +513,11 @@ capabilities.zaloTokenExchange = {
 capabilities.zaloVerification = { const: 'server-appsecret-proof-organization-configurable' };
 capabilities.officialForms = { const: 'reviewed-mappings-deterministic-pdf' };
 capabilities.lottery = { const: 'synthetic-reviewed-cohorts' };
+capabilities.localOcr = {
+  type: 'boolean',
+  description:
+    'LOCAL_OCR_ENABLED deployment flag: self-hosted tesseract OCR through the worker queue; no external provider.',
+};
 const digest = { type: 'string', pattern: '^[a-f0-9]{64}$' };
 doc.components.schemas.AuditCursor = {
   type: 'object',

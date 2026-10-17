@@ -1,12 +1,19 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button, EmptyState } from '@noxh/ui';
-import type { ExtractionField, MappingField } from '@noxh/contracts';
-async function request(path: string, body?: unknown, method = 'GET') {
+import type { ExtractionField, MappingField, OcrJobDetail, OcrJobView } from '@noxh/contracts';
+async function request(
+  path: string,
+  body?: unknown,
+  method = 'GET',
+  signal?: AbortSignal,
+  headers: Record<string, string> = {},
+) {
   const r = await fetch('/api/workflow/' + path, {
     method,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...headers },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    signal,
   });
   const v = await r.json();
   if (!r.ok) throw new Error(v.detail ?? 'Không thực hiện được');
@@ -64,25 +71,54 @@ export function DocumentWorkspace({
       generated: Generated[];
       inputVersion: number;
     }>(),
+    [ocr, setOcr] = useState<{
+      enabled: boolean;
+      items: OcrJobView[];
+      qualityThreshold: number;
+      notice: string;
+    }>(),
     [error, setError] = useState(''),
     [message, setMessage] = useState(''),
     [busy, setBusy] = useState(false),
     [mapping, setMapping] = useState(''),
     [values, setValues] = useState<Record<string, string>>({}),
     [selected, setSelected] = useState<Generated>(),
-    [checked, setChecked] = useState<string[]>([]);
+    [checked, setChecked] = useState<string[]>([]),
+    [uploading, setUploading] = useState(false);
+  const upload = useRef<AbortController | null>(null);
   const base = 'dossiers/' + id;
   async function load() {
-    const [d, f] = await Promise.all([
+    const [d, f, o] = await Promise.all([
       request(base + '/documents'),
       request(base + '/form-workspace'),
+      request(base + '/ocr-jobs'),
     ]);
     setDocs(d);
     setForms(f);
+    setOcr(o);
   }
   useEffect(() => {
     load().catch((e) => setError(e.message));
   }, [id]);
+  // Poll only while a job is queued or running; the worker finishes outside the request.
+  const polling = ocr?.items.some((j) => j.status === 'pending' || j.status === 'running');
+  const succeededCount = ocr?.items.filter((j) => j.status === 'succeeded').length ?? 0;
+  const seenSucceeded = useRef(succeededCount);
+  seenSucceeded.current = succeededCount;
+  useEffect(() => {
+    if (!polling) return;
+    const timer = setInterval(() => {
+      request(base + '/ocr-jobs')
+        .then(async (o: { items: OcrJobView[] }) => {
+          const done = o.items.filter((j) => j.status === 'succeeded').length;
+          setOcr(o as typeof ocr);
+          // A newly finished job created an extraction proposal: refresh step 02.
+          if (done > seenSucceeded.current) setDocs(await request(base + '/documents'));
+        })
+        .catch(() => undefined);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [polling, id]);
   async function run(fn: () => Promise<unknown>) {
     setBusy(true);
     setError('');
@@ -173,11 +209,24 @@ export function DocumentWorkspace({
                 reader.onload = () => resolve(String(reader.result).split(',')[1]!);
                 reader.readAsDataURL(file);
               });
-              await request(
-                base + '/documents',
-                { name: file.name, mime: file.type, type: fd.get('type'), base64 },
-                'POST',
-              );
+              const controller = new AbortController();
+              upload.current = controller;
+              setUploading(true);
+              try {
+                await request(
+                  base + '/documents',
+                  { name: file.name, mime: file.type, type: fd.get('type'), base64 },
+                  'POST',
+                  controller.signal,
+                );
+              } catch (e) {
+                if (controller.signal.aborted)
+                  throw new Error('Đã hủy tải lên. Tệp chưa được lưu.');
+                throw e;
+              } finally {
+                upload.current = null;
+                setUploading(false);
+              }
             });
           }}
         >
@@ -202,7 +251,15 @@ export function DocumentWorkspace({
               required
             />
           </label>
-          <Button disabled={busy}>Tải vào kho riêng</Button>
+          <Button disabled={busy}>{uploading ? 'Đang tải lên…' : 'Tải vào kho riêng'}</Button>
+          {uploading && (
+            <p className="feedback" role="status" aria-live="polite">
+              Đang tải giấy tờ vào kho riêng, vui lòng đợi.{' '}
+              <button type="button" className="text-button" onClick={() => upload.current?.abort()}>
+                Hủy tải lên
+              </button>
+            </p>
+          )}
         </form>
         {docs && !docs.items.length && (
           <EmptyState
@@ -261,6 +318,47 @@ export function DocumentWorkspace({
                     <Button disabled={busy}>Đọc thông tin từ tệp này</Button>
                   </form>
                 </details>
+                {ocr?.enabled && (
+                  <details>
+                    <summary>Đọc chữ trên giấy tờ (OCR nội bộ) · tùy chọn</summary>
+                    <p>
+                      Giấy tờ được đọc bằng phần mềm chạy trên máy chủ của tổ chức, không gửi ra
+                      ngoài. Kết quả chỉ là gợi ý để bạn đối chiếu; chưa đánh giá chất lượng trên
+                      giấy tờ thật.
+                    </p>
+                    <form
+                      className="stack"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        run(() =>
+                          request(
+                            base + '/documents/' + d.id + '/ocr',
+                            { accepted: true, noticeVersion: 'document-ocr-v1' },
+                            'POST',
+                          ),
+                        );
+                      }}
+                    >
+                      <label className="check-row">
+                        <input type="checkbox" required />
+                        Tôi đồng ý riêng cho việc đọc chữ trên tệp này bằng OCR nội bộ và sẽ kiểm
+                        tra lại kết quả trước khi dùng.
+                      </label>
+                      <Button
+                        disabled={
+                          busy ||
+                          ocr.items.some(
+                            (j) =>
+                              j.documentId === d.id &&
+                              (j.status === 'pending' || j.status === 'running'),
+                          )
+                        }
+                      >
+                        Đọc chữ trên giấy tờ (OCR nội bộ)
+                      </Button>
+                    </form>
+                  </details>
+                )}
               </>
             ) : (
               <Button
@@ -288,6 +386,43 @@ export function DocumentWorkspace({
           </article>
         ))}
       </section>
+      {ocr?.enabled && (
+        <section className="surface stack" aria-labelledby="ocr-heading">
+          <div>
+            <span className="kicker">OCR NỘI BỘ</span>
+            <h3 id="ocr-heading">Tác vụ đọc chữ trên giấy tờ</h3>
+            <p>{ocr.notice}</p>
+          </div>
+          {polling && (
+            <p className="feedback" role="status" aria-live="polite">
+              Đang chờ máy chủ đọc chữ; trang tự cập nhật.
+            </p>
+          )}
+          {!ocr.items.length && (
+            <EmptyState
+              title="Chưa có tác vụ OCR"
+              description="Chọn một giấy tờ đã quét an toàn ở bước 01 và bấm “Đọc chữ trên giấy tờ (OCR nội bộ)”."
+            />
+          )}
+          {ocr.items.map((j) => (
+            <OcrJobCard
+              key={j.id + ':' + j.version}
+              job={j}
+              base={base}
+              busy={busy}
+              threshold={ocr.qualityThreshold}
+              name={docs?.items.find((d) => d.id === j.documentId)?.name ?? 'Giấy tờ'}
+              cancel={() =>
+                run(() =>
+                  request(base + '/ocr-jobs/' + j.id + '/cancel', {}, 'POST', undefined, {
+                    'If-Match': String(j.version),
+                  }),
+                )
+              }
+            />
+          ))}
+        </section>
+      )}
       <section className="surface stack" aria-labelledby="extraction-heading">
         <div>
           <span className="kicker">BƯỚC 02 · TÙY CHỌN</span>
@@ -316,7 +451,7 @@ export function DocumentWorkspace({
                 ),
               )
             }
-            useFields={(fields) => {
+            onUseFields={(fields) => {
               setValues((v) => ({
                 ...v,
                 ...Object.fromEntries(fields.map((f) => [f.key, f.value])),
@@ -528,16 +663,138 @@ function documentTypeLabel(type: string) {
     )[type] ?? 'Giấy tờ'
   );
 }
+function ocrStatusLabel(status: OcrJobView['status']) {
+  return (
+    (
+      {
+        pending: 'Đang chờ xử lý',
+        running: 'Đang đọc chữ',
+        succeeded: 'Đã đọc xong',
+        failed: 'Không đọc được',
+        cancelled: 'Đã hủy',
+      } as Record<string, string>
+    )[status] ?? status
+  );
+}
+function ocrReasonLabel(reason: OcrJobView['reason']) {
+  return (
+    (
+      {
+        worker_unavailable: 'Dịch vụ đọc chữ chưa phản hồi; hệ thống sẽ thử lại có giới hạn.',
+        worker_timeout: 'Dịch vụ đọc chữ quá thời gian; hệ thống sẽ thử lại có giới hạn.',
+        worker_rejected: 'Dịch vụ đọc chữ không nhận tệp này (ảnh/PDF không đọc được).',
+        invalid_result: 'Kết quả trả về không hợp lệ và đã bị loại bỏ.',
+        document_unavailable: 'Giấy tờ không còn ở trạng thái quét an toàn hoặc đã bị rút.',
+        consent_unavailable: 'Đồng ý xử lý đã được rút; kết quả không được lưu.',
+        attempts_exhausted: 'Đã hết số lần thử; bạn có thể gửi yêu cầu mới sau.',
+        processing_failed: 'Lỗi xử lý nội bộ; hệ thống sẽ thử lại có giới hạn.',
+        cancelled_by_owner: 'Bạn đã hủy tác vụ này.',
+        requeued: 'Người vận hành đã đưa tác vụ vào hàng đợi lại.',
+      } as Record<string, string>
+    )[reason ?? ''] ?? ''
+  );
+}
+export function OcrJobCard({
+  job: j,
+  base,
+  busy,
+  threshold,
+  name,
+  cancel,
+}: {
+  job: OcrJobView;
+  base: string;
+  busy: boolean;
+  threshold: number;
+  name: string;
+  cancel: () => void;
+}) {
+  const [detail, setDetail] = useState<OcrJobDetail>(),
+    [loadError, setLoadError] = useState('');
+  const active = j.status === 'pending' || j.status === 'running';
+  return (
+    <article className="member-card stack">
+      <h3>{name}</h3>
+      <span className="status-badge">{ocrStatusLabel(j.status)}</span>
+      <small>
+        Lần thử {j.attemptCount}/{j.attemptBudget}
+        {j.engine ? ' · bộ đọc ' + j.engine : ''}
+        {j.qualityScore !== null
+          ? ' · chất lượng ước lượng ' + Math.round(j.qualityScore * 100) + '%'
+          : ''}
+      </small>
+      {j.reason && j.status !== 'succeeded' && (
+        <p className="help-note amber">{ocrReasonLabel(j.reason)}</p>
+      )}
+      {j.lowQuality && (
+        <p className="help-note amber" role="status">
+          Chất lượng nhận dạng thấp (dưới ngưỡng {Math.round(threshold * 100)}%). Kết quả có thể sai
+          nhiều; hãy đối chiếu kỹ với bản gốc hoặc tải ảnh rõ hơn.
+        </p>
+      )}
+      {active && (
+        <Button variant="outline" disabled={busy} onClick={cancel}>
+          Hủy tác vụ OCR
+        </Button>
+      )}
+      {j.status === 'succeeded' && !detail && (
+        <Button
+          variant="outline"
+          disabled={busy}
+          onClick={() => {
+            setLoadError('');
+            request(base + '/ocr-jobs/' + j.id)
+              .then(setDetail)
+              .catch((e) => setLoadError(e instanceof Error ? e.message : 'Không tải được'));
+          }}
+        >
+          Xem chữ đã đọc
+        </Button>
+      )}
+      {loadError && (
+        <p role="alert" className="feedback error">
+          {loadError}
+        </p>
+      )}
+      {detail?.result && (
+        <div className="stack">
+          <p>
+            {detail.result.pages} trang · {detail.result.blocks.length} dòng ·{' '}
+            {detail.result.engine} {detail.result.engine_version}
+          </p>
+          {detail.result.blocks.length ? (
+            <ol>
+              {detail.result.blocks.map((b, i) => (
+                <li key={i}>
+                  <span>{b.text || '(trống)'}</span>{' '}
+                  <small>
+                    trang {b.page} · độ tin cậy {Math.round(b.confidence * 100)}%
+                  </small>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="help-note amber">Không phát hiện được chữ trên giấy tờ.</p>
+          )}
+          <p>
+            Các dòng này cũng xuất hiện ở bước 02 dưới dạng đề xuất; bạn kiểm tra và lưu từng dòng
+            trước khi dùng để điền mẫu. Không có dữ liệu nào tự ghi vào bản khai.
+          </p>
+        </div>
+      )}
+    </article>
+  );
+}
 function ExtractionReview({
   value: x,
   busy,
   accept,
-  useFields,
+  onUseFields,
 }: {
   value: Extraction;
   busy: boolean;
   accept: (fields: ExtractionField[]) => void;
-  useFields: (fields: ExtractionField[]) => void;
+  onUseFields: (fields: ExtractionField[]) => void;
 }) {
   const [fields, setFields] = useState(x.fields),
     [checked, setChecked] = useState<string[]>([]);
@@ -602,7 +859,7 @@ function ExtractionReview({
         </div>
       ))}
       {x.accepted_at ? (
-        <Button type="button" onClick={() => useFields(fields)}>
+        <Button type="button" onClick={() => onUseFields(fields)}>
           Dùng dữ liệu đã kiểm tra để điền mẫu
         </Button>
       ) : (

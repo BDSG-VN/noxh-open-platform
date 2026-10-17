@@ -4,30 +4,55 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app';
 import { NotificationAutomationService } from './notification-automation-service';
 import { NotificationAutomationLifecycle } from './notification-automation-lifecycle';
+import { NotificationDeliveryService } from './notification-delivery-service';
+import { NotificationDeliveryLifecycle } from './notification-delivery-lifecycle';
+import { NotificationService } from './notification-service';
+import { DocumentOcrService } from './document-ocr-service';
+import { DocumentOcrLifecycle } from './document-ocr-lifecycle';
+import { registerNotificationAdapters } from './notification-transports';
 async function main() {
   const app = await NestFactory.createApplicationContext(AppModule, { logger: ['error', 'warn'] });
   app.enableShutdownHooks();
+  // Reviewed external adapters are attached by the operator process only, never from requests.
+  registerNotificationAdapters(app.get(NotificationService));
   if (process.argv.includes('--notifications-once')) {
     const service = app.get(NotificationAutomationService);
     const result = await service.runConfiguredBatch();
+    const delivery = app.get(NotificationDeliveryService);
+    const sent = await delivery.runConfiguredBatch();
+    const ocr = app.get(DocumentOcrService);
+    const recognised = await ocr.runConfiguredBatch();
     console.log(
       JSON.stringify({
         scope: 'synthetic-in-app-application-notifications',
         enabled: Boolean(service.configuredOrganization()),
         ...result,
+        delivery: { enabled: Boolean(delivery.configuredOrganization()), ...sent },
+        ocr: { enabled: Boolean(ocr.configuredOrganization()), ...recognised },
       }),
     );
     await app.close();
-    if (result.failed > 0) process.exitCode = 1;
+    if (result.failed > 0 || sent.workerFailures > 0 || recognised.workerFailures > 0)
+      process.exitCode = 1;
     return;
   }
   const automation = app.get(NotificationAutomationLifecycle);
+  const delivery = app.get(NotificationDeliveryLifecycle);
+  const ocr = app.get(DocumentOcrLifecycle);
   const server = createServer((request, response) => {
     const live = request.method === 'GET' && request.url === '/health/live';
     response.writeHead(live ? 200 : 404, { 'Content-Type': 'application/json' });
     response.end(
       JSON.stringify(
-        live ? { status: 'alive', release: '0.6.0', ...automation.status() } : { status: 404 },
+        live
+          ? {
+              status: 'alive',
+              release: '0.6.0',
+              ...automation.status(),
+              delivery: delivery.status(),
+              ocr: ocr.status(),
+            }
+          : { status: 404 },
       ),
     );
   });
@@ -35,7 +60,8 @@ async function main() {
   process.once('SIGTERM', () => server.close());
   process.once('SIGINT', () => server.close());
 }
-main().catch(() => {
-  console.error('Worker startup failed');
+main().catch((e: unknown) => {
+  const cause = e instanceof Error ? e.name + ': ' + e.message : 'unknown';
+  console.error('Worker startup failed (' + cause.slice(0, 300) + ')');
   process.exitCode = 1;
 });

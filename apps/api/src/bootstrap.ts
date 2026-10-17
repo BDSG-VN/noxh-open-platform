@@ -4,6 +4,7 @@ import {
   ExceptionFilter,
   HttpException,
   INestApplication,
+  Logger,
 } from '@nestjs/common';
 import helmet from 'helmet';
 import type { Request, Response } from 'express';
@@ -11,11 +12,18 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { channelCors, channelCorsOrigins } from './channel-cors';
 import { trustedProxyCidrs } from './client-peer';
 @Catch()
-class ProblemFilter implements ExceptionFilter {
+export class ProblemFilter implements ExceptionFilter {
+  private readonly logger = new Logger('http');
   catch(error: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const status = error instanceof HttpException ? error.getStatus() : 500;
     const message = error instanceof HttpException ? error.message : 'Unexpected error';
+    if (status >= 500) {
+      // Class, message and route only: never headers, bodies or query strings (tokens, PII).
+      const request = ctx.getRequest<Request>();
+      const cause = error instanceof Error ? error.name + ': ' + error.message : String(error);
+      this.logger.error(`${request.method} ${request.path} -> ${status} ${cause.slice(0, 300)}`);
+    }
     ctx
       .getResponse<Response>()
       .status(status)

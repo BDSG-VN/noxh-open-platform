@@ -175,10 +175,10 @@ export default function LotteryAdmin({
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Phiên bốc thăm</th>
-                    <th>Hồ sơ / suất</th>
-                    <th>Trạng thái</th>
-                    <th>
+                    <th scope="col">Phiên bốc thăm</th>
+                    <th scope="col">Hồ sơ / suất</th>
+                    <th scope="col">Trạng thái</th>
+                    <th scope="col">
                       <span className="sr-only">Thao tác</span>
                     </th>
                   </tr>
@@ -446,10 +446,10 @@ export default function LotteryAdmin({
                         <table className="data-table">
                           <thead>
                             <tr>
-                              <th>Thứ tự</th>
-                              <th>Mã hồ sơ</th>
-                              <th>Kết quả diễn tập</th>
-                              {current.config.kind === 'allocation' && <th>Căn hộ</th>}
+                              <th scope="col">Thứ tự</th>
+                              <th scope="col">Mã hồ sơ</th>
+                              <th scope="col">Kết quả diễn tập</th>
+                              {current.config.kind === 'allocation' && <th scope="col">Căn hộ</th>}
                             </tr>
                           </thead>
                           <tbody>
