@@ -2,6 +2,8 @@
 
 Chế độ này cho phép bất kỳ ai dùng thử nền tảng mà không cần xin mã hay mật khẩu. Toàn bộ nội dung là giả lập: dự án **Khu nhà ở xã hội Mây Trắng** (phường Sương Mai, tỉnh Giả Lập) không tồn tại và không đại diện chủ đầu tư nào. Không đưa dữ liệu, ảnh hoặc giấy tờ thật vào môi trường này.
 
+Bản công khai: <https://noxh-demo.bdsg.vn/trai-nghiem> (cổng công dân; trang này liệt kê tài khoản, commit đang chạy và các cổng quản trị/đối tác/minh bạch). Dữ liệu có thể bị xóa khi làm mới.
+
 ## Bật
 
 ```sh

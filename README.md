@@ -45,7 +45,7 @@ Thông báo nghiệp vụ tự động chỉ chạy khi bật `NOTIFICATIONS_AUT
 
 ## Bản trải nghiệm mở
 
-`DEMO_OPEN_ACCESS=true` bật dự án hư cấu **Mây Trắng** với tài khoản công khai: số `0900000xxx` đăng nhập bằng mã cố định điền sẵn, quản trị `demo.admin` có mật khẩu và mã hai bước hiển thị tại `/trai-nghiem`. Chỉ cho dữ liệu giả lập; xem [OPEN-DEMO.md](docs/OPEN-DEMO.md).
+`DEMO_OPEN_ACCESS=true` bật dự án hư cấu **Mây Trắng** với tài khoản công khai: số `0900000xxx` đăng nhập bằng mã cố định điền sẵn, quản trị `demo.admin` có mật khẩu và mã hai bước hiển thị tại `/trai-nghiem`. Chỉ cho dữ liệu giả lập; xem [OPEN-DEMO.md](docs/OPEN-DEMO.md). Bản công khai do BDSG vận hành theo đúng mã nguồn này: <https://noxh-demo.bdsg.vn/trai-nghiem> (quản trị `noxh-demo-admin`, đối tác `noxh-demo-partner`, minh bạch `noxh-demo-lottery`, cùng `.bdsg.vn`).
 
 ## Đăng nhập và quản trị
 
