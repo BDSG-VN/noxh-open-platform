@@ -14,6 +14,8 @@ export default function OpenDemoPage() {
   const otp = process.env.DEMO_OPEN_OTP ?? '123456';
   const admin = process.env.INVESTOR_PUBLIC_ORIGIN ?? 'http://localhost:3001';
   const partner = process.env.PARTNER_PUBLIC_ORIGIN ?? 'http://localhost:3004';
+  const source = process.env.DEMO_SOURCE_COMMIT ?? '';
+  const lottery = process.env.TRANSPARENCY_PUBLIC_ORIGIN ?? '';
   return (
     <main id="noi-dung" tabIndex={-1} className="container section">
       <Brand />
@@ -40,6 +42,28 @@ export default function OpenDemoPage() {
           khẩu <code>MayTrang-Demo-2026</code>
         </p>
         <DemoTotp secret="NOXHDEMOMAYTRANGOPENACCESSAB2345" />
+      </section>
+      <section className="card">
+        <h2>Mã nguồn mở</h2>
+        <p>
+          Bản trải nghiệm chạy đúng mã tại{' '}
+          <a href="https://github.com/BDSG-VN/noxh-open-platform">
+            github.com/BDSG-VN/noxh-open-platform
+          </a>
+          {source ? (
+            <>
+              {' '}
+              (commit <code>{source.slice(0, 12)}</code>)
+            </>
+          ) : null}
+          .
+          {lottery ? (
+            <>
+              {' '}
+              Cổng minh bạch/bốc thăm: <a href={lottery}>{lottery}</a>.
+            </>
+          ) : null}
+        </p>
       </section>
       <p style={{ fontSize: 12 }}>
         Chế độ này tắt mặc định (<code>DEMO_OPEN_ACCESS</code>) và bị từ chối ở môi trường

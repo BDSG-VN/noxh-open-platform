@@ -26,3 +26,5 @@ Seed tự thêm dự án Mây Trắng, một đợt trải nghiệm kỹ thuật
 - Realm `noxh-realm.open-demo.json` chứa mật khẩu và bí mật TOTP công khai; không dùng cho bất kỳ triển khai có dữ liệu thật. Realm nguồn `noxh-realm.json` vẫn không có người dùng mặc định.
 - Giới hạn tần suất, phiên có thu hồi, RLS và vai trò DB tối thiểu áp dụng như bản chính thức.
 - Khi dựng lại demo công khai thay cho bản Lam Sơn: dùng fixture này, không dùng tài liệu/ảnh của dự án thật; mọi số liệu ngưỡng, giá, mẫu đều là ví dụ.
+
+Triển khai công khai có thể đặt `DEMO_SOURCE_COMMIT` (commit đang chạy) và `TRANSPARENCY_PUBLIC_ORIGIN` để trang `/trai-nghiem` ghi rõ nguồn mã và cổng minh bạch.
