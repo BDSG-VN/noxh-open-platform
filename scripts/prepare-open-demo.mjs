@@ -49,13 +49,18 @@ realm.users = [
     ],
   },
 ];
-const { default: prettier } = await import('prettier');
 const out = 'deploy/keycloak/noxh-realm.open-demo.json';
-await writeFile(
-  out,
-  await prettier.format(JSON.stringify(realm), {
+// Prettier is a dev dependency; outside the workspace (e.g. a bare Node container on a server)
+// the file is written as plain JSON instead.
+let text = JSON.stringify(realm, null, 2) + '\n';
+try {
+  const { default: prettier } = await import('prettier');
+  text = await prettier.format(JSON.stringify(realm), {
     ...(await prettier.resolveConfig(out)),
     filepath: out,
-  }),
-);
+  });
+} catch (error) {
+  if (error?.code !== 'ERR_MODULE_NOT_FOUND') throw error;
+}
+await writeFile(out, text);
 console.log('Wrote deploy/keycloak/noxh-realm.open-demo.json (public demo credentials inside)');
