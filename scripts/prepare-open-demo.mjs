@@ -11,6 +11,18 @@ export const OPEN_DEMO_ADMIN = {
 };
 
 const realm = JSON.parse(await readFile('deploy/keycloak/noxh-realm.json', 'utf8'));
+// Public investor-console origin of the demo deployment (default: local Compose).
+const investorOrigin = (process.env.INVESTOR_PUBLIC_ORIGIN ?? 'http://localhost:3001').replace(
+  /\/$/,
+  '',
+);
+if (!/^https?:\/\/[a-z0-9.-]+(?::\d+)?$/i.test(investorOrigin))
+  throw new Error('INVESTOR_PUBLIC_ORIGIN must be an origin without a path');
+for (const client of realm.clients ?? [])
+  if (client.clientId === 'noxh-investor') {
+    client.redirectUris = [investorOrigin + '/auth/callback'];
+    client.webOrigins = [investorOrigin];
+  }
 realm.users = [
   {
     username: OPEN_DEMO_ADMIN.username,

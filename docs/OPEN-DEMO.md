@@ -6,7 +6,7 @@ Chế độ này cho phép bất kỳ ai dùng thử nền tảng mà không c�
 
 ```sh
 node scripts/init-dev-env.mjs
-node scripts/prepare-open-demo.mjs          # tạo deploy/keycloak/noxh-realm.open-demo.json
+node scripts/prepare-open-demo.mjs          # tạo deploy/keycloak/noxh-realm.open-demo.json (INVESTOR_PUBLIC_ORIGIN=https://... khi triển khai công khai)
 printf 'DEMO_OPEN_ACCESS=true\nKEYCLOAK_REALM_FILE=noxh-realm.open-demo.json\n' >> .env
 docker compose up --build --wait --wait-timeout 600
 ```
